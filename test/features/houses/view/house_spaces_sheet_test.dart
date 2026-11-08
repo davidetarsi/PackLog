@@ -66,7 +66,7 @@ void main() {
   Future<ScreenshotApp> openLuggages(WidgetTester tester) async {
     final app = await ScreenshotApp.start(tester, theme: ShotTheme.dark);
     await app.go('/trips');
-    await app.push('/trips/$kUpcomingTripId/edit-items');
+    await app.push('/trips/$kUpcomingTripId');
     await tester.ensureVisible(find.byKey(const Key('pack_manage_luggages')));
     await app.tap(find.byKey(const Key('pack_manage_luggages')));
     return app;
@@ -367,11 +367,7 @@ void main() {
         ),
         findsNothing,
       );
-      await app.tap(
-        find.byWidgetPredicate(
-          (w) => w is DsButton && w.label.startsWith('Fatto'),
-        ),
-      );
+      await app.settle();
       final trips = await tester.runAsync(
         () => app.container.read(tripNotifierProvider.future),
       );
@@ -404,11 +400,11 @@ void main() {
   });
 
   testWidgets(
-    'creare un bagaglio dalla valigia lo seleziona e lo salva nel viaggio',
+    'creare un bagaglio dal dettaglio lo seleziona e lo salva nel viaggio',
     (tester) async {
       final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
       await app.go('/trips');
-      await app.push('/trips/$kUpcomingTripId/edit-items');
+      await app.push('/trips/$kUpcomingTripId');
       // Con dei bagagli "Nuovo bagaglio" sta dentro "Gestisci bagagli".
       expect(find.byKey(const Key('pack_new_luggage')), findsNothing);
       await tester.ensureVisible(find.byKey(const Key('pack_manage_luggages')));
@@ -430,11 +426,7 @@ void main() {
         ),
         findsOneWidget,
       );
-      await app.tap(
-        find.byWidgetPredicate(
-          (w) => w is DsButton && w.label.startsWith('Fatto'),
-        ),
-      );
+      await app.settle();
       final trips = await tester.runAsync(
         () => app.container.read(tripNotifierProvider.future),
       );
