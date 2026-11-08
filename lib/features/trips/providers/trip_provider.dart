@@ -11,6 +11,7 @@ import '../model/ai_packing.dart';
 import '../model/trip_model.dart';
 import '../repositories/trip_repository.dart';
 import '../services/packing_progress_tracker.dart';
+import '../services/suitcase_analytics.dart';
 import '../services/trip_lifecycle_service.dart';
 
 part 'trip_provider.g.dart';
@@ -88,8 +89,11 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
     operation: () => _repo.addTrip(model),
     reload: _repo.getAllTrips,
     rethrowOnly: true,
-    onSuccess: (trips) =>
-        _analytics.trackTripCreated(tripId: model.id, totalTrips: trips.length),
+    onSuccess: (trips) => _analytics.trackTripCreated(
+      tripId: model.id,
+      totalTrips: trips.length,
+      daysToDeparture: daysToDeparture(model.departureDateTime, DateTime.now()),
+    ),
   );
 
   Future<void> updateTrip(TripModel model) => mutate(

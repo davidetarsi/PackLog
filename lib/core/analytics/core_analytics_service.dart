@@ -175,10 +175,21 @@ class CoreAnalyticsService {
 
   // ── trip_ ─────────────────────────────────────────────────────────────────
 
-  void trackTripCreated({required String tripId, required int totalTrips}) {
+  /// `trip_number`: quanti viaggi ha l'utente con questo (il secondo viaggio
+  /// è il segnale che l'app è tornata utile).
+  void trackTripCreated({
+    required String tripId,
+    required int totalTrips,
+    int? daysToDeparture,
+  }) {
     _safeLogEvent(
       'trip_created',
-      properties: {'trip_id': tripId, 'is_first_trip': totalTrips == 1},
+      properties: {
+        'trip_id': tripId,
+        'is_first_trip': totalTrips == 1,
+        'trip_number': totalTrips,
+        'days_to_departure': ?daysToDeparture,
+      },
     );
   }
 

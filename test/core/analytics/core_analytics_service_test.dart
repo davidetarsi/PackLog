@@ -60,7 +60,27 @@ void main() {
       verify(
         () => mockAnalytics.logEvent(
           'trip_created',
-          properties: {'trip_id': 't1', 'is_first_trip': false},
+          properties: {
+            'trip_id': 't1',
+            'is_first_trip': false,
+            'trip_number': 2,
+          },
+        ),
+      ).called(1);
+    });
+
+    test('trackTripCreated con i giorni alla partenza', () async {
+      service.trackTripCreated(tripId: 't', totalTrips: 3, daysToDeparture: 10);
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'trip_created',
+          properties: {
+            'trip_id': 't',
+            'is_first_trip': false,
+            'trip_number': 3,
+            'days_to_departure': 10,
+          },
         ),
       ).called(1);
     });
