@@ -413,6 +413,11 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
         luggages: _luggages.values.toList(),
       ),
       isNew: false,
+      // La pagina si chiude prima dell'attesa: la sua copia della valigia è
+      // vecchia e non deve poter riscrivere quella nuova.
+      beforeWait: () => context.canPop()
+          ? context.pop()
+          : context.go('/trips/${widget.tripId}'),
     );
   }
 

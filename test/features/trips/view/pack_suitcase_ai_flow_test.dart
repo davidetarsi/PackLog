@@ -593,6 +593,22 @@ void main() {
       },
     );
 
+    testWidgets('pack_page_closes_when_ai_starts', (tester) async {
+      // Nessuna risposta pronta: il lavoro resta in corso con l'attesa aperta.
+      arrange(trip: _viaggio(), items: _houseItems);
+      await pumpPack(tester, fromDetail: true);
+      expect(find.byType(PackSuitcaseScreen), findsOneWidget);
+
+      await tapKey(tester, const Key('pack_ai_suitcase'));
+      await prepareInSheet(tester);
+      await tester.pumpAndSettle();
+
+      // La pagina valigia è chiusa prima dell'attesa; l'attesa è aperta.
+      expect(jobs, hasLength(1));
+      expect(find.byType(PackSuitcaseScreen), findsNothing);
+      expect(find.text('In attesa'), findsOneWidget);
+    });
+
     testWidgets('con la valigia vuota il foglio si apre senza domanda', (
       tester,
     ) async {
