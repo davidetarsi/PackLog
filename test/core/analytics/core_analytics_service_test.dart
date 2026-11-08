@@ -706,4 +706,51 @@ void main() {
       ).called(1);
     });
   });
+
+  group('valigia AI', () {
+    test('trackAiSuitcaseChanged unisce conteggi e contesto', () async {
+      service.trackAiSuitcaseChanged(
+        tripId: 't1',
+        counts: const {
+          'removed': 1,
+          'removed_types': ['Sweater'],
+        },
+        context: const {
+          'washer': true,
+          'activities': ['beach'],
+        },
+      );
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'ai_suitcase_changed',
+          properties: {
+            'trip_id': 't1',
+            'removed': 1,
+            'removed_types': ['Sweater'],
+            'washer': true,
+            'activities': ['beach'],
+          },
+        ),
+      ).called(1);
+    });
+
+    test('trackAiWarningDismissed e trackAiSlotRemoved', () async {
+      service.trackAiWarningDismissed(code: 'rain_gear', level: 'important');
+      service.trackAiSlotRemoved(type: 'calze', level: 'useful');
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'ai_warning_dismissed',
+          properties: {'code': 'rain_gear', 'level': 'important'},
+        ),
+      ).called(1);
+      verify(
+        () => mockAnalytics.logEvent(
+          'ai_slot_removed',
+          properties: {'type': 'calze', 'level': 'useful'},
+        ),
+      ).called(1);
+    });
+  });
 }

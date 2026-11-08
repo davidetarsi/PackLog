@@ -195,6 +195,38 @@ class CoreAnalyticsService {
 
   void trackTripUpdated() => _safeLogEvent('trip_updated');
 
+  // ── ai_suitcase_ ──────────────────────────────────────────────────────────
+
+  /// La valigia salvata è cambiata rispetto alla proposta AI. [counts] e
+  /// [context] sono già piatti (li calcola la feature): conteggi e
+  /// sottocategorie, mai nomi o destinazione.
+  void trackAiSuitcaseChanged({
+    required String tripId,
+    required Map<String, Object> counts,
+    required Map<String, Object> context,
+  }) {
+    _safeLogEvent(
+      'ai_suitcase_changed',
+      properties: {'trip_id': tripId, ...counts, ...context},
+    );
+  }
+
+  /// Un avviso "cosa manca" scartato dall'utente.
+  void trackAiWarningDismissed({required String code, required String level}) {
+    _safeLogEvent(
+      'ai_warning_dismissed',
+      properties: {'code': code, 'level': level},
+    );
+  }
+
+  /// Un posto della valigia tolto dall'utente.
+  void trackAiSlotRemoved({required String type, required String level}) {
+    _safeLogEvent(
+      'ai_slot_removed',
+      properties: {'type': type, 'level': level},
+    );
+  }
+
   void trackTripDeleted() => _safeLogEvent('trip_deleted');
 
   void trackTripDuplicated() => _safeLogEvent('trip_duplicated');

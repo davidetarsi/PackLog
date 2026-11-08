@@ -1,3 +1,8 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+
+import '../../items/model/item_model.dart';
 import '../../luggages/model/luggage_model.dart';
 import '../model/trip_model.dart';
 import '../model/trip_weather.dart';
@@ -57,4 +62,124 @@ int? daysToDeparture(DateTime? departure, DateTime now) {
   final from = DateTime.utc(now.year, now.month, now.day);
   final to = DateTime.utc(departure.year, departure.month, departure.day);
   return to.difference(from).inDays;
+}
+
+/// Quanto la valigia di un viaggio si allontana dalla proposta AI.
+typedef SuitcaseDiff = ({
+  int proposed,
+  int kept,
+  int removed,
+  int added,
+  int slotCopiesFilled,
+  int quantityChanged,
+  List<String> removedTypes,
+  List<String> addedTypes,
+  List<String> quantityUpTypes,
+  List<String> quantityDownTypes,
+});
+
+/// Null se il viaggio non ha una proposta AI. La proposta sono i capi di
+/// `proposal` più quelli entrati da un kit (`kitAdded`); i tipi vengono da
+/// [subCategoryById] o, se manca, dalla categoria del capo in valigia.
+/// `slotCopiesFilled`: copie riempite nei posti non tolti (gli oggetti dei
+/// posti sono anche fra gli `added`, perché un TripItem non sa da dove viene).
+SuitcaseDiff? suitcaseDiff(
+  TripModel trip,
+  Map<String, String> subCategoryById,
+) {
+  final result = trip.aiResult;
+  if (result == null) return null;
+
+  final proposal = <String, int>{
+    for (final p in result.proposal) p.itemId: p.quantity,
+  };
+  for (final k in result.kitAdded) {
+    proposal.putIfAbsent(k.itemId, () => k.copies);
+  }
+  final packed = {for (final i in trip.items) i.id: i};
+  String typeOf(String id) =>
+      subCategoryById[id] ?? packed[id]?.category.name ?? 'unknown';
+
+  var kept = 0, quantityChanged = 0;
+  final removedTypes = <String>[];
+  final up = <String>[];
+  final down = <String>[];
+  proposal.forEach((id, quantity) {
+    final item = packed[id];
+    if (item == null) {
+      removedTypes.add(typeOf(id));
+      return;
+    }
+    kept++;
+    if (item.quantity > quantity) up.add(typeOf(id));
+    if (item.quantity < quantity) down.add(typeOf(id));
+    if (item.quantity != quantity) quantityChanged++;
+  });
+  final addedTypes = [
+    for (final id in packed.keys)
+      if (!proposal.containsKey(id)) typeOf(id),
+  ];
+  final slotCopiesFilled = (result.slots ?? const [])
+      .where((s) => !s.removed)
+      .fold<int>(0, (sum, s) => sum + (s.copies - s.remaining));
+
+  return (
+    proposed: proposal.length,
+    kept: kept,
+    removed: removedTypes.length,
+    added: addedTypes.length,
+    slotCopiesFilled: slotCopiesFilled,
+    quantityChanged: quantityChanged,
+    removedTypes: removedTypes..sort(),
+    addedTypes: addedTypes..sort(),
+    quantityUpTypes: up..sort(),
+    quantityDownTypes: down..sort(),
+  );
+}
+
+/// Vero se [a] e [b] dicono le stesse cose (le liste confrontate per valore).
+bool sameSuitcaseDiff(SuitcaseDiff a, SuitcaseDiff b) =>
+    a.proposed == b.proposed &&
+    a.kept == b.kept &&
+    a.removed == b.removed &&
+    a.added == b.added &&
+    a.slotCopiesFilled == b.slotCopiesFilled &&
+    a.quantityChanged == b.quantityChanged &&
+    listEquals(a.removedTypes, b.removedTypes) &&
+    listEquals(a.addedTypes, b.addedTypes) &&
+    listEquals(a.quantityUpTypes, b.quantityUpTypes) &&
+    listEquals(a.quantityDownTypes, b.quantityDownTypes);
+
+/// [d] con i nomi delle proprietà di `ai_suitcase_changed`.
+Map<String, Object> suitcaseDiffProperties(SuitcaseDiff d) => {
+  'proposed': d.proposed,
+  'kept': d.kept,
+  'removed': d.removed,
+  'added': d.added,
+  'added_from_slots': d.slotCopiesFilled,
+  'quantity_changed': d.quantityChanged,
+  'removed_types': d.removedTypes,
+  'added_types': d.addedTypes,
+  'quantity_up_types': d.quantityUpTypes,
+  'quantity_down_types': d.quantityDownTypes,
+};
+
+/// id → sottocategoria della tassonomia, letta da `ai_metadata`. Restano
+/// fuori gli oggetti senza scheda o con un valore vuoto o `N/A`.
+Map<String, String> subCategoryByIdOf(List<ItemModel> items) {
+  final types = <String, String>{};
+  for (final item in items) {
+    final raw = item.aiMetadata;
+    if (raw == null || raw.isEmpty) continue;
+    try {
+      final json = jsonDecode(raw);
+      final type = json is Map ? json['subCategory'] : null;
+      if (type is String && type.trim().isNotEmpty && type != 'N/A') {
+        types[item.id] = type;
+      }
+    } on FormatException {
+      continue;
+    }
+  }
+  return types;
 }

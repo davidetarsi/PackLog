@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/luggages/model/luggage_model.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
@@ -36,7 +39,137 @@ StopWeather _stop({double? tempMin, double? tempMax, double? rainDays}) =>
       rainDays: rainDays,
     );
 
+const _reason = AiReason(code: 'base', label: 'Base', sentence: 'Serve.');
+
+TripItem _packed(String id, int quantity) => TripItem(
+  id: id,
+  name: 'capo $id',
+  category: ItemCategory.vestiti,
+  quantity: quantity,
+);
+
+/// Proposta A×2, B×1, C (dal kit); valigia A×3, C×1, D×1; un posto con una
+/// copia riempita su due.
+TripModel _suitcase({AiPackingResult? result}) => _trip().copyWith(
+  items: [_packed('A', 3), _packed('C', 1), _packed('D', 1)],
+  aiResult:
+      result ??
+      AiPackingResult(
+        generatedAt: DateTime(2026, 11, 8),
+        houseId: 'h1',
+        proposal: const [
+          AiPackedItem(itemId: 'A', quantity: 2, reason: _reason),
+          AiPackedItem(itemId: 'B', quantity: 1, reason: _reason),
+        ],
+        kitAdded: const [AiKitAdded(kitId: 'k1', itemId: 'C')],
+        slots: const [
+          AiSlot(
+            id: 's1',
+            type: 'calze',
+            category: ItemCategory.vestiti,
+            level: AiSlotLevel.useful,
+            name: 'Calze',
+            copies: 2,
+            remaining: 1,
+            addLabel: 'Aggiungi',
+          ),
+          AiSlot(
+            id: 's2',
+            type: 'ombrello',
+            category: ItemCategory.varie,
+            level: AiSlotLevel.useful,
+            name: 'Ombrello',
+            copies: 1,
+            remaining: 0,
+            addLabel: 'Aggiungi',
+            removed: true,
+          ),
+        ],
+      ),
+);
+
 void main() {
+  group('suitcaseDiff', () {
+    const types = {'A': 'T-Shirt', 'B': 'Sweater', 'D': 'Shorts'};
+
+    test('quanto la valigia si allontana dalla proposta', () {
+      final diff = suitcaseDiff(_suitcase(), types)!;
+      expect(diff.proposed, 3);
+      expect(diff.kept, 2);
+      expect(diff.removed, 1);
+      expect(diff.added, 1);
+      expect(diff.slotCopiesFilled, 1);
+      expect(diff.quantityChanged, 1);
+      expect(diff.removedTypes, ['Sweater']);
+      expect(diff.addedTypes, ['Shorts']);
+      expect(diff.quantityUpTypes, ['T-Shirt']);
+      expect(diff.quantityDownTypes, isEmpty);
+    });
+
+    test('viaggio senza proposta AI: null', () {
+      expect(suitcaseDiff(_trip(), types), isNull);
+    });
+
+    test('capi della casa non ancora caricati: tipi dalla categoria', () {
+      final diff = suitcaseDiff(_suitcase(), const {})!;
+      expect(diff.removed, 1);
+      // Un capo tolto non è più in valigia: senza armadio il tipo non c'è.
+      expect(diff.removedTypes, ['unknown']);
+      expect(diff.addedTypes, ['vestiti']);
+    });
+
+    test('proprietà piatte con i nomi del catalogo', () {
+      final props = suitcaseDiffProperties(suitcaseDiff(_suitcase(), types)!);
+      expect(props, {
+        'proposed': 3,
+        'kept': 2,
+        'removed': 1,
+        'added': 1,
+        'added_from_slots': 1,
+        'quantity_changed': 1,
+        'removed_types': ['Sweater'],
+        'added_types': ['Shorts'],
+        'quantity_up_types': ['T-Shirt'],
+        'quantity_down_types': <String>[],
+      });
+    });
+
+    test('stesse differenze: sameSuitcaseDiff vero anche con liste nuove', () {
+      expect(
+        sameSuitcaseDiff(
+          suitcaseDiff(_suitcase(), types)!,
+          suitcaseDiff(_suitcase(), types)!,
+        ),
+        isTrue,
+      );
+    });
+  });
+
+  group('subCategoryByIdOf', () {
+    ItemModel item(String id, String? metadata) => ItemModel(
+      id: id,
+      houseId: 'h1',
+      name: 'capo',
+      category: ItemCategory.vestiti,
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+      aiMetadata: metadata,
+    );
+
+    test('solo sottocategorie vere da ai_metadata', () {
+      expect(
+        subCategoryByIdOf([
+          item('a', jsonEncode({'subCategory': 'Shorts'})),
+          item('b', jsonEncode({'subCategory': 'N/A'})),
+          item('c', jsonEncode({'subCategory': ''})),
+          item('d', null),
+          item('e', 'non json'),
+        ]),
+        {'a': 'Shorts'},
+      );
+    });
+  });
+
   group('tempBand', () {
     test('soglie 5, 15, 21, 26', () {
       expect(tempBand(4.9), 'lt5');
