@@ -316,6 +316,45 @@ L'ultimo evento di un viaggio dice com'è finita.
 - `CoreAnalyticsService` diventa l'elenco completo di cosa l'app registra,
   utile anche per la scheda privacy del Play Store.
 
+### Note di implementazione (8 nov 2026, ramo `feat/analytics-domande`)
+
+Come il catalogo è diventato codice, dove si discosta e perché:
+
+- **Tutti gli eventi passano da `CoreAnalyticsService`**: nessun `logEvent`
+  diretto nelle feature. Gli eventi spostati hanno nome e proprietà identici
+  a prima.
+- **`photos` sta su `ai_items_saved`** (uno per scansione), non su
+  `ai_input_completed`, che parte una volta per foto.
+- **Niente `linked`** su `ai_items_saved`: "C'è già?" oggi è solo un foglio
+  informativo e non collega nulla. Le aperture restano in
+  `already_here_opened`. Da aggiungere se torna il collegamento.
+- **`ai_scan_doubt_resolved`** parte anche per un capo senza dubbi ma con
+  campi corretti (`corrected_without_doubt`): GPT ha sbagliato senza che Jev
+  lo segnalasse.
+- **`added_from_slots`** = copie riempite nei posti non tolti. Un oggetto
+  della valigia non sa da dove viene, quindi quelle copie sono anche fra gli
+  `added`.
+- **Spuntare un capo non è una modifica**: nessun `ai_suitcase_changed` su
+  spunta.
+- **La prima proposta salvata non conta come modifica**: con un
+  `generatedAt` nuovo (generazione o rigenerazione) non parte
+  `ai_suitcase_changed`. Le modifiche dopo si confrontano con la proposta
+  nuova.
+- **Tipo di un capo tolto**: se l'armadio della casa non è caricato, il tipo
+  è `unknown`, perché il capo tolto non è più nella valigia.
+- **Meteo nel contesto di `ai_suitcase_changed`**: viene dalla copia salvata
+  sul telefono. Il provider del meteo dipende dai viaggi, quindi leggerlo
+  da `TripNotifier` crea un ciclo. Se la copia manca, l'evento parte senza
+  clima. `ai_suitcase_finished` invece legge il meteo già caricato nella
+  pagina.
+- **Fasce di temperatura**: `lt5`, `5_15`, `15_21`, `21_26`, `gte26` (soglia
+  21 = capi estivi, scelta dubbia).
+- **Sentry**: ora non riceve più nemmeno i 429 e gli errori di rete dello
+  scan, che prima ci finivano. Restano in `ai_input_failed` e
+  `ai_limit_reached`.
+- **Un errore dell'analytics non blocca mai un salvataggio**: il calcolo
+  degli eventi della valigia è protetto.
+
 ## Avvisi su Telegram
 
 tgram-analytics manda un messaggio quando arriva un evento scelto. Oggi
