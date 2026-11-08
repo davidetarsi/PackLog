@@ -23,7 +23,9 @@ import 'package:pack_log/features/items/services/category_infer_service.dart';
 import 'package:pack_log/features/kits/model/kit_model.dart';
 import 'package:pack_log/features/kits/providers/kit_provider.dart';
 import 'package:pack_log/features/luggages/repositories/luggage_repository.dart';
+import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/ai_packing_request.dart';
+import 'package:pack_log/features/trips/model/pack_trip_job.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/providers/ai_packing_run_provider.dart';
 import 'package:pack_log/features/trips/providers/trip_provider.dart';
@@ -679,6 +681,38 @@ void main() {
       expect(trip.name, 'Casa Milano');
       expect(find.text('edit-items ${trip.id} from=new'), findsOneWidget);
       expect(run.requests, isEmpty);
+    });
+
+    testWidgets('choose_items_while_ai_running_shows_busy_and_saves_nothing', (
+      tester,
+    ) async {
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+      container.read(aiPackingRunProvider);
+      run.start(
+        AiPackingRequest(
+          trip: TripModel(
+            id: 'altro',
+            name: 'Altro',
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+          ),
+          isNew: false,
+          setup: const AiPackingSetup(houseId: 'h1'),
+          job: PackTripJob(body: {}, houseId: 'h1', title: 'X', nights: 1),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('new_trip_choose_items')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Sto già preparando una valigia: ti avviso quando è pronta.'),
+        findsOneWidget,
+      );
+      verifyNever(() => tripRepo.addTrip(any()));
+      expect(find.text('Nuovo viaggio'), findsOneWidget);
     });
 
     testWidgets('disabled_tap_shows_missing', (tester) async {

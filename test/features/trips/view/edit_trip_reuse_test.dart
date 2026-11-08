@@ -111,6 +111,7 @@ void main() {
   final past = TripModel(
     id: 'trip-1',
     name: 'Toscana',
+    description: 'Nota sul viaggio',
     departureDateTime: DateTime(2026, 9, 12),
     returnDateTime: DateTime(2026, 9, 20),
     destinationLocation: LocationSuggestionModel(
@@ -391,55 +392,60 @@ void main() {
     },
   );
 
-  testWidgets('reuse_ai_starts_new_trip_without_items', (tester) async {
-    await pumpReuse(tester);
-    await _pickDates(tester);
-    // Come sopra la tappa va sistemata; qui basta togliere Firenze.
-    await tester.ensureVisible(find.text('Firenze'));
-    await tester.tap(find.text('Firenze'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('stop_sheet_remove')));
-    await tester.pumpAndSettle();
-    if (find.text('Elimina').evaluate().isNotEmpty) {
-      await tester.tap(find.text('Elimina').last);
+  testWidgets(
+    'reuse_ai_starts_new_trip_without_items / reuse_ai_carries_description',
+    (tester) async {
+      await pumpReuse(tester);
+      await _pickDates(tester);
+      // Come sopra la tappa va sistemata; qui basta togliere Firenze.
+      await tester.ensureVisible(find.text('Firenze'));
+      await tester.tap(find.text('Firenze'));
       await tester.pumpAndSettle();
-    }
-
-    await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
-    await tester.pumpAndSettle();
-    for (final label in ['Città e musei', 'Hotel']) {
-      final pill = find.descendant(
-        of: find.byType(DsFormSheet),
-        matching: find.widgetWithText(DsChoicePill, label),
-      );
-      if (pill.evaluate().isNotEmpty &&
-          !tester.widget<DsChoicePill>(pill).selected) {
-        final text = find.descendant(
-          of: find.byType(DsFormSheet),
-          matching: find.text(label),
-        );
-        await tester.ensureVisible(text);
-        await tester.pumpAndSettle();
-        await tester.tap(text);
+      await tester.tap(find.byKey(const Key('stop_sheet_remove')));
+      await tester.pumpAndSettle();
+      if (find.text('Elimina').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Elimina').last);
         await tester.pumpAndSettle();
       }
-    }
-    final prepare = find.descendant(
-      of: find.byType(DsFormSheet),
-      matching: find.text('Prepara la valigia'),
-    );
-    await tester.ensureVisible(prepare);
-    await tester.pumpAndSettle();
-    await tester.tap(prepare);
-    await tester.pumpAndSettle();
 
-    expect(run.requests, hasLength(1));
-    final request = run.requests.single;
-    expect(request.isNew, isTrue);
-    expect(request.trip.id, isNot('trip-1'));
-    expect(request.trip.items, isEmpty);
-    expect(request.trip.destinationLocation?.displayName, 'Siena, Italia');
-    expect(find.text('ai-wait'), findsOneWidget);
-    verifyNever(() => tripRepo.addTrip(any()));
-  });
+      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
+      await tester.pumpAndSettle();
+      for (final label in ['Città e musei', 'Hotel']) {
+        final pill = find.descendant(
+          of: find.byType(DsFormSheet),
+          matching: find.widgetWithText(DsChoicePill, label),
+        );
+        if (pill.evaluate().isNotEmpty &&
+            !tester.widget<DsChoicePill>(pill).selected) {
+          final text = find.descendant(
+            of: find.byType(DsFormSheet),
+            matching: find.text(label),
+          );
+          await tester.ensureVisible(text);
+          await tester.pumpAndSettle();
+          await tester.tap(text);
+          await tester.pumpAndSettle();
+        }
+      }
+      final prepare = find.descendant(
+        of: find.byType(DsFormSheet),
+        matching: find.text('Prepara la valigia'),
+      );
+      await tester.ensureVisible(prepare);
+      await tester.pumpAndSettle();
+      await tester.tap(prepare);
+      await tester.pumpAndSettle();
+
+      expect(run.requests, hasLength(1));
+      final request = run.requests.single;
+      expect(request.isNew, isTrue);
+      expect(request.trip.id, isNot('trip-1'));
+      expect(request.trip.items, isEmpty);
+      expect(request.trip.luggages, isEmpty);
+      expect(request.trip.description, 'Nota sul viaggio');
+      expect(request.trip.destinationLocation?.displayName, 'Siena, Italia');
+      expect(find.text('ai-wait'), findsOneWidget);
+      verifyNever(() => tripRepo.addTrip(any()));
+    },
+  );
 }

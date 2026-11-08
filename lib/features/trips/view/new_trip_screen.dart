@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/helpers/dialog_helpers.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/ds_button.dart';
 import '../../../shared/widgets/ds_icon_button.dart';
@@ -25,6 +26,7 @@ import '../model/trip_model.dart';
 import '../model/trip_postcard.dart';
 import '../providers/trip_provider.dart';
 import '../providers/trip_weather_provider.dart';
+import '../providers/ai_packing_run_provider.dart';
 import '../services/ai_packing_launcher.dart';
 import 'widgets/place_search.dart';
 import 'widgets/postcard/trip_itinerary_view.dart';
@@ -222,9 +224,11 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       return;
     }
     setState(() => _saving = true);
+    // La descrizione dell'originale (Riusa) viaggia anche con la strada AI;
+    // oggetti e bagagli no: li decide il foglio.
     final trip = _draft
         .toTripModel(id: _newTripId, now: DateTime.now())
-        .copyWith(aiSetup: _aiSetup);
+        .copyWith(aiSetup: _aiSetup, description: _reuseSource?.description);
     final setup = await startAiPacking(context, ref, trip: trip, isNew: true);
     if (!mounted) return;
     setState(() {
@@ -241,6 +245,12 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
     if (_saving) return;
     if (!_draft.canSave) {
       _showMissing();
+      return;
+    }
+    // Una valigia AI in preparazione (di qualsiasi viaggio) non si accavalla
+    // con un salvataggio: niente scritto, solo l'avviso.
+    if (ref.read(aiPackingRunProvider) is AiRunRunning) {
+      AppSnackBar.showInfo(context, 'trips.ai.busy'.tr());
       return;
     }
     setState(() => _saving = true);
