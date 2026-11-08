@@ -295,10 +295,17 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
   /// non deve né rallentarlo né cambiarne l'esito.
   void _recordEditsInBackground(TripModel? before, TripModel? after) {
     if (before == null || after == null) return;
-    // Ora e consenso si fissano subito, non quando la scrittura gira.
-    final DateTime now = DateTime.now();
-    final bool allowed = ref.read(consentServiceProvider).analyticsEnabled;
-    unawaited(_recordEdits(before, after, now, allowed));
+    try {
+      // Ora e consenso si fissano subito, non quando la scrittura gira.
+      final DateTime now = DateTime.now();
+      final bool allowed = ref.read(consentServiceProvider).analyticsEnabled;
+      unawaited(_recordEdits(before, after, now, allowed));
+    } catch (error) {
+      // Anche la parte sincrona è protetta: il salvataggio è già riuscito.
+      try {
+        debugPrint('[TripNotifier] modifiche valigia non registrate: $error');
+      } catch (_) {}
+    }
   }
 
   /// Mette in coda le modifiche alla valigia proposta fra [before] e [after].

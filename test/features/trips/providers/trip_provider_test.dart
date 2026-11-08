@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
+import 'package:pack_log/core/consent/consent_provider.dart';
 import 'package:pack_log/core/database/daos/suitcase_edits_dao.dart';
 import 'package:pack_log/core/database/database.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
@@ -1213,6 +1214,40 @@ void main() {
           .updateTrip(after)
           .timeout(const Duration(seconds: 2));
 
+      expect(c.read(tripNotifierProvider).value!.single.items, isEmpty);
+    });
+
+    test('un consenso che lancia non cambia stato né esito', () async {
+      final after = trip(withItem: false);
+      final dao = noopSuitcaseEditsDao();
+      c.dispose();
+      c = ProviderContainer(
+        overrides: [
+          tripRepositoryProvider.overrideWithValue(mockRepository),
+          coreAnalyticsServiceProvider.overrideWithValue(
+            MockCoreAnalyticsService(),
+          ),
+          syncOrchestratorProvider.overrideWithValue(MockSyncOrchestrator()),
+          itemRepositoryProvider.overrideWithValue(items),
+          suitcaseEditsDaoProvider.overrideWithValue(dao),
+          consentServiceProvider.overrideWith((ref) => throw StateError('x')),
+        ],
+      );
+      await load(trip(), after);
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+      final analytics = c.read(coreAnalyticsServiceProvider);
+      when(
+        () => (analytics as MockCoreAnalyticsService).trackTripUpdated(),
+      ).thenAnswer((_) async {});
+      when(
+        () => (c.read(syncOrchestratorProvider) as MockSyncOrchestrator)
+            .requestSync(),
+      ).thenReturn(null);
+
+      await c.read(tripNotifierProvider.notifier).updateTrip(after);
+
+      verifyNever(() => dao.enqueue(any()));
+      expect(c.read(tripNotifierProvider).hasError, isFalse);
       expect(c.read(tripNotifierProvider).value!.single.items, isEmpty);
     });
 
