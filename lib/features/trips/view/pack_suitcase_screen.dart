@@ -811,7 +811,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
                 houseNames: {for (final h in houses) h.id: h.displayName},
               ),
               if (_aiResult case final result?) ...[
-                if (_notDeparted(trip)) ...[
+                if (trip.notDeparted) ...[
                   SizedBox(height: context.spacingSm),
                   const AiPackReassurance(),
                 ],
@@ -839,12 +839,6 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
         ),
       ),
     );
-  }
-
-  /// Prima della partenza (senza data di partenza vale come non partito).
-  bool _notDeparted(TripModel trip) {
-    final departure = trip.departureDateTime;
-    return departure == null || DateTime.now().isBefore(departure);
   }
 
   Widget _itemsBlock(
