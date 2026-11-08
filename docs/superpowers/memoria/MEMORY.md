@@ -27,3 +27,6 @@
 - [Revisione Codex 7 nov](revisione-codex-7-novembre.md) — PR #98-#107: banco 618/888, #105 contro 18 ott, cammino, gate da ripristinare
 - [Prova scan su DEV 7 nov](prova-scan-dev-7-novembre.md) — foto ignora capi non indossati, muta/pile sbagliati, prompt 3.450 token senza cache
 - [Analytics: domande](analytics-domande.md) — 8 nov: domande approvate per analytics/Sentry (nucleo di 6 + promo), scartate e perché; doc nel repo
+- [Profilo e modifiche alla valigia](profilo-modifiche-valigia.md) — decisioni 8 nov, ramo feat/modifiche-valigia, parte 3 da approvare
+- [Flutter 3.38 per build e test](flutter-338-per-build.md) — source .strumenti/flutter338.sh prima di build_runner/test; il 3.47 di sistema crasha l'analyzer
+- [Flusso di creazione del viaggio](flusso-creazione-viaggio.md) — 8 nov: P1 AI senza salvare + attesa in background, P2 due bottoni; P3-P4 aperti
