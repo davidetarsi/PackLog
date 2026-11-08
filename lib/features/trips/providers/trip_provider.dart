@@ -1,18 +1,27 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:sentry_flutter/sentry_flutter.dart' show SentryLevel;
 
 import '../../../core/analytics/analytics_service.dart';
 import '../../../core/analytics/core_analytics_service.dart';
+import '../../../core/consent/consent_provider.dart';
+import '../../../core/monitoring/monitoring_service.dart';
 import '../../../core/sync/sync_provider.dart';
 import '../../../shared/notifier/synced_crud_notifier.dart';
+import '../../items/repositories/item_repository.dart';
 import '../model/ai_packing.dart';
+import '../model/suitcase_edit.dart';
 import '../model/trip_model.dart';
 import '../repositories/trip_repository.dart';
 import '../services/packing_progress_tracker.dart';
+import '../services/suitcase_edits.dart';
 import '../services/trip_lifecycle_service.dart';
+import 'suitcase_edits_provider.dart';
+import 'trip_weather_provider.dart';
 
 part 'trip_provider.g.dart';
 
@@ -78,20 +87,31 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
         _analytics.trackTripCreated(tripId: model.id, totalTrips: trips.length),
   );
 
-  Future<void> updateTrip(TripModel model) => mutate(
-    operation: () => _repo.updateTrip(model),
-    reload: _repo.getAllTrips,
-    rethrowOnly: true,
-    onSuccess: (_) => _analytics.trackTripUpdated(),
-  );
+  Future<void> updateTrip(TripModel model) {
+    final TripModel? before = _tripInState(model.id);
+    return mutate(
+      operation: () => _repo.updateTrip(model),
+      reload: _repo.getAllTrips,
+      rethrowOnly: true,
+      onSuccess: (trips) async {
+        _analytics.trackTripUpdated();
+        await _recordEdits(before, _tripIn(trips, model.id));
+      },
+    );
+  }
 
-  Future<void> addItemsToTrip(String tripId, List<TripItem> items) => mutate(
-    operation: () => _repo.addItemsToTrip(tripId, items),
-    reload: _repo.getAllTrips,
-    rethrowOnly: true,
-    onSuccess: (_) =>
-        _analytics.trackItemsAddedToTrip(tripId: tripId, count: items.length),
-  );
+  Future<void> addItemsToTrip(String tripId, List<TripItem> items) {
+    final TripModel? before = _tripInState(tripId);
+    return mutate(
+      operation: () => _repo.addItemsToTrip(tripId, items),
+      reload: _repo.getAllTrips,
+      rethrowOnly: true,
+      onSuccess: (trips) async {
+        _analytics.trackItemsAddedToTrip(tripId: tripId, count: items.length);
+        await _recordEdits(before, _tripIn(trips, tripId));
+      },
+    );
+  }
 
   Future<void> deleteTrip(String id) => mutate(
     operation: () => _repo.deleteTrip(id),
@@ -197,6 +217,7 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
       rethrow;
     }
     ref.read(syncOrchestratorProvider).requestSync();
+    await _recordEdits(trip, updatedTrip);
   }
 
   /// Riempie il posto [slotId] con [item]: l'oggetto entra fra gli `items`
@@ -256,6 +277,7 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
       rethrow;
     }
     ref.read(syncOrchestratorProvider).requestSync();
+    await _recordEdits(trip, updatedTrip);
 
     // Dopo il salvataggio: si misurano i fatti, non le intenzioni.
     unawaited(
@@ -266,6 +288,104 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
             properties: {'level': level.name, 'copies': item.quantity},
           ),
     );
+  }
+
+  TripModel? _tripInState(String id) =>
+      state.valueOrNull?.where((t) => t.id == id).firstOrNull;
+
+  TripModel? _tripIn(List<TripModel> trips, String id) =>
+      trips.where((t) => t.id == id).firstOrNull;
+
+  /// Mette in coda le modifiche alla valigia proposta fra [before] e [after],
+  /// dopo che il salvataggio è riuscito. Mai un errore da qui: se la
+  /// registrazione fallisce il viaggio resta salvato e si perde solo l'evento.
+  Future<void> _recordEdits(TripModel? before, TripModel? after) async {
+    if (before == null || after == null) return;
+    try {
+      final Map<String, Map<String, Object?>?> cards = await _cardsOfChanged(
+        before,
+        after,
+      );
+      final List<SuitcaseEdit> edits = suitcaseEdits(
+        before: before,
+        after: after,
+        now: DateTime.now(),
+        analysisAllowed: ref.read(consentServiceProvider).analyticsEnabled,
+        cardOf: (id) => cards[id],
+        weather: _weatherContext(after.id),
+      );
+      if (edits.isEmpty) return;
+      await ref.read(suitcaseEditsDaoProvider).enqueue(edits);
+    } catch (error, stackTrace) {
+      debugPrint('[TripNotifier] modifiche valigia non registrate: $error');
+      ref
+          .read(monitoringServiceProvider)
+          .captureException(
+            error,
+            stackTrace: stackTrace,
+            level: SentryLevel.warning,
+            tags: {'operation': 'recordSuitcaseEdits', 'trip_id': after.id},
+          );
+    }
+  }
+
+  /// Le schede degli oggetti che differiscono fra [before] e [after], lette
+  /// dal database locale (nessuna rete). Un oggetto senza scheda o non più
+  /// in casa vale null.
+  Future<Map<String, Map<String, Object?>?>> _cardsOfChanged(
+    TripModel before,
+    TripModel after,
+  ) async {
+    if (before.aiResult == null || after.aiResult == null) return const {};
+    final Map<String, int> was = {
+      for (final i in before.items) i.id: i.quantity,
+    };
+    final Set<String> ids = {
+      for (final i in after.items)
+        if (was.remove(i.id) != i.quantity) i.id,
+      ...was.keys,
+    };
+    final ItemRepository items = ref.read(itemRepositoryProvider);
+    final Map<String, Map<String, Object?>?> cards = {};
+    for (final id in ids) {
+      try {
+        final String? raw = (await items.getItemById(id)).aiMetadata;
+        final Object? decoded = raw == null || raw.isEmpty
+            ? null
+            : jsonDecode(raw);
+        cards[id] = decoded is Map ? Map<String, Object?>.from(decoded) : null;
+      } catch (_) {
+        cards[id] = null;
+      }
+    }
+    return cards;
+  }
+
+  /// Le medie per tappa del meteo del viaggio, solo se è già in memoria:
+  /// nessuna chiamata in più. Senza i nomi dei luoghi.
+  Map<String, Object?>? _weatherContext(String tripId) {
+    final provider = tripWeatherNotifierProvider(tripId);
+    // Il meteo dipende da questo notifier: `ref.exists` va bene, `ref.read`
+    // dà CircularDependencyError. Qui serve solo il valore già in memoria,
+    // senza creare dipendenze: si legge dal container.
+    if (!ref.exists(provider)) return null;
+    final TripWeatherState? weather = ref.container.read(provider).valueOrNull;
+    if (weather is! TripWeatherReady) return null;
+    return {
+      'stops': [
+        for (final s in weather.weather.stops)
+          {
+            'source': s.source.name,
+            'days': s.days,
+            'temp_min': s.tempMin,
+            'temp_max': s.tempMax,
+            'rain_days': s.rainDays,
+            'rain_mm': s.rainMm,
+            'wind_max_kmh': s.windMaxKmh,
+            'uv_max': s.uvMax,
+          },
+      ],
+    };
   }
 
   void _emitPackingEvents({

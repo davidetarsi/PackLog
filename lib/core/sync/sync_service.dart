@@ -9,6 +9,7 @@ import '../database/daos/luggages_dao.dart';
 import '../database/daos/kit_items_dao.dart';
 import '../database/daos/kits_dao.dart';
 import '../database/daos/spaces_dao.dart';
+import '../database/daos/suitcase_edits_dao.dart';
 import '../database/daos/trips_dao.dart';
 import '../database/database.dart';
 import '../database/tables/mixins/syncable_table.dart';
@@ -43,6 +44,7 @@ class SyncService {
   final KitsDao _kitsDao;
   final KitItemsDao _kitItemsDao;
   final TripsDao _tripsDao;
+  final SuitcaseEditsDao _suitcaseEditsDao;
   final SupabaseRepository _remote;
   final AppMonitoringService _monitoring;
   final TombstoneConfigService _tombstoneConfig;
@@ -56,6 +58,7 @@ class SyncService {
     required KitsDao kitsDao,
     required KitItemsDao kitItemsDao,
     required TripsDao tripsDao,
+    required SuitcaseEditsDao suitcaseEditsDao,
     required SupabaseRepository remote,
     required AppMonitoringService monitoring,
     required TombstoneConfigService tombstoneConfig,
@@ -67,6 +70,7 @@ class SyncService {
        _kitsDao = kitsDao,
        _kitItemsDao = kitItemsDao,
        _tripsDao = tripsDao,
+       _suitcaseEditsDao = suitcaseEditsDao,
        _remote = remote,
        _monitoring = monitoring,
        _tombstoneConfig = tombstoneConfig,
@@ -173,6 +177,8 @@ class SyncService {
   /// l'ordine esplicito tiene la semantica chiara e non dipende da PRAGMA.
   Future<void> wipeAllUserData() async {
     debugPrint('[SyncService] wipeAllUserData: clearing local DB');
+    // La coda delle modifiche alla valigia è dell'utente precedente.
+    await _suitcaseEditsDao.deleteAll();
     await _kitItemsDao.wipeAll();
     await _kitsDao.wipeAll();
     await _itemsDao.wipeAll();

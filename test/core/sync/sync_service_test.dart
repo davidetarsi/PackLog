@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/database/database.dart';
+import 'package:pack_log/features/trips/model/suitcase_edit.dart';
 import 'package:pack_log/core/database/tables/mixins/syncable_table.dart';
 import 'package:pack_log/core/monitoring/monitoring_service.dart';
 import 'package:pack_log/core/sync/supabase_repository.dart';
@@ -62,6 +63,7 @@ void main() {
       kitsDao: database.kitsDao,
       kitItemsDao: database.kitItemsDao,
       tripsDao: database.tripsDao,
+      suitcaseEditsDao: database.suitcaseEditsDao,
       remote: mockRemote,
       monitoring: mockMonitoring,
       tombstoneConfig: mockTombstoneConfig,
@@ -1255,8 +1257,20 @@ void main() {
           ),
         );
 
+        await database.suitcaseEditsDao.enqueue([
+          SuitcaseEdit(
+            id: 'e-wipe',
+            tripId: 't-wipe',
+            at: now,
+            action: SuitcaseEditAction.removed,
+            origin: SuitcaseEditOrigin.proposal,
+            analysisAllowed: true,
+          ),
+        ]);
+
         await syncService.wipeAllUserData();
 
+        expect(await database.suitcaseEditsDao.pending(), isEmpty);
         expect(await database.select(database.houses).get(), isEmpty);
         expect(await database.select(database.spaces).get(), isEmpty);
         expect(await database.select(database.luggages).get(), isEmpty);
@@ -1712,6 +1726,7 @@ void main() {
           kitsDao: database.kitsDao,
           kitItemsDao: database.kitItemsDao,
           tripsDao: database.tripsDao,
+          suitcaseEditsDao: database.suitcaseEditsDao,
           remote: mockRemote,
           monitoring: mockMonitoring,
           tombstoneConfig: mockTombstoneConfig,

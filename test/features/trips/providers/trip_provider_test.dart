@@ -5,14 +5,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
+import 'package:pack_log/core/database/database.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
+import 'package:pack_log/features/trips/providers/suitcase_edits_provider.dart';
+import 'package:pack_log/features/trips/model/trip_weather.dart';
 import 'package:pack_log/features/trips/providers/trip_provider.dart';
+import 'package:pack_log/features/trips/providers/trip_weather_provider.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
+
+import '../../../helpers/mock_suitcase_edits.dart';
+import '../../../helpers/test_database_setup.dart';
 
 /// Mock implementation of TripRepository for testing.
 class MockTripRepository extends Mock implements TripRepository {}
@@ -92,6 +99,7 @@ void main() {
         analyticsServiceProvider.overrideWithValue(mockRawAnalytics),
         syncOrchestratorProvider.overrideWithValue(mockSync),
         itemRepositoryProvider.overrideWithValue(mockItemRepo),
+        suitcaseEditsDaoProvider.overrideWithValue(noopSuitcaseEditsDao()),
       ],
     );
   });
@@ -1045,4 +1053,204 @@ void main() {
       verifyNever(() => mockRepository.updateTrip(any()));
     });
   });
+
+  group('TripNotifier - coda delle modifiche alla valigia', () {
+    late AppDatabase db;
+    late MockItemRepository items;
+    late ProviderContainer c;
+
+    AiPackingResult result() => AiPackingResult(
+      generatedAt: DateTime(2026, 11),
+      houseId: 'h1',
+      generatorVersion: 'v9',
+      proposal: const [
+        AiPackedItem(
+          itemId: 'i1',
+          quantity: 1,
+          reason: AiReason(code: 'c', label: 'l', sentence: 's'),
+        ),
+      ],
+    );
+
+    TripItem item() => TripItem(
+      id: 'i1',
+      name: 'Nome privato',
+      category: ItemCategory.vestiti,
+      quantity: 1,
+    );
+
+    TripModel trip({bool withResult = true, bool withItem = true}) => TripModel(
+      id: 't1',
+      name: 'Seul',
+      items: [if (withItem) item()],
+      luggages: const [],
+      departureDateTime: DateTime.now().add(const Duration(days: 30)),
+      aiResult: withResult ? result() : null,
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+    );
+
+    setUp(() {
+      db = createTestDatabase();
+      items = MockItemRepository();
+      when(() => items.getItemById('i1')).thenAnswer(
+        (_) async => ItemModel(
+          id: 'i1',
+          houseId: 'h1',
+          name: 'Nome privato',
+          category: ItemCategory.vestiti,
+          aiMetadata: '{"category":"vestiti","warmth":3,"name":"Nome privato"}',
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        ),
+      );
+      final sync = MockSyncOrchestrator();
+      when(() => sync.requestSync()).thenReturn(null);
+      final analytics = MockCoreAnalyticsService();
+      when(() => analytics.trackTripUpdated()).thenAnswer((_) async {});
+      c = ProviderContainer(
+        overrides: [
+          tripRepositoryProvider.overrideWithValue(mockRepository),
+          coreAnalyticsServiceProvider.overrideWithValue(analytics),
+          syncOrchestratorProvider.overrideWithValue(sync),
+          itemRepositoryProvider.overrideWithValue(items),
+          suitcaseEditsDaoProvider.overrideWithValue(db.suitcaseEditsDao),
+        ],
+      );
+    });
+
+    tearDown(() async {
+      c.dispose();
+      await closeTestDatabase(db);
+    });
+
+    Future<void> load(TripModel t, TripModel after) async {
+      var calls = 0;
+      when(
+        () => mockRepository.getAllTrips(),
+      ).thenAnswer((_) async => calls++ == 0 ? [t] : [after]);
+      await c.read(tripNotifierProvider.future);
+    }
+
+    test(
+      'togliere un proposto con updateTrip mette un evento in coda',
+      () async {
+        final after = trip(withItem: false);
+        await load(trip(), after);
+        when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+
+        await c.read(tripNotifierProvider.notifier).updateTrip(after);
+
+        final pending = await db.suitcaseEditsDao.pending();
+        expect(pending, hasLength(1));
+        expect(pending.single.action.dbValue, 'tolto');
+        expect(pending.single.origin.dbValue, 'proposta');
+        expect(pending.single.tripId, 't1');
+        expect(pending.single.generatorVersion, 'v9');
+        expect(pending.single.card, {'category': 'vestiti', 'warmth': 3});
+        expect(pending.single.toString(), isNot(contains('Nome privato')));
+      },
+    );
+
+    test('il meteo già in memoria entra nel contesto, senza i nomi', () async {
+      final after = trip(withItem: false);
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+      final c2 = ProviderContainer(
+        overrides: [
+          tripRepositoryProvider.overrideWithValue(mockRepository),
+          coreAnalyticsServiceProvider.overrideWithValue(
+            MockCoreAnalyticsService(),
+          ),
+          syncOrchestratorProvider.overrideWithValue(MockSyncOrchestrator()),
+          itemRepositoryProvider.overrideWithValue(items),
+          suitcaseEditsDaoProvider.overrideWithValue(db.suitcaseEditsDao),
+          tripWeatherNotifierProvider('t1').overrideWith(_ReadyWeather.new),
+        ],
+      );
+      addTearDown(c2.dispose);
+      when(
+        () =>
+            (c2.read(coreAnalyticsServiceProvider) as MockCoreAnalyticsService)
+                .trackTripUpdated(),
+      ).thenAnswer((_) async {});
+      when(
+        () => (c2.read(syncOrchestratorProvider) as MockSyncOrchestrator)
+            .requestSync(),
+      ).thenReturn(null);
+      var calls = 0;
+      when(
+        () => mockRepository.getAllTrips(),
+      ).thenAnswer((_) async => calls++ == 0 ? [trip()] : [after]);
+      await c2.read(tripNotifierProvider.future);
+      await c2.read(tripWeatherNotifierProvider('t1').future);
+
+      await c2.read(tripNotifierProvider.notifier).updateTrip(after);
+
+      final weather =
+          (await db.suitcaseEditsDao.pending()).single.context['weather'];
+      final stops = (weather as Map)['stops'] as List;
+      expect(stops.single, containsPair('temp_max', 21.0));
+      expect(stops.single.toString(), isNot(contains('Parigi')));
+    });
+
+    test('un salvataggio fallito non mette niente', () async {
+      final after = trip(withItem: false);
+      await load(trip(), after);
+      when(
+        () => mockRepository.updateTrip(any()),
+      ).thenAnswer((_) async => throw Exception('disco pieno'));
+
+      await expectLater(
+        c.read(tripNotifierProvider.notifier).updateTrip(after),
+        throwsException,
+      );
+
+      expect(await db.suitcaseEditsDao.pending(), isEmpty);
+    });
+
+    test('un viaggio senza aiResult non mette niente', () async {
+      final before = trip(withResult: false);
+      final after = trip(withResult: false, withItem: false);
+      await load(before, after);
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+
+      await c.read(tripNotifierProvider.notifier).updateTrip(after);
+
+      expect(await db.suitcaseEditsDao.pending(), isEmpty);
+    });
+
+    test('se la coda non si scrive il salvataggio resta valido', () async {
+      final after = trip(withItem: false);
+      await load(trip(), after);
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+      await db.close();
+
+      await c.read(tripNotifierProvider.notifier).updateTrip(after);
+
+      verify(() => mockRepository.updateTrip(any())).called(1);
+      expect(c.read(tripNotifierProvider).hasError, isFalse);
+      expect(c.read(tripNotifierProvider).value!.single.items, isEmpty);
+      db = createTestDatabase();
+    });
+  });
+}
+
+class _ReadyWeather extends TripWeatherNotifier {
+  @override
+  Future<TripWeatherState> build(String tripId) async => TripWeatherReady(
+    TripWeather(
+      signature: 's',
+      fetchedAt: DateTime(2026, 11),
+      stops: [
+        StopWeather(
+          name: 'Parigi',
+          from: DateTime(2026, 12, 1),
+          to: DateTime(2026, 12, 3),
+          source: WeatherSource.climate,
+          tempMin: 12,
+          tempMax: 21,
+        ),
+      ],
+    ),
+  );
 }
