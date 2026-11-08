@@ -379,7 +379,6 @@ GoRouter appRouter(Ref ref) {
             tripId: id,
             fromNewTrip: state.uri.queryParameters['from'] == 'new',
             startAi: state.uri.queryParameters['ai'] == '1',
-            firstRun: state.uri.queryParameters['first'] == '1',
           );
         },
       ),

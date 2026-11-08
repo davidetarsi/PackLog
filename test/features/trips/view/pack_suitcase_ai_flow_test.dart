@@ -374,7 +374,6 @@ void main() {
     bool direct = false,
     bool fromNew = false,
     bool fromDetail = false,
-    bool firstRun = false,
   }) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -385,12 +384,11 @@ void main() {
       tripId: state.pathParameters['id']!,
       startAi: state.uri.queryParameters['ai'] == '1',
       fromNewTrip: state.uri.queryParameters['from'] == 'new',
-      firstRun: state.uri.queryParameters['first'] == '1',
     );
 
     final router = GoRouter(
       initialLocation: fromNew
-          ? '/trips/trip-1/edit-items?from=new&ai=1${firstRun ? '&first=1' : ''}'
+          ? '/trips/trip-1/edit-items?from=new&ai=1'
           : fromDetail
           ? '/trips/trip-1'
           : direct
@@ -1109,7 +1107,7 @@ void main() {
     ) async {
       aiOutcome = withSlots([slot('s1', 'giacca')]);
       arrange(trip: _viaggio(), items: _houseItems);
-      await pumpPack(tester, fromNew: true, firstRun: true);
+      await pumpPack(tester, fromNew: true);
       expect(onboardingRepo.step, OnboardingStep.firstTrip);
 
       await prepareInSheet(tester);
@@ -1138,7 +1136,7 @@ void main() {
           slot('s3', 'magliette', level: AiSlotLevel.useful),
         ]);
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester, fromNew: true, firstRun: true);
+        await pumpPack(tester, fromNew: true);
 
         await prepareInSheet(tester);
         await tester.pumpAndSettle();
@@ -1187,7 +1185,7 @@ void main() {
         SharedPreferences.setMockInitialValues({'first_suitcase_logged': true});
         aiOutcome = withSlots([slot('s1', 'giacca')]);
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester, fromNew: true, firstRun: true);
+        await pumpPack(tester, fromNew: true);
 
         await prepareInSheet(tester);
         await tester.pumpAndSettle();
@@ -1233,7 +1231,7 @@ void main() {
       testWidgets('un salvataggio fallito non lo emette', (tester) async {
         aiOutcome = withSlots([slot('s1', 'giacca')]);
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester, fromNew: true, firstRun: true);
+        await pumpPack(tester, fromNew: true);
 
         when(() => tripRepo.updateTrip(any())).thenThrow(Exception('offline'));
         await prepareInSheet(tester);

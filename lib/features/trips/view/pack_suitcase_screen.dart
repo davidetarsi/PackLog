@@ -60,15 +60,11 @@ class PackSuitcaseScreen extends ConsumerStatefulWidget {
   /// Apre subito il foglio della valigia AI.
   final bool startAi;
 
-  /// Il viaggio nasce dal primo avvio ("Dove vai?"): serve solo agli eventi.
-  final bool firstRun;
-
   const PackSuitcaseScreen({
     super.key,
     required this.tripId,
     this.fromNewTrip = false,
     this.startAi = false,
-    this.firstRun = false,
   });
 
   @override
