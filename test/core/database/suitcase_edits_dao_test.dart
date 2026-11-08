@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:pack_log/core/database/database.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/trips/model/suitcase_edit.dart';
 
 import '../../helpers/test_database_setup.dart';
@@ -74,5 +76,33 @@ void main() {
     await db.suitcaseEditsDao.enqueue([_edit('a', DateTime(2026, 11, 1))]);
     await db.suitcaseEditsDao.deleteAll();
     expect(await db.suitcaseEditsDao.pending(), isEmpty);
+  });
+
+  test('ItemsDao.getItemsByIds legge più oggetti in una sola query', () async {
+    final now = DateTime(2026, 11);
+    await db.housesDao.insertHouse(
+      HousesCompanion.insert(
+        id: 'h1',
+        name: 'Casa',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    for (final id in ['a', 'b', 'c']) {
+      await db.itemsDao.insertItem(
+        ItemsCompanion.insert(
+          id: id,
+          houseId: 'h1',
+          name: id,
+          category: ItemCategory.varie,
+          aiMetadata: Value('{"x":"$id"}'),
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+    }
+    final found = await db.itemsDao.getItemsByIds(['a', 'c', 'zz']);
+    expect(found.map((i) => i.id).toSet(), {'a', 'c'});
+    expect(await db.itemsDao.getItemsByIds([]), isEmpty);
   });
 }

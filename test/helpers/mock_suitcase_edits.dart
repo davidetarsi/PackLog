@@ -24,7 +24,9 @@ MockSuitcaseEditsDao noopSuitcaseEditsDao() {
 List<Override> noopSuitcaseEditsOverrides() {
   final fake = noopSuitcaseEditsDao();
   final items = _NoItemRepository();
-  when(() => items.getItemById(any())).thenThrow(StateError('nessun oggetto'));
+  when(
+    () => items.getItemsByIds(any()),
+  ).thenAnswer((_) async => throw StateError('nessun oggetto'));
   return [
     suitcaseEditsDaoProvider.overrideWithValue(fake),
     itemRepositoryProvider.overrideWithValue(items),

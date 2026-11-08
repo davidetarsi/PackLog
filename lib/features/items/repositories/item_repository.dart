@@ -29,6 +29,10 @@ abstract class ItemRepository {
   Future<ItemModel> getItemById(String id);
   Future<List<ItemModel>> getAllItems();
 
+  /// Gli oggetti con questi [ids], in una sola lettura; quelli che non
+  /// esistono mancano dal risultato.
+  Future<List<ItemModel>> getItemsByIds(List<String> ids);
+
   /// Colori di base già usati dai capi dell'utente (dai metadati), senza
   /// vuoti e 'N/A', deduplicati e ordinati per frequenza poi alfabetico.
   Future<List<String>> getUsedColors();

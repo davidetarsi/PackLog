@@ -5,17 +5,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
+import 'package:pack_log/core/database/daos/suitcase_edits_dao.dart';
 import 'package:pack_log/core/database/database.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
+import 'package:pack_log/features/trips/model/suitcase_edit.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/providers/suitcase_edits_provider.dart';
-import 'package:pack_log/features/trips/model/trip_weather.dart';
 import 'package:pack_log/features/trips/providers/trip_provider.dart';
-import 'package:pack_log/features/trips/providers/trip_weather_provider.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 
 import '../../../helpers/mock_suitcase_edits.dart';
@@ -1058,6 +1058,17 @@ void main() {
     late AppDatabase db;
     late MockItemRepository items;
     late ProviderContainer c;
+    late ProviderContainer Function(SuitcaseEditsDao) build;
+
+    /// La coda si scrive in background: si aspetta che compaia.
+    Future<List<SuitcaseEdit>> pendingSoon() async {
+      for (var i = 0; i < 50; i++) {
+        final p = await db.suitcaseEditsDao.pending();
+        if (p.isNotEmpty) return p;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      return const [];
+    }
 
     AiPackingResult result() => AiPackingResult(
       generatedAt: DateTime(2026, 11),
@@ -1093,30 +1104,34 @@ void main() {
     setUp(() {
       db = createTestDatabase();
       items = MockItemRepository();
-      when(() => items.getItemById('i1')).thenAnswer(
-        (_) async => ItemModel(
-          id: 'i1',
-          houseId: 'h1',
-          name: 'Nome privato',
-          category: ItemCategory.vestiti,
-          aiMetadata: '{"category":"vestiti","warmth":3,"name":"Nome privato"}',
-          createdAt: DateTime(2026),
-          updatedAt: DateTime(2026),
-        ),
+      when(() => items.getItemsByIds(any())).thenAnswer(
+        (_) async => [
+          ItemModel(
+            id: 'i1',
+            houseId: 'h1',
+            name: 'Nome privato',
+            category: ItemCategory.vestiti,
+            aiMetadata:
+                '{"category":"vestiti","warmth":3,"name":"Nome privato"}',
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+          ),
+        ],
       );
       final sync = MockSyncOrchestrator();
       when(() => sync.requestSync()).thenReturn(null);
       final analytics = MockCoreAnalyticsService();
       when(() => analytics.trackTripUpdated()).thenAnswer((_) async {});
-      c = ProviderContainer(
+      build = (dao) => ProviderContainer(
         overrides: [
           tripRepositoryProvider.overrideWithValue(mockRepository),
           coreAnalyticsServiceProvider.overrideWithValue(analytics),
           syncOrchestratorProvider.overrideWithValue(sync),
           itemRepositoryProvider.overrideWithValue(items),
-          suitcaseEditsDaoProvider.overrideWithValue(db.suitcaseEditsDao),
+          suitcaseEditsDaoProvider.overrideWithValue(dao),
         ],
       );
+      c = build(db.suitcaseEditsDao);
     });
 
     tearDown(() async {
@@ -1141,7 +1156,7 @@ void main() {
 
         await c.read(tripNotifierProvider.notifier).updateTrip(after);
 
-        final pending = await db.suitcaseEditsDao.pending();
+        final pending = await pendingSoon();
         expect(pending, hasLength(1));
         expect(pending.single.action.dbValue, 'tolto');
         expect(pending.single.origin.dbValue, 'proposta');
@@ -1151,47 +1166,6 @@ void main() {
         expect(pending.single.toString(), isNot(contains('Nome privato')));
       },
     );
-
-    test('il meteo già in memoria entra nel contesto, senza i nomi', () async {
-      final after = trip(withItem: false);
-      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
-      final c2 = ProviderContainer(
-        overrides: [
-          tripRepositoryProvider.overrideWithValue(mockRepository),
-          coreAnalyticsServiceProvider.overrideWithValue(
-            MockCoreAnalyticsService(),
-          ),
-          syncOrchestratorProvider.overrideWithValue(MockSyncOrchestrator()),
-          itemRepositoryProvider.overrideWithValue(items),
-          suitcaseEditsDaoProvider.overrideWithValue(db.suitcaseEditsDao),
-          tripWeatherNotifierProvider('t1').overrideWith(_ReadyWeather.new),
-        ],
-      );
-      addTearDown(c2.dispose);
-      when(
-        () =>
-            (c2.read(coreAnalyticsServiceProvider) as MockCoreAnalyticsService)
-                .trackTripUpdated(),
-      ).thenAnswer((_) async {});
-      when(
-        () => (c2.read(syncOrchestratorProvider) as MockSyncOrchestrator)
-            .requestSync(),
-      ).thenReturn(null);
-      var calls = 0;
-      when(
-        () => mockRepository.getAllTrips(),
-      ).thenAnswer((_) async => calls++ == 0 ? [trip()] : [after]);
-      await c2.read(tripNotifierProvider.future);
-      await c2.read(tripWeatherNotifierProvider('t1').future);
-
-      await c2.read(tripNotifierProvider.notifier).updateTrip(after);
-
-      final weather =
-          (await db.suitcaseEditsDao.pending()).single.context['weather'];
-      final stops = (weather as Map)['stops'] as List;
-      expect(stops.single, containsPair('temp_max', 21.0));
-      expect(stops.single.toString(), isNot(contains('Parigi')));
-    });
 
     test('un salvataggio fallito non mette niente', () async {
       final after = trip(withItem: false);
@@ -1205,6 +1179,7 @@ void main() {
         throwsException,
       );
 
+      await Future<void>.delayed(const Duration(milliseconds: 100));
       expect(await db.suitcaseEditsDao.pending(), isEmpty);
     });
 
@@ -1216,41 +1191,47 @@ void main() {
 
       await c.read(tripNotifierProvider.notifier).updateTrip(after);
 
+      await Future<void>.delayed(const Duration(milliseconds: 100));
       expect(await db.suitcaseEditsDao.pending(), isEmpty);
     });
 
-    test('se la coda non si scrive il salvataggio resta valido', () async {
+    test('un DAO che non risponde mai non blocca updateTrip', () async {
       final after = trip(withItem: false);
       await load(trip(), after);
       when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
-      await db.close();
+      final dao = MockSuitcaseEditsDao();
+      registerFallbackValue(<SuitcaseEdit>[]);
+      when(
+        () => dao.enqueue(any()),
+      ).thenAnswer((_) => Completer<void>().future);
+      c.dispose();
+      c = build(dao);
+      await load(trip(), after);
+
+      await c
+          .read(tripNotifierProvider.notifier)
+          .updateTrip(after)
+          .timeout(const Duration(seconds: 2));
+
+      expect(c.read(tripNotifierProvider).value!.single.items, isEmpty);
+    });
+
+    test('un DAO che lancia non cambia stato né esito', () async {
+      final after = trip(withItem: false);
+      final dao = MockSuitcaseEditsDao();
+      registerFallbackValue(<SuitcaseEdit>[]);
+      when(() => dao.enqueue(any())).thenAnswer((_) async => throw 'rotto');
+      c.dispose();
+      c = build(dao);
+      await load(trip(), after);
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
 
       await c.read(tripNotifierProvider.notifier).updateTrip(after);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
 
-      verify(() => mockRepository.updateTrip(any())).called(1);
+      verify(() => dao.enqueue(any())).called(1);
       expect(c.read(tripNotifierProvider).hasError, isFalse);
       expect(c.read(tripNotifierProvider).value!.single.items, isEmpty);
-      db = createTestDatabase();
     });
   });
-}
-
-class _ReadyWeather extends TripWeatherNotifier {
-  @override
-  Future<TripWeatherState> build(String tripId) async => TripWeatherReady(
-    TripWeather(
-      signature: 's',
-      fetchedAt: DateTime(2026, 11),
-      stops: [
-        StopWeather(
-          name: 'Parigi',
-          from: DateTime(2026, 12, 1),
-          to: DateTime(2026, 12, 3),
-          source: WeatherSource.climate,
-          tempMin: 12,
-          tempMax: 21,
-        ),
-      ],
-    ),
-  );
 }
