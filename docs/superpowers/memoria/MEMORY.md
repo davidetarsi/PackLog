@@ -26,3 +26,4 @@
 - [Handoff sempre aggiornato](feedback-handoff.md) — file di passaggio di consegne in docs/superpowers/handoff.md
 - [Revisione Codex 7 nov](revisione-codex-7-novembre.md) — PR #98-#107: banco 618/888, #105 contro 18 ott, cammino, gate da ripristinare
 - [Prova scan su DEV 7 nov](prova-scan-dev-7-novembre.md) — foto ignora capi non indossati, muta/pile sbagliati, prompt 3.450 token senza cache
+- [Analytics: domande](analytics-domande.md) — 8 nov: domande approvate per analytics/Sentry (nucleo di 6 + promo), scartate e perché; doc nel repo
