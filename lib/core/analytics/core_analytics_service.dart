@@ -321,10 +321,56 @@ class CoreAnalyticsService {
     _safeLogEvent('ai_limit_reached', properties: {'feature': feature});
   }
 
-  void trackAiItemsSaved({required int count, required bool isOnboarding}) {
+  /// Una scansione salvata. `count` i capi scritti; gli altri conteggi dicono
+  /// quanto l'utente ha corretto lo scan. I `*_types` sono sottocategorie
+  /// della tassonomia (come le ha lette l'analisi), mai i nomi.
+  void trackAiItemsSaved({
+    required int count,
+    required bool isOnboarding,
+    required int found,
+    required int excluded,
+    required int renamed,
+    required int detailsEdited,
+    required int photos,
+    required List<String> excludedTypes,
+    required List<String> renamedTypes,
+  }) {
     _safeLogEvent(
       'ai_items_saved',
-      properties: {'count': count, 'is_onboarding': isOnboarding},
+      properties: {
+        'count': count,
+        'is_onboarding': isOnboarding,
+        'found': found,
+        'excluded': excluded,
+        'renamed': renamed,
+        'details_edited': detailsEdited,
+        'photos': photos,
+        'excluded_types': excludedTypes,
+        'renamed_types': renamedTypes,
+      },
+    );
+  }
+
+  /// Un capo salvato con dubbi di Jev o con campi corretti: quali campi
+  /// erano in dubbio e quale valore l'utente ha tenuto. Solo nomi di campo.
+  void trackAiScanDoubtResolved({
+    required List<String> doubtFields,
+    required List<String> choseJev,
+    required List<String> keptGpt,
+    required List<String> otherValue,
+    required List<String> correctedWithoutDoubt,
+    required String subCategory,
+  }) {
+    _safeLogEvent(
+      'ai_scan_doubt_resolved',
+      properties: {
+        'doubt_fields': doubtFields,
+        'chose_jev': choseJev,
+        'kept_gpt': keptGpt,
+        'other_value': otherValue,
+        'corrected_without_doubt': correctedWithoutDoubt,
+        'sub_category': subCategory,
+      },
     );
   }
 

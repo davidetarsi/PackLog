@@ -572,6 +572,31 @@ void main() {
           'scan',
           ['warmth'],
         ]);
+        // Nessun dubbio, ma un campo corretto: si sa che GPT ha sbagliato
+        // senza che Jev lo segnalasse.
+        verify(
+          () => analytics.trackAiScanDoubtResolved(
+            doubtFields: [],
+            choseJev: [],
+            keptGpt: [],
+            otherValue: [],
+            correctedWithoutDoubt: ['warmth'],
+            subCategory: 'T-Shirt',
+          ),
+        ).called(1);
+        verify(
+          () => analytics.trackAiItemsSaved(
+            count: 2,
+            isOnboarding: false,
+            found: 2,
+            excluded: 0,
+            renamed: 1,
+            detailsEdited: 1,
+            photos: 1,
+            excludedTypes: [],
+            renamedTypes: ['T-Shirt'],
+          ),
+        ).called(1);
       },
     );
 
@@ -855,7 +880,17 @@ void main() {
       expect(captured[0], 'house-99');
       expect(inserted.map((item) => item.name), ['Jeans', 'Felpa', 'Gonna']);
       verify(
-        () => analytics.trackAiItemsSaved(count: 3, isOnboarding: false),
+        () => analytics.trackAiItemsSaved(
+          count: 3,
+          isOnboarding: false,
+          found: 4,
+          excluded: 1,
+          renamed: 0,
+          detailsEdited: 0,
+          photos: 1,
+          excludedTypes: ['T-Shirt'],
+          renamedTypes: [],
+        ),
       ).called(1);
       verifyNever(() => itemRepo.insertMultipleItems(any()));
     });

@@ -280,13 +280,58 @@ void main() {
   });
 
   group('AI & onboarding funnel (P2 #14)', () {
-    test('trackAiItemsSaved logs count + is_onboarding', () async {
-      service.trackAiItemsSaved(count: 4, isOnboarding: true);
+    test('trackAiItemsSaved: conteggi della scansione', () async {
+      service.trackAiItemsSaved(
+        count: 4,
+        isOnboarding: true,
+        found: 6,
+        excluded: 2,
+        renamed: 1,
+        detailsEdited: 1,
+        photos: 2,
+        excludedTypes: const ['Jewelry', 'Other'],
+        renamedTypes: const ['Shorts'],
+      );
       await pump();
       verify(
         () => mockAnalytics.logEvent(
           'ai_items_saved',
-          properties: {'count': 4, 'is_onboarding': true},
+          properties: {
+            'count': 4,
+            'is_onboarding': true,
+            'found': 6,
+            'excluded': 2,
+            'renamed': 1,
+            'details_edited': 1,
+            'photos': 2,
+            'excluded_types': ['Jewelry', 'Other'],
+            'renamed_types': ['Shorts'],
+          },
+        ),
+      ).called(1);
+    });
+
+    test('trackAiScanDoubtResolved', () async {
+      service.trackAiScanDoubtResolved(
+        doubtFields: const ['warmth', 'formality'],
+        choseJev: const ['warmth'],
+        keptGpt: const ['formality'],
+        otherValue: const [],
+        correctedWithoutDoubt: const ['baseColor'],
+        subCategory: 'Sweater',
+      );
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'ai_scan_doubt_resolved',
+          properties: {
+            'doubt_fields': ['warmth', 'formality'],
+            'chose_jev': ['warmth'],
+            'kept_gpt': ['formality'],
+            'other_value': <String>[],
+            'corrected_without_doubt': ['baseColor'],
+            'sub_category': 'Sweater',
+          },
         ),
       ).called(1);
     });
