@@ -220,6 +220,9 @@ enum PostcardCta { prepare, ready, continuePacking }
 
 /// Azione primaria in base allo stato degli oggetti. "In corso" non conta.
 PostcardCta ctaFor(TripModel trip) {
+  if (trip.aiResult?.slots?.any((slot) => slot.isOpen) ?? false) {
+    return PostcardCta.continuePacking;
+  }
   if (trip.items.isEmpty) return PostcardCta.prepare;
   if (trip.items.every((item) => item.isChecked)) return PostcardCta.ready;
   return PostcardCta.continuePacking;

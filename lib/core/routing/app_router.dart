@@ -303,6 +303,22 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) => const ToBuyScreen(),
       ),
       GoRoute(
+        path: '/trips/:id/needs',
+        name: 'trip-needs',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          if (id == null || id.isEmpty) {
+            return _ErrorScreen(message: 'common.content_unavailable'.tr());
+          }
+          return TripDetailScreen(
+            tripId: id,
+            showNeeds: true,
+            initialSlotId: state.uri.queryParameters['slot'],
+          );
+        },
+      ),
+      GoRoute(
         path: '/trips/:id',
         name: 'trip-detail',
         parentNavigatorKey: _rootNavigatorKey,
@@ -315,6 +331,7 @@ GoRouter appRouter(Ref ref) {
           return TripDetailScreen(
             tripId: id,
             initialSlotId: state.uri.queryParameters['slot'],
+            firstReview: state.uri.queryParameters['review'] == '1',
           );
         },
       ),

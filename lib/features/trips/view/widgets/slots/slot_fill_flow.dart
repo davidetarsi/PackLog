@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../../core/analytics/analytics_service.dart';
 import '../../../../../shared/helpers/snack_bar_helper.dart';
 import '../../../../houses/providers/house_provider.dart';
+import '../../../../items/providers/item_provider.dart';
 import '../../../model/ai_packing.dart';
 import '../../../model/trip_model.dart';
 import '../../../providers/trip_provider.dart';
@@ -20,6 +23,9 @@ mixin TripSlotFill on TripSlotEdits {
   /// "Presa" su un "da comprare". Se la casa di partenza non c'è più il foglio
   /// non si apre e uno snack lo dice.
   void openSlot(AiSlot slot) {
+    final container = ProviderScope.containerOf(context, listen: false);
+    final messenger = ScaffoldMessenger.of(context);
+    final id = tripId;
     final houseId = ref
         .read(tripNotifierProvider)
         .valueOrNull
@@ -34,26 +40,33 @@ mixin TripSlotFill on TripSlotEdits {
       AppSnackBar.showInfo(context, 'trips.slots.no_house'.tr());
       return;
     }
-    // "Presa" su una proposta da comprare: torna nella valigia, in cima ai
-    // proposti, e il foglio si apre già con il posto aggiornato.
     final wasToBuy = slot.toBuy;
-    var shown = slot;
-    if (wasToBuy && slot.level == AiSlotLevel.useful) {
-      shown = slot.copyWith(toBuy: false);
-      unawaited(
-        updateSlot(
-          ref.read(tripNotifierProvider.notifier),
-          slot,
-          (s) => s.copyWith(toBuy: false),
-        ),
-      );
-    }
     unawaited(
       showSlotFillSheet(
         context,
-        slot: shown,
+        slot: slot,
         houseId: houseId,
-        onFill: (item) => _fillSlot(shown, item, bought: wasToBuy),
+        tripId: tripId,
+        onFill: (item) async {
+          await _fillSlot(
+            container,
+            messenger,
+            id,
+            slot,
+            item,
+            linkInventory: false,
+            bought: wasToBuy,
+          );
+        },
+        onLinkInventory: (item) => _fillSlot(
+          container,
+          messenger,
+          id,
+          slot,
+          item,
+          linkInventory: true,
+          bought: wasToBuy,
+        ),
         onToBuy: () => unawaited(markSlotToBuy(slot, from: 'sheet')),
       ),
     );
@@ -61,17 +74,86 @@ mixin TripSlotFill on TripSlotEdits {
 
   /// L'oggetto appena creato entra in valigia e scala il posto. Se il
   /// salvataggio non va lo dice e rilancia (l'oggetto resta nella casa).
-  Future<void> _fillSlot(
+  Future<int> _fillSlot(
+    ProviderContainer container,
+    ScaffoldMessengerState messenger,
+    String id,
     AiSlot slot,
     TripItem item, {
+    required bool linkInventory,
     required bool bought,
   }) async {
-    // Pagina già chiusa: niente ref. Il foglio non conta l'oggetto.
-    if (!mounted) throw StateError('trip detail closed');
-    final notifier = ref.read(tripNotifierProvider.notifier);
-    final analytics = ref.read(analyticsServiceProvider);
+    final notifier = container.read(tripNotifierProvider.notifier);
+    final analytics = container.read(analyticsServiceProvider);
     try {
-      await notifier.fillAiSlot(tripId, slot.id, item);
+      var applied = 0;
+      await notifier.serializeEdit(id, () async {
+        final trips = await container.read(tripNotifierProvider.future);
+        final trip = trips.where((candidate) => candidate.id == id).firstOrNull;
+        if (trip == null) throw StateError('trip no longer available');
+
+        final currentSlot = trip.aiResult?.slots
+            ?.where((candidate) => candidate.id == slot.id)
+            .firstOrNull;
+        if (currentSlot == null || currentSlot.removed) {
+          throw StateError('slot no longer available');
+        }
+        if (linkInventory && !currentSlot.isOpen) {
+          throw StateError('slot is already complete');
+        }
+
+        final houseId = trip.aiResult?.houseId;
+        if (houseId == null || item.originHouseId != houseId) {
+          throw StateError('inventory source changed');
+        }
+        final inventory = await container.read(
+          itemNotifierProvider(houseId).future,
+        );
+        final source = inventory
+            .where((candidate) => candidate.id == item.id)
+            .firstOrNull;
+        if (source == null || source.houseId != houseId) {
+          throw StateError('inventory source no longer available');
+        }
+
+        final alreadyPacked = trip.items
+            .where((packed) => packed.id == source.id)
+            .fold<int>(0, (total, packed) => total + packed.quantity);
+        final available = math.max(0, (source.quantity ?? 1) - alreadyPacked);
+        if (item.quantity <= 0) throw StateError('invalid quantity');
+        if (!linkInventory && item.quantity > available) {
+          throw StateError('created inventory quantity changed');
+        }
+        final quantity = linkInventory
+            ? math.min(
+                item.quantity,
+                math.min(available, currentSlot.remaining),
+              )
+            : item.quantity;
+        if (quantity == 0) throw StateError('inventory quantity changed');
+
+        await notifier.fillAiSlot(
+          id,
+          slot.id,
+          TripItem(
+            id: source.id,
+            name: source.name,
+            category: source.category,
+            quantity: quantity,
+            originHouseId: source.houseId,
+          ),
+        );
+        final savedTrip = container
+            .read(tripNotifierProvider)
+            .valueOrNull
+            ?.where((candidate) => candidate.id == id)
+            .firstOrNull;
+        if (savedTrip == null ||
+            !savedTrip.items.any((packed) => packed.id == source.id)) {
+          throw StateError('fill was not saved');
+        }
+        applied = quantity;
+      });
       // Un posto "da comprare" si apre solo con "Presa": riempirlo vuol dire
       // che l'hai comprato.
       if (bought) {
@@ -82,9 +164,11 @@ mixin TripSlotFill on TripSlotEdits {
           ),
         );
       }
+      return applied;
     } catch (_) {
-      if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());
-      // Il foglio non deve contare l'oggetto.
+      if (messenger.mounted) {
+        AppSnackBar.showErrorOn(messenger, 'errors.save_error'.tr());
+      }
       rethrow;
     }
   }

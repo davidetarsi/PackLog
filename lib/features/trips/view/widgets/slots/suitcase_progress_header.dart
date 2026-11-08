@@ -47,11 +47,13 @@ class SuitcaseProgressHeader extends StatelessWidget {
             ),
           ),
           SizedBox(width: context.spacingSm),
-          Text(
-            'trips.detail.packed_count'.tr(
-              args: ['${progress.checked}', '$total'],
+          Flexible(
+            child: Text(
+              'trips.detail.packed_count'.tr(
+                args: ['${progress.checked}', '$total'],
+              ),
+              style: countStyle,
             ),
-            style: countStyle,
           ),
         ],
       );
@@ -64,11 +66,13 @@ class SuitcaseProgressHeader extends StatelessWidget {
           children: [
             Expanded(child: _ReadyBar(progress: progress)),
             SizedBox(width: context.spacingSm),
-            Text(
-              'trips.detail.ready_count'.tr(
-                args: ['${progress.ready}', '${progress.readyTotal}'],
+            Flexible(
+              child: Text(
+                'trips.detail.ready_count'.tr(
+                  args: ['${progress.ready}', '${progress.readyTotal}'],
+                ),
+                style: countStyle,
               ),
-              style: countStyle,
             ),
           ],
         ),
@@ -152,7 +156,12 @@ class _LegendEntry extends StatelessWidget {
       children: [
         dot,
         SizedBox(width: context.spacingXs),
-        Text(label, style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+        Flexible(
+          child: Text(
+            label,
+            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ),
       ],
     );
   }
