@@ -833,6 +833,38 @@ class SyncService {
         );
       }
     }
+
+    await _sendSuitcaseEdits();
+  }
+
+  /// Dimensione di un blocco di modifiche alla valigia inviate in un colpo.
+  static const int _suitcaseEditsBlock = 200;
+
+  /// Invia la coda delle modifiche alla valigia, a blocchi, e toglie in locale
+  /// ciò che è arrivato. Gira dopo le entità e non fa mai fallire il resto
+  /// della sync: se un invio non riesce le righe restano in coda per il giro
+  /// successivo (l'id è la chiave primaria, quindi riprovare non duplica).
+  Future<void> _sendSuitcaseEdits() async {
+    try {
+      while (true) {
+        final block = await _suitcaseEditsDao.pending(
+          limit: _suitcaseEditsBlock,
+        );
+        if (block.isEmpty) return;
+        await _remote.insertSuitcaseEdits([
+          for (final e in block) SyncSerializers.suitcaseEditToJson(e),
+        ]);
+        await _suitcaseEditsDao.deleteByIds([for (final e in block) e.id]);
+        if (block.length < _suitcaseEditsBlock) return;
+      }
+    } catch (e, st) {
+      debugPrint('[SyncService] Invio modifiche valigia fallito: $e');
+      _monitoring.captureException(
+        e,
+        stackTrace: st,
+        tags: const {'operation': 'suitcase_edits_send'},
+      );
+    }
   }
 
   Future<void> _syncRecord({

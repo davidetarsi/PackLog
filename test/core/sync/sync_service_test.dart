@@ -2426,4 +2426,113 @@ void main() {
       ]);
     });
   });
+  group('SyncService - modifiche alla valigia', () {
+    SuitcaseEdit edit(String id, {int minute = 0}) => SuitcaseEdit(
+      id: id,
+      tripId: 't-1',
+      at: DateTime.utc(2026, 11, 8, 10, minute),
+      action: SuitcaseEditAction.removed,
+      origin: SuitcaseEditOrigin.proposal,
+      card: const {'category': 'abbigliamento'},
+      analysisAllowed: true,
+    );
+
+    test(
+      'tre eventi in coda: un solo insert con tre righe, coda vuota',
+      () async {
+        when(
+          () => mockRemote.insertSuitcaseEdits(any()),
+        ).thenAnswer((_) async {});
+        await database.suitcaseEditsDao.enqueue([
+          edit('e1'),
+          edit('e2', minute: 1),
+          edit('e3', minute: 2),
+        ]);
+
+        await syncService.processQueue();
+
+        final rows =
+            verify(
+                  () => mockRemote.insertSuitcaseEdits(captureAny()),
+                ).captured.single
+                as List<Map<String, dynamic>>;
+        expect(rows.map((r) => r['id']), ['e1', 'e2', 'e3']);
+        expect(rows.first['azione'], 'tolto');
+        expect(rows.first['origine'], 'proposta');
+        expect(rows.first['analisi_consentita'], true);
+        expect(rows.first.containsKey('user_id'), isFalse);
+        expect(await database.suitcaseEditsDao.pending(), isEmpty);
+      },
+    );
+
+    test(
+      'insert che fallisce: coda intatta e processQueue non lancia',
+      () async {
+        when(
+          () => mockRemote.insertSuitcaseEdits(any()),
+        ).thenThrow(Exception('offline'));
+        when(
+          () => mockMonitoring.captureException(
+            any<Object>(),
+            stackTrace: any(named: 'stackTrace'),
+            tags: any(named: 'tags'),
+          ),
+        ).thenAnswer((_) async {});
+        await database.suitcaseEditsDao.enqueue([edit('e1'), edit('e2')]);
+
+        await syncService.processQueue();
+
+        expect((await database.suitcaseEditsDao.pending()).map((e) => e.id), [
+          'e1',
+          'e2',
+        ]);
+      },
+    );
+
+    test('piu di 200 eventi: blocchi da 200', () async {
+      when(
+        () => mockRemote.insertSuitcaseEdits(any()),
+      ).thenAnswer((_) async {});
+      await database.suitcaseEditsDao.enqueue([
+        for (var i = 0; i < 250; i++) edit('e$i', minute: i % 60),
+      ]);
+
+      await syncService.processQueue();
+
+      final calls = verify(
+        () => mockRemote.insertSuitcaseEdits(captureAny()),
+      ).captured.cast<List<Map<String, dynamic>>>();
+      expect(calls.map((c) => c.length), [200, 50]);
+      expect(await database.suitcaseEditsDao.pending(limit: 1000), isEmpty);
+    });
+
+    test(
+      'invio ripetuto con gli stessi id: stesse righe, id invariati',
+      () async {
+        when(
+          () => mockRemote.insertSuitcaseEdits(any()),
+        ).thenThrow(Exception('timeout dopo la scrittura'));
+        when(
+          () => mockMonitoring.captureException(
+            any<Object>(),
+            stackTrace: any(named: 'stackTrace'),
+            tags: any(named: 'tags'),
+          ),
+        ).thenAnswer((_) async {});
+        await database.suitcaseEditsDao.enqueue([edit('e1')]);
+        await syncService.processQueue();
+
+        when(
+          () => mockRemote.insertSuitcaseEdits(any()),
+        ).thenAnswer((_) async {});
+        await syncService.processQueue();
+
+        final calls = verify(
+          () => mockRemote.insertSuitcaseEdits(captureAny()),
+        ).captured.cast<List<Map<String, dynamic>>>();
+        expect(calls.map((c) => c.single['id']), ['e1', 'e1']);
+        expect(await database.suitcaseEditsDao.pending(), isEmpty);
+      },
+    );
+  });
 }

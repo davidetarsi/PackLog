@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../../features/houses/model/house_model.dart';
 import '../../features/items/model/item_model.dart';
 import '../../features/luggages/model/luggage_model.dart';
+import '../../features/trips/model/suitcase_edit.dart';
 import '../../shared/model/location_type.dart';
 import '../database/database.dart';
 import '../database/tables/mixins/syncable_table.dart';
@@ -418,6 +419,23 @@ abstract final class SyncSerializers {
       'is_deleted': space.isDeleted,
     };
   }
+
+  /// Riga di `valigia_modifiche`. Niente `user_id` (lo mette il server con
+  /// `auth.uid()`) e mai il nome scritto dall'utente: [SuitcaseEdit] non lo
+  /// porta.
+  static Map<String, dynamic> suitcaseEditToJson(SuitcaseEdit e) => {
+    'id': e.id,
+    'trip_id': e.tripId,
+    'creato_il': e.at.toUtc().toIso8601String(),
+    'azione': e.action.dbValue,
+    'origine': e.origin.dbValue,
+    'copie_prima': e.copiesBefore,
+    'copie_dopo': e.copiesAfter,
+    'scheda': e.card,
+    'contesto': e.context,
+    'versione_generatore': e.generatorVersion,
+    'analisi_consentita': e.analysisAllowed,
+  };
 
   static Map<String, dynamic> kitToJson(Kit kit) {
     return {
