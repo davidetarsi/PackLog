@@ -242,11 +242,7 @@ class AiTripShape with _$AiTripShape {
   const factory AiTripShape({
     @JsonKey(fromJson: _optDateFromJson, toJson: _optDateToJson)
     DateTime? departure,
-    @JsonKey(
-      name: 'return_at',
-      fromJson: _optDateFromJson,
-      toJson: _optDateToJson,
-    )
+    @JsonKey(fromJson: _optDateFromJson, toJson: _optDateToJson)
     DateTime? returnAt,
     @Default(<AiTripShapeStop>[]) List<AiTripShapeStop> stops,
     @Default(<String>[]) List<String> transports,

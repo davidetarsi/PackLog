@@ -1645,11 +1645,16 @@ final flows = <Flow>[
       description:
           'Modifica viaggio con due tappe (Lisbona e Sintra): "Quando?" '
           'mostra le date di tutto il viaggio, dalla partenza alla fine '
-          'dell\'ultima tappa, con le notti totali.',
+          'dell\'ultima tappa, con le notti totali. Nell\'itinerario anche '
+          'la riga della meta (Lisbona) si tocca, per cambiarne la fine.',
       steps: (app) async {
         await _tripDetail(app);
         await app.tap(find.byKey(const Key('trip_detail_summary')));
         expect(find.text('5 notti'), findsOneWidget);
+        await app.tester.ensureVisible(
+          find.byKey(const Key('new_trip_add_stop')),
+        );
+        await app.tester.pumpAndSettle();
       },
     ),
     Scenario(
@@ -2181,7 +2186,7 @@ final flows = <Flow>[
       source: 'lib/features/trips/view/widgets/trip_changed_notice.dart',
       description:
           'Valigia AI fatta per un viaggio che finiva un giorno prima: in '
-          'cima compare "Hai cambiato il viaggio" con "Rifai la valigia".',
+          'cima compare "Hai cambiato il viaggio" con "Rifalla con AI".',
       setup: AppSetup(
         seedWith: (c) async {
           await seed(c, SeedLevel.full);

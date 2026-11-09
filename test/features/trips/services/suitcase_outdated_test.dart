@@ -146,6 +146,13 @@ void main() {
     );
   });
 
+  test('json_uses_camel_case_return_at', () {
+    final json = _saved().aiResult!.tripShape!.toJson();
+    expect(json.containsKey('returnAt'), isTrue);
+    expect(json.containsKey('return_at'), isFalse);
+    expect(AiTripShape.fromJson(json), _saved().aiResult!.tripShape);
+  });
+
   test('house_rename_does_not_make_suitcase_outdated', () {
     LocationSuggestionModel casa(String nome) => LocationSuggestionModel(
       placeId: 'house_h1',
