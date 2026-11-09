@@ -598,7 +598,7 @@ Future<void> seedValigiaPosti(ProviderContainer c) async {
     ),
     slot('sciarpa_calda', 'Sciarpa calda', important, toBuy: true),
     slot('maglioni_caldi', 'Maglioni caldi', useful, copies: 3),
-    slot('strato_termico', 'Strato termico', useful, copies: 2),
+    slot('strato_termico', 'Maglia termica', useful, copies: 2),
     slot('magliette', 'Magliette', useful, copies: 7),
     slot('pantaloni_caldi', 'Pantaloni caldi', useful, copies: 3),
     slot('calzini', 'Calzini', useful, copies: 7),
@@ -621,6 +621,20 @@ Future<void> seedValigiaPosti(ProviderContainer c) async {
         generatedAt: stamp,
         houseId: kHomeId,
         slots: slots,
+        reasons: const [
+          AiReasonPoint(
+            code: 'giorno',
+            title: 'Tutti i giorni',
+            sentences: ['2 t-shirt: lavate strada facendo'],
+            items: ['T-shirt nera ×2'],
+          ),
+          AiReasonPoint(
+            code: 'freddo',
+            title: 'Freddo',
+            sentences: ['Minime sotto zero quasi ogni mattina'],
+            items: ['Felpa grigia'],
+          ),
+        ],
         notes: const [
           AiTripNote(
             code: 'lavanderia',
@@ -628,16 +642,6 @@ Future<void> seedValigiaPosti(ProviderContainer c) async {
             why:
                 'Il viaggio dura 31 notti: con una lavatrice ogni settimana '
                 'basta portare meno capi.',
-          ),
-        ],
-        reasons: const [
-          AiReasonPoint(
-            code: 'clima_seoul',
-            title: 'Freddo e vento a Seoul',
-            sentences: [
-              'Le minime sotto zero richiedono strati caldi e accessori.',
-            ],
-            items: ['Giacca invernale', 'Maglioni caldi'],
           ),
         ],
       ),

@@ -2573,6 +2573,45 @@ final flows = <Flow>[
         await app.tap(find.byKey(const Key('pack_row_reasons')));
       },
     ),
+    Scenario(
+      11,
+      'motivi',
+      'con-posti',
+      source: _aiRowsSrc,
+      description:
+          'Perché queste scelte con i posti: gli importanti ancora aperti, '
+          'i punti dall\'armadio e i suggeriti, ognuno col suo motivo.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) async {
+        await _pack(app, kSeoulTripId);
+        await app.tap(find.byKey(const Key('pack_row_reasons')));
+      },
+    ),
+    Scenario(
+      12,
+      'motivi',
+      'con-posti-armadio',
+      source: _aiRowsSrc,
+      description:
+          'Lo stesso foglio scorso in fondo: i suggeriti e i punti '
+          'dall\'armadio, ognuno nel suo riquadro.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) async {
+        await _pack(app, kSeoulTripId);
+        await app.tap(find.byKey(const Key('pack_row_reasons')));
+        await _scrollSheet(app, -2000);
+      },
+    ),
   ]),
   Flow('12-errori', 'Errori e contenuti non trovati', [
     Scenario(

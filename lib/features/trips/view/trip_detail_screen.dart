@@ -543,6 +543,7 @@ class _TripDetail extends ConsumerWidget {
                   warnings: const [],
                   readIds: const {},
                   reasons: trip.aiResult!.reasons,
+                  slots: trip.aiResult!.slots ?? const [],
                   needsCounts: _needsCounts(trip),
                   onNeeds: () => context.push('/trips/${trip.id}/needs'),
                   onSearch: (_) {},

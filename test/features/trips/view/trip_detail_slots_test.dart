@@ -117,7 +117,7 @@ List<TripItem> _items({int checked = 0}) => [
 /// I nove utili, tutti nei vestiti: una sola card dei proposti.
 List<AiSlot> get _useful => [
   _slot('u-maglioni', 'Maglioni caldi', copies: 3),
-  _slot('u-termico', 'Strato termico', copies: 2),
+  _slot('u-termico', 'Maglia termica', copies: 2),
   _slot('u-magliette', 'Magliette', copies: 5),
   _slot('u-pantaloni', 'Pantaloni', copies: 3),
   _slot('u-calzini', 'Calzini pesanti', copies: 7),

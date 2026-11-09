@@ -351,6 +351,18 @@
         "nothing_missing_hint": "La valigia copre clima e attività",
         "nothing_missing_sheet": "Non manca niente: la valigia copre il clima e le attività di tutte le tappe.",
         "reasons_row": "Perché queste scelte",
+        "reasons_important": "Importanti",
+        "reasons_wardrobe": "Dal tuo armadio",
+        "reasons_suggested": "Suggeriti da PackLog",
+        "reasons_suggested_hint": "Servono per questo viaggio e nel tuo armadio non ci sono",
+        "reasons_count_important": {
+          "one": "{} importante",
+          "other": "{} importanti"
+        },
+        "reasons_count_suggested": {
+          "one": "{} suggerito",
+          "other": "{} suggeriti"
+        },
         "level_important": "Importante",
         "level_useful": "Utile",
         "warning_search": "Cerca nell'armadio",
