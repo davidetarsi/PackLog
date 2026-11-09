@@ -596,32 +596,33 @@ void main() {
       expect(find.text('Valigia con AI'), findsOneWidget);
     });
 
-    testWidgets('senza coordinate l icona lo dice con la snackbar e non genera', (
-      tester,
-    ) async {
-      arrange(
-        trip: _viaggio(
-          destination: LocationSuggestionModel(
-            placeId: 'p-x',
-            displayName: 'Luogo senza mappa',
-            city: 'Luogo senza mappa',
-            country: 'Islanda',
+    testWidgets(
+      'senza coordinate Rigenera lo dice con la snackbar e non genera',
+      (tester) async {
+        arrange(
+          trip: _viaggio(
+            destination: LocationSuggestionModel(
+              placeId: 'p-x',
+              displayName: 'Luogo senza mappa',
+              city: 'Luogo senza mappa',
+              country: 'Islanda',
+            ),
           ),
-        ),
-        items: _houseItems,
-      );
-      await pumpPack(tester, openAi: true);
+          items: _houseItems,
+        );
+        await pumpPack(tester, openAi: true);
 
-      expect(
-        find.text(
-          'Una tappa non ha ancora una posizione sulla mappa: impostala per preparare la valigia con AI.',
-        ),
-        findsOneWidget,
-      );
-      expect(find.text('Valigia con AI'), findsNothing);
-      expect(jobs, isEmpty);
-      verifyNever(() => tripRepo.updateTrip(any()));
-    });
+        expect(
+          find.text(
+            'Una tappa non ha ancora una posizione sulla mappa: impostala per preparare la valigia con AI.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Valigia con AI'), findsNothing);
+        expect(jobs, isEmpty);
+        verifyNever(() => tripRepo.updateTrip(any()));
+      },
+    );
 
     testWidgets('startAi apre il foglio da solo, senza domanda', (
       tester,

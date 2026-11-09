@@ -1,7 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/helpers/design_system.dart';
@@ -11,7 +10,6 @@ import '../../../../items/model/item_model.dart';
 import '../../../../../shared/widgets/ds_checkbox.dart';
 import '../../../../../shared/widgets/ds_icon_button.dart';
 import '../../../model/trip_model.dart';
-import '../../../providers/trip_provider.dart';
 import '../pack/pack_inventory_search.dart';
 import 'flight_target.dart';
 
@@ -32,11 +30,10 @@ class EmptySuitcase extends StatelessWidget {
 }
 
 /// Gli oggetti di un gruppo, uno per riga, da spuntare.
-class ItemsCard extends ConsumerWidget {
-  final String tripId;
+class ItemsCard extends StatelessWidget {
   final List<TripItem> items;
   final ValueChanged<TripItem>? onRemoveItem;
-  final ValueChanged<TripItem>? onToggleItem;
+  final ValueChanged<TripItem> onToggleItem;
   final bool checklistEnabled;
   final ValueChanged<TripItem>? onOpenItem;
   final bool showRemove;
@@ -50,10 +47,9 @@ class ItemsCard extends ConsumerWidget {
 
   const ItemsCard({
     super.key,
-    required this.tripId,
     required this.items,
     this.onRemoveItem,
-    this.onToggleItem,
+    required this.onToggleItem,
     this.checklistEnabled = true,
     this.onOpenItem,
     this.showRemove = true,
@@ -62,7 +58,7 @@ class ItemsCard extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return Material(
       color: context.groupSurface,
       borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
@@ -80,13 +76,7 @@ class ItemsCard extends ConsumerWidget {
                     ? null
                     : () => onRemoveItem!(item),
                 onOpen: onOpenItem == null ? null : () => onOpenItem!(item),
-                onToggle: !checklistEnabled
-                    ? null
-                    : onToggleItem != null
-                    ? () => onToggleItem!(item)
-                    : () => ref
-                          .read(tripNotifierProvider.notifier)
-                          .toggleItemCheck(tripId, item.id),
+                onToggle: checklistEnabled ? () => onToggleItem(item) : null,
               ),
             ),
         ],
@@ -215,7 +205,6 @@ class SuitcaseItemsSection extends StatelessWidget {
               count: trip.items.where((i) => i.category == category).length,
             ),
             ItemsCard(
-              tripId: trip.id,
               items: trip.items.where((i) => i.category == category).toList(),
               checklistEnabled: checklistEnabled,
               onRemoveItem: onRemoveItem,

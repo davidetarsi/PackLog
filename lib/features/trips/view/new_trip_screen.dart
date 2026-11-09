@@ -304,7 +304,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       if (!mounted) return;
     }
 
-    // Il meteo parte subito: la pagina valigia trova la richiesta già in
+    // Il meteo parte subito: il dettaglio trova la richiesta già in
     // corso, o la cache se il viaggio ce l'ha già.
     ref.read(tripWeatherNotifierProvider(trip.id));
     router.go('/trips');
