@@ -23,7 +23,10 @@ import '../../luggages/providers/luggage_provider.dart';
 import '../model/suitcase_progress.dart';
 import '../model/ai_packing.dart';
 import '../model/trip_model.dart';
+import '../services/ai_packing_launcher.dart';
 import '../services/suitcase_analytics.dart';
+import '../services/suitcase_outdated.dart';
+import 'widgets/trip_changed_notice.dart';
 import '../providers/trip_provider.dart';
 import 'widgets/pack/pack_luggage_selector.dart';
 import 'widgets/ai/ai_pack_rows.dart';
@@ -513,6 +516,22 @@ class _TripDetail extends ConsumerWidget {
                 houseNames: {for (final h in houses) h.id: h.displayName},
               ),
             ),
+            if (!showNeeds && suitcaseOutdated(trip, now: DateTime.now()))
+              Padding(
+                padding: EdgeInsets.only(bottom: context.spacingMd),
+                child: TripChangedNotice(
+                  onRedo: () => _regenerate(context, ref),
+                  onClose: () => unawaited(
+                    slotActions.changeTrip(
+                      (latest) => latest.copyWith(
+                        aiResult: latest.aiResult?.copyWith(
+                          changeNoticeDismissed: true,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             if (hasSlots && !showNeeds)
               Padding(
                 padding: EdgeInsets.only(bottom: context.spacingMd),
@@ -566,6 +585,11 @@ class _TripDetail extends ConsumerWidget {
     );
   }
 
+  /// "Rigenera" e "Rifalla con AI": il foglio si apre sopra il dettaglio. Se
+  /// la valigia ha già oggetti, il lanciatore chiede prima conferma.
+  Future<AiPackingSetup?> _regenerate(BuildContext context, WidgetRef ref) =>
+      startAiPacking(context, ref, trip: trip, isNew: false);
+
   Future<void> _onMenu(
     BuildContext context,
     WidgetRef ref,
@@ -576,7 +600,7 @@ class _TripDetail extends ConsumerWidget {
       case _TripMenu.edit:
         context.push('/trips/${trip.id}/edit-info');
       case _TripMenu.regenerate:
-        context.push('/trips/${trip.id}/edit-items?ai=1');
+        unawaited(_regenerate(context, ref));
       case _TripMenu.duplicate:
         final ok = await ErrorRetryDialog.executeWithRetry(
           context: context,

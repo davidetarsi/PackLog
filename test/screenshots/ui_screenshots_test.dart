@@ -354,9 +354,11 @@ Future<void> _tapShown(ScreenshotApp app, Finder finder) async {
 /// Apre il foglio "Valigia con AI" dal viaggio (Rigenera): il viaggio ha già oggetti,
 /// quindi prima c'è l'avviso di sostituzione, che si conferma.
 Future<void> _openAiSheet(ScreenshotApp app, String tripId) async {
-  // "Rigenera" dal menu del dettaglio: la pagina si apre con `?ai=1`.
+  // "Rigenera" dal menu del dettaglio: il foglio si apre sopra il dettaglio.
   await app.go('/trips');
-  await app.push('/trips/$tripId/edit-items?ai=1');
+  await app.push('/trips/$tripId');
+  await app.tap(find.byWidgetPredicate((w) => w is PopupMenuButton));
+  await app.tap(_text('trips.pack.ai.regenerate'));
   await app.tap(_text('trips.pack.ai.replace_confirm'));
 }
 

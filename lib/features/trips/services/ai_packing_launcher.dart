@@ -33,14 +33,12 @@ import 'suitcase_analytics.dart';
 /// Ritorna le risposte del foglio se il lavoro è partito, `null` altrimenti
 /// (lavoro già in corso, viaggio non adatto, conferma o foglio chiusi). Le
 /// risposte non si scrivono sul viaggio qui: si salvano con la valigia
-/// quando arriva. [beforeWait] gira dopo l'avvio e prima dell'attesa: serve a
-/// chi vuole chiudere la propria pagina.
+/// quando arriva.
 Future<AiPackingSetup?> startAiPacking(
   BuildContext context,
   WidgetRef ref, {
   required TripModel trip,
   required bool isNew,
-  VoidCallback? beforeWait,
   String? tripSource,
 }) async {
   if (ref.read(aiPackingRunProvider) is AiRunRunning) {
@@ -133,10 +131,7 @@ Future<AiPackingSetup?> startAiPacking(
     AppSnackBar.showInfo(context, 'trips.ai.busy'.tr());
     return null;
   }
-  // [beforeWait] può chiudere la pagina che chiama: il router si prende prima.
-  final router = GoRouter.of(context);
-  beforeWait?.call();
-  router.push('/ai-packing');
+  GoRouter.of(context).push('/ai-packing');
   return setup;
 }
 

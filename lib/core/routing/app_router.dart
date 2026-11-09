@@ -380,7 +380,6 @@ GoRouter appRouter(Ref ref) {
           return PackSuitcaseScreen(
             tripId: id,
             fromNewTrip: state.uri.queryParameters['from'] == 'new',
-            startAi: state.uri.queryParameters['ai'] == '1',
           );
         },
       ),

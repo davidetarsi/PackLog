@@ -274,7 +274,9 @@
       "legend_mine": "{} tue",
       "legend_proposed": "{} proposte da PackLog",
       "legend_important": "{} importanti da sistemare",
-      "duplicated": "Viaggio duplicato"
+      "duplicated": "Viaggio duplicato",
+      "changed_notice": "Hai cambiato il viaggio: la valigia potrebbe non andare più bene.",
+      "changed_redo": "Rifalla con AI"
     },
     "to_buy": {
       "entry": "Da comprare · {}",

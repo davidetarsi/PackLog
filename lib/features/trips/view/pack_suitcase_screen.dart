@@ -25,7 +25,6 @@ import '../../items/repositories/item_repository.dart';
 import '../model/ai_availability.dart';
 import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
-import '../services/ai_packing_launcher.dart';
 import 'widgets/pack/pack_parts.dart';
 import 'widgets/trip_edit_placeholder.dart';
 import '../../../shared/widgets/ds_section_title.dart';
@@ -46,14 +45,10 @@ class PackSuitcaseScreen extends ConsumerStatefulWidget {
   /// Passo 2 del nuovo viaggio: in cima si mostra l'indicatore dei passi.
   final bool fromNewTrip;
 
-  /// Apre subito il foglio della valigia AI (`?ai=1`, "Rigenera" dal menu).
-  final bool startAi;
-
   const PackSuitcaseScreen({
     super.key,
     required this.tripId,
     this.fromNewTrip = false,
-    this.startAi = false,
   });
 
   @override
@@ -70,9 +65,6 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
 
   /// Casa scelta dal selettore; `null` finché non se ne sceglie una.
   String? _pickedHouseId;
-
-  /// Il tocco automatico di [PackSuitcaseScreen.startAi] è già partito.
-  bool _startAiScheduled = false;
 
   /// Campo della ricerca: dopo un'aggiunta ci si scrive il nome creato.
   final _searchController = TextEditingController();
@@ -292,26 +284,6 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     }
   }
 
-  /// Apertura con `?ai=1` ("Rigenera" dal dettaglio): il lanciatore condiviso
-  /// chiede conferma, apre il foglio e la pagina d'attesa. La valigia arriva e
-  /// si salva fuori da qui.
-  Future<void> _onAiTap() async {
-    final trip = _currentTrip();
-    if (trip == null || _saving) return;
-    await startAiPacking(
-      context,
-      ref,
-      // Gli oggetti sono quelli della pagina, anche non ancora salvati.
-      trip: trip.copyWith(items: _items.values.toList()),
-      isNew: false,
-      // La pagina si chiude prima dell'attesa: la sua copia della valigia è
-      // vecchia e non deve poter riscrivere quella nuova.
-      beforeWait: () => context.canPop()
-          ? context.pop()
-          : context.go('/trips/${widget.tripId}'),
-    );
-  }
-
   Future<void> _confirmDiscard() async {
     final leave = await DialogHelpers.showConfirmation(
       context: context,
@@ -346,12 +318,6 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
 
     final housesAsync = ref.watch(houseNotifierProvider);
     final count = _items.length;
-    if (widget.startAi && !_startAiScheduled) {
-      _startAiScheduled = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) unawaited(_onAiTap());
-      });
-    }
 
     return PopScope(
       // Con modifiche non salvate il back chiede conferma; durante il

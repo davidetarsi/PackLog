@@ -274,7 +274,9 @@
       "legend_mine": "{} yours",
       "legend_proposed": "{} suggested by PackLog",
       "legend_important": "{} important to sort out",
-      "duplicated": "Trip duplicated"
+      "duplicated": "Trip duplicated",
+      "changed_notice": "You changed the trip: the suitcase may no longer fit.",
+      "changed_redo": "Redo with AI"
     },
     "to_buy": {
       "entry": "To buy · {}",
