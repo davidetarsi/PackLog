@@ -360,7 +360,7 @@ void main() {
     });
 
     test(
-      'reset(hasExistingHouses: false) returns to aiIntro with skippedAi=false',
+      'reset(hasExistingHouses: false) riparte da "Dove vai?" come il primo avvio',
       () async {
         final repo = MockOnboardingRepository();
         _setupDefaultMock(repo, step: OnboardingStep.done);
@@ -373,10 +373,12 @@ void main() {
             .reset(hasExistingHouses: false);
 
         final state = container.read(postLoginOnboardingProvider).valueOrNull!;
-        expect(state.step, OnboardingStep.aiIntro);
+        expect(state.step, OnboardingStep.firstTrip);
         expect(state.skippedAi, isFalse);
         expect(state.hasExistingHouses, isFalse);
         expect(state.defaultHouseId, isNull);
+        // Salvato: alla prossima apertura il router porta ancora lì.
+        verify(() => repo.saveStep(OnboardingStep.firstTrip)).called(1);
       },
     );
 
@@ -394,7 +396,9 @@ void main() {
             .reset(hasExistingHouses: true);
 
         final state = container.read(postLoginOnboardingProvider).valueOrNull!;
-        expect(state.step, OnboardingStep.aiIntro);
+        // Anche chi ha già delle case: niente prova con la foto, che
+        // creerebbe una casa nuova "Casa".
+        expect(state.step, OnboardingStep.firstTrip);
         expect(state.hasExistingHouses, isTrue);
       },
     );
