@@ -29,4 +29,4 @@
 - [Analytics: domande](analytics-domande.md) — 8 nov: catalogo implementato, ramo pushato, PR da aprire (Davide); risposte di Davide nel db del resoconto
 - [Profilo e modifiche alla valigia](profilo-modifiche-valigia.md) — decisioni 8 nov, ramo feat/modifiche-valigia, parte 3 da approvare
 - [Flutter 3.38 per build e test](flutter-338-per-build.md) — source .strumenti/flutter338.sh prima di build_runner/test; il 3.47 di sistema crasha l'analyzer
-- [Flusso di creazione del viaggio](flusso-creazione-viaggio.md) — 8 nov: design+piano; parte A pushata, poi B e C
+- [Flusso di creazione del viaggio](flusso-creazione-viaggio.md) — 8 nov: A, B, C pushate; ordine dei merge nell handoff

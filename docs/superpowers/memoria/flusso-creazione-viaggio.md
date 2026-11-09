@@ -12,7 +12,7 @@ Flusso di creazione del viaggio, decisioni dell'8 novembre 2026 (artifact screen
 - P4: Rigenera e avviso "Hai cambiato il viaggio" aprono il foglio sopra il dettaglio; date intere in Modifica.
 - Riusa (solo dalla cartolina dei passati) = passo 1 precompilato, niente salvato; AI sostituisce gli oggetti copiati.
 - Unificare i componenti doppi (fascia bottoni, righe/liste oggetti, bagagli).
-- Design: docs/superpowers/specs/2026-11-08-flusso-viaggio-design.md (ramo WIP), revisionato; Piano plans/2026-11-08-flusso-viaggio.md. Parte A (feat/flusso-a-passo1-ai) e B (feat/flusso-b-dettaglio-valigia, da A) pushate; poi C da B. Worktree PackLog-flusso-nuovo con il ledger SDD.
+- Design: docs/superpowers/specs/2026-11-08-flusso-viaggio-design.md (ramo WIP), revisionato; Piano plans/2026-11-08-flusso-viaggio.md. Parti A, B, C pushate (feat/flusso-a-passo1-ai → feat/flusso-b-dettaglio-valigia → feat/flusso-c-rigenera), da unire in ordine dopo analytics; modifiche-valigia per ultima con conflitto da risolvere. Worktree PackLog-flusso-nuovo con il ledger SDD.
 
 **Why:** il flusso deve essere pulito, senza stati a metà né pagine che si confondono.
 **How to apply:** usare questi testi e questa struttura nel design del nuovo flusso; vedi [[design-valigia-ai]], [[profilo-modifiche-valigia]].
