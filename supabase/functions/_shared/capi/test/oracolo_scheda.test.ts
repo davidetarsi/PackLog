@@ -6,6 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
+import * as tassonomia from "../../valigia/tassonomia.ts";
 import { domandeJev, dubbi, leggiJson, normalizza, promptNome, promptScan, pulisciNome, statoJev } from "../scheda.ts";
 
 const file = process.env.ORACOLO_SCHEDA ?? new URL("./oracolo_scheda_campione.json", import.meta.url).pathname;
@@ -38,4 +39,38 @@ test(`pulizia e dubbi (${o.casi.length} casi)`, () => {
       assert.deepEqual(json(statoJev(z.metadata, false)), c.stato_jev[1], chi);
     }
   }
+});
+
+const daSub = (nome: string, sub: string, cat: string) =>
+  normalizza({ name: nome, subCategory: sub, category: cat }, nome);
+
+test("nome_muta_da_sub_diventa_wetsuit", () => {
+  const z = daSub("Muta corta", "Other", "Accessory");
+  assert.equal(z.metadata.subCategory, "Wetsuit");
+  assert.equal(z.metadata.category, tassonomia.categoriaDi("Wetsuit"));
+  assert.ok(!z.corretti.includes("subCategory"));
+});
+
+test("nome_pile_leggero_diventa_fleece", () => {
+  const z = daSub("Pile leggero", "Windbreaker", "Outerwear");
+  assert.equal(z.metadata.subCategory, "Fleece");
+  assert.equal(z.metadata.category, tassonomia.categoriaDi("Fleece"));
+  assert.ok(!z.corretti.includes("subCategory"));
+});
+
+test("giacca_in_pile_resta_giacca", () => {
+  const z = daSub("Giacca in pile", "Windbreaker", "Outerwear");
+  assert.equal(z.metadata.subCategory, "Windbreaker");
+});
+
+test("prompt_scan_ha_i_due_casi", () => {
+  const p = promptScan();
+  assert.ok(p.includes("A person is the main subject"));
+  assert.ok(p.includes("No person as the main subject"));
+  assert.ok(!p.includes("IGNORE any clothing items in the background"));
+});
+
+test("stessa_categoria_resta", () => {
+  const z = daSub("Pantaloni della tuta", "Sweatpants", "Lower Body");
+  assert.equal(z.metadata.subCategory, "Sweatpants");
 });
