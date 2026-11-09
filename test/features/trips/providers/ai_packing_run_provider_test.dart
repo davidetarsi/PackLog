@@ -19,6 +19,7 @@ import 'package:pack_log/features/trips/providers/ai_packing_run_provider.dart';
 import 'package:pack_log/features/trips/providers/trip_provider.dart';
 import 'package:pack_log/features/trips/services/pack_trip_service.dart';
 import 'package:pack_log/features/trips/services/suitcase_analytics.dart';
+import 'package:pack_log/features/trips/services/suitcase_outdated.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final _now = DateTime(2026, 11, 8);
@@ -297,6 +298,23 @@ void main() {
     expect(trips.updated.single.name, 'Dopo');
     expect(trips.updated.single.aiResult, isNotNull);
     expect(state(), isA<AiRunDone>());
+  });
+
+  test('shape_is_from_request_trip_not_arrival_trip', () async {
+    final sent = _trip('t1').copyWith(departureDateTime: DateTime(2030, 1, 10));
+    build(existing: [sent]);
+    await container.read(tripNotifierProvider.future);
+    run().start(_request(sent, isNew: false));
+    await settle();
+
+    // Durante la generazione l'utente sposta la partenza.
+    trips.replace([sent.copyWith(departureDateTime: DateTime(2030, 1, 20))]);
+    service.pending.complete(_result());
+    await settle();
+
+    final saved = trips.updated.single;
+    expect(saved.aiResult?.tripShape, AiTripShape.of(sent));
+    expect(suitcaseOutdated(saved, now: DateTime(2029)), isTrue);
   });
 
   test('regenerate_on_deleted_trip_is_discarded', () async {

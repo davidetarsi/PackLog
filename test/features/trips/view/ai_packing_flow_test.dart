@@ -372,17 +372,13 @@ void main() {
     ).thenAnswer((_) async => luggages);
   }
 
-  /// Apre la pagina ospite, che lancia da sola `startAiPacking` (come il tocco
-  /// su "Rigenera"): dalla pagina "trips" (tocco su "apri"), oppure subito se
-  /// [direct] o [fromNew]; con [fromDetail] si parte dal dettaglio finto
-  /// ("Dettaglio viaggio") che la apre con "apri". [openAi] non cambia nulla:
-  /// resta perché i test dicono cosa vogliono aprire.
-  Future<void> pumpPack(
+  /// Monta l'app con la pagina ospite `_AiHost`, che lancia da sola
+  /// `startAiPacking` (come il tocco su "Rigenera"). Parte dalla pagina ospite;
+  /// con [fromDetail] parte dal dettaglio finto ("Dettaglio viaggio"), che la
+  /// apre con "apri".
+  Future<void> pumpAiHost(
     WidgetTester tester, {
-    bool direct = false,
-    bool fromNew = false,
     bool fromDetail = false,
-    bool openAi = false,
   }) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -390,25 +386,10 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     final router = GoRouter(
-      initialLocation: fromNew
-          ? '/trips/trip-1/edit-items'
-          : fromDetail
+      initialLocation: fromDetail
           ? '/trips/trip-1'
-          : direct
-          ? '/trips/trip-1/edit-items'
-          : '/trips',
+          : '/trips/trip-1/edit-items',
       routes: [
-        GoRoute(
-          path: '/trips',
-          builder: (context, state) => Scaffold(
-            body: Center(
-              child: ElevatedButton(
-                onPressed: () => context.push('/trips/trip-1/edit-items'),
-                child: const Text('apri'),
-              ),
-            ),
-          ),
-        ),
         GoRoute(
           path: '/trips/:id',
           builder: (context, state) => Scaffold(
@@ -481,7 +462,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    if (!direct && !fromNew) {
+    if (fromDetail) {
       await tester.tap(find.text('apri'));
       await tester.pumpAndSettle();
     }
@@ -533,7 +514,7 @@ void main() {
   group('valigia AI: Rigenera apre il foglio sopra la pagina', () {
     testWidgets('con la valigia piena chiede se sostituirla', (tester) async {
       arrange(trip: _viaggioAi(), items: _houseItems);
-      await pumpPack(tester, openAi: true);
+      await pumpAiHost(tester);
 
       expect(find.text('Vuoi sostituire la valigia?'), findsOneWidget);
       expect(jobs, isEmpty);
@@ -543,7 +524,7 @@ void main() {
       tester,
     ) async {
       arrange(trip: _viaggioAi(), items: _houseItems);
-      await pumpPack(tester, openAi: true);
+      await pumpAiHost(tester);
 
       await tester.tap(
         find.descendant(
@@ -567,7 +548,7 @@ void main() {
           proposal: _suitcaseProposal,
         );
         arrange(trip: _viaggio(), items: _houseItems, luggages: [_zaino]);
-        await pumpPack(tester, openAi: true);
+        await pumpAiHost(tester);
 
         await tapInSheet(tester, 'Zaino blu');
         await prepareInSheet(tester);
@@ -592,7 +573,7 @@ void main() {
       tester,
     ) async {
       arrange(trip: _viaggio(), items: _houseItems);
-      await pumpPack(tester, openAi: true);
+      await pumpAiHost(tester);
 
       expect(find.text('Vuoi sostituire la valigia?'), findsNothing);
       expect(find.text('Valigia con AI'), findsOneWidget);
@@ -612,7 +593,7 @@ void main() {
           ),
           items: _houseItems,
         );
-        await pumpPack(tester, openAi: true);
+        await pumpAiHost(tester);
 
         expect(
           find.text(
@@ -627,7 +608,7 @@ void main() {
     );
   });
 
-  /// Con il foglio aperto (`openAi`), lo chiude con "Prepara la valigia" e
+  /// Con il foglio aperto, lo chiude con "Prepara la valigia" e
   /// torna dalla pagina finta con [aiOutcome].
   Future<void> generate(WidgetTester tester) async {
     await prepareInSheet(tester);
@@ -644,7 +625,7 @@ void main() {
           proposal: _suitcaseProposal,
         );
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester, openAi: true);
+        await pumpAiHost(tester);
         final container = ProviderScope.containerOf(
           tester.element(find.byType(_AiHost)),
         );
@@ -679,7 +660,7 @@ void main() {
           proposal: _suitcaseProposal,
         );
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester, openAi: true);
+        await pumpAiHost(tester);
         final container = ProviderScope.containerOf(
           tester.element(find.byType(_AiHost)),
         );
@@ -704,7 +685,7 @@ void main() {
           proposal: [..._suitcaseProposal, _packed('i-fantasma')],
         );
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester, openAi: true);
+        await pumpAiHost(tester);
         await generate(tester);
 
         expect(tester.takeException(), isNull);
@@ -736,7 +717,7 @@ void main() {
           ],
         );
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester, openAi: true);
+        await pumpAiHost(tester);
         await generate(tester);
 
         final saved = {
@@ -779,7 +760,7 @@ void main() {
       (tester) async {
         aiOutcome = withSlots([slot('s1', 'giacca')]);
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester, fromNew: true);
+        await pumpAiHost(tester);
 
         await prepareInSheet(tester);
         await tester.pumpAndSettle();
@@ -794,7 +775,7 @@ void main() {
     );
 
     testWidgets(
-      'rigenerando da "Modifica valigia" si torna al dettaglio e il "da comprare" resta',
+      'rigenerando una valigia con posti si torna al dettaglio e il "da comprare" resta',
       (tester) async {
         aiOutcome = withSlots([slot('n1', 'giacca'), slot('n2', 'sciarpa')]);
         arrange(
@@ -804,7 +785,7 @@ void main() {
           ),
           items: _houseItems,
         );
-        await pumpPack(tester, fromDetail: true, openAi: true);
+        await pumpAiHost(tester, fromDetail: true);
         expect(find.text('Dettaglio viaggio'), findsNothing);
 
         await tapText(tester, 'Sostituisci');
@@ -830,7 +811,7 @@ void main() {
         onboardingRepo.step = step;
         aiOutcome = withSlots([slot('s1', 'giacca')]);
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester, fromNew: true);
+        await pumpAiHost(tester);
 
         await prepareInSheet(tester);
         await tester.pumpAndSettle();
@@ -845,7 +826,7 @@ void main() {
     ) async {
       aiOutcome = withSlots([slot('s1', 'giacca')]);
       arrange(trip: _viaggio(), items: _houseItems);
-      await pumpPack(tester, fromNew: true);
+      await pumpAiHost(tester);
       expect(onboardingRepo.step, OnboardingStep.firstTrip);
 
       await prepareInSheet(tester);
@@ -874,7 +855,7 @@ void main() {
           slot('s3', 'magliette', level: AiSlotLevel.useful),
         ]);
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester, fromNew: true);
+        await pumpAiHost(tester);
 
         await prepareInSheet(tester);
         await tester.pumpAndSettle();
@@ -901,7 +882,7 @@ void main() {
         onboardingRepo.step = OnboardingStep.done;
         aiOutcome = withSlots([slot('s1', 'giacca')]);
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester, fromNew: true);
+        await pumpAiHost(tester);
 
         await prepareInSheet(tester);
         await tester.pumpAndSettle();
@@ -923,7 +904,7 @@ void main() {
         SharedPreferences.setMockInitialValues({'first_suitcase_logged': true});
         aiOutcome = withSlots([slot('s1', 'giacca')]);
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester, fromNew: true);
+        await pumpAiHost(tester);
 
         await prepareInSheet(tester);
         await tester.pumpAndSettle();
@@ -945,7 +926,7 @@ void main() {
           ),
           items: _houseItems,
         );
-        await pumpPack(tester, fromDetail: true, openAi: true);
+        await pumpAiHost(tester, fromDetail: true);
 
         for (var i = 0; i < 2; i++) {
           await tapText(tester, 'Sostituisci');
@@ -968,7 +949,7 @@ void main() {
       testWidgets('un salvataggio fallito non lo emette', (tester) async {
         aiOutcome = withSlots([slot('s1', 'giacca')]);
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester, fromNew: true);
+        await pumpAiHost(tester);
 
         when(() => tripRepo.updateTrip(any())).thenThrow(Exception('offline'));
         await prepareInSheet(tester);
@@ -988,7 +969,7 @@ void main() {
     ) async {
       aiOutcome = withSlots([slot('s1', 'giacca')]);
       arrange(trip: _viaggio(), items: _houseItems);
-      await pumpPack(tester, fromNew: true);
+      await pumpAiHost(tester);
 
       when(() => tripRepo.updateTrip(any())).thenThrow(Exception('offline'));
       await prepareInSheet(tester);
@@ -1006,7 +987,7 @@ void main() {
         proposal: _suitcaseProposal,
       );
       arrange(trip: _viaggio(), items: _houseItems);
-      await pumpPack(tester, fromNew: true);
+      await pumpAiHost(tester);
       await prepareInSheet(tester);
       await tester.pumpAndSettle();
 
@@ -1048,7 +1029,7 @@ void main() {
     );
 
     Future<void> generate(WidgetTester tester) async {
-      await pumpPack(tester, direct: true);
+      await pumpAiHost(tester);
       await prepareInSheet(tester);
       await tester.pumpAndSettle();
     }

@@ -5,6 +5,7 @@ import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/trip_leg.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/services/suitcase_outdated.dart';
+import 'package:pack_log/shared/model/location_suggestion_model.dart';
 
 final _now = DateTime(2026, 11, 8);
 final _departure = DateTime(2026, 12, 1, 8);
@@ -97,6 +98,39 @@ void main() {
     final base = _saved();
     final trip = base.copyWith(departureDateTime: null, transports: ['aereo']);
     expect(suitcaseOutdated(trip, now: DateTime(2030)), isTrue);
+  });
+
+  test('outdated_when_destination_changes', () {
+    final base = _saved().copyWith(
+      destinationLocation: LocationSuggestionModel(
+        placeId: 'p1',
+        displayName: 'Oslo, Norvegia',
+        city: 'Oslo',
+        country: 'Norvegia',
+      ),
+    );
+    final withShape = base.copyWith(aiResult: _resultFor(base));
+    expect(suitcaseOutdated(withShape, now: _now), isFalse);
+    final moved = withShape.copyWith(
+      destinationLocation: LocationSuggestionModel(
+        placeId: 'p2',
+        displayName: 'Bergen, Norvegia',
+        city: 'Bergen',
+        country: 'Norvegia',
+      ),
+    );
+    expect(suitcaseOutdated(moved, now: _now), isTrue);
+  });
+
+  test('old_json_without_new_fields_reads_and_is_not_outdated', () {
+    final old = AiPackingResult.fromJson({
+      'generatedAt': DateTime(2026, 10).toUtc().toIso8601String(),
+      'houseId': 'h1',
+    });
+    expect(old.tripShape, isNull);
+    expect(old.changeNoticeDismissed, isFalse);
+    final trip = _saved().copyWith(aiResult: old, transports: ['aereo']);
+    expect(suitcaseOutdated(trip, now: _now), isFalse);
   });
 
   test('json_round_trip_keeps_shape', () {
