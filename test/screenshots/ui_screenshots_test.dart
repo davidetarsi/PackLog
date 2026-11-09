@@ -362,6 +362,15 @@ Future<void> _openAiSheet(ScreenshotApp app, String tripId) async {
   await app.tap(_text('trips.pack.ai.replace_confirm'));
 }
 
+/// Seed completo con la valigia a posti su [tripId]: senza posti il menu del
+/// dettaglio non offre "Rigenera".
+AppSetup _rigeneraSetup(String tripId) => AppSetup(
+  seedWith: (c) async {
+    await seed(c, SeedLevel.full);
+    await seedRigenera(c, tripId);
+  },
+);
+
 // ── Flussi ───────────────────────────────────────────────────────────────────
 
 const _houses = 'lib/features/houses/view/houses_screen.dart';
@@ -1633,10 +1642,14 @@ final flows = <Flow>[
       'default',
       route: '/trips/:id/edit-info',
       source: 'lib/features/trips/view/edit_trip_info_screen.dart',
-      description: 'Modifica nome, destinazione, date e tappe.',
+      description:
+          'Modifica viaggio con due tappe (Lisbona e Sintra): "Quando?" '
+          'mostra le date di tutto il viaggio, dalla partenza alla fine '
+          'dell\'ultima tappa, con le notti totali.',
       steps: (app) async {
         await _tripDetail(app);
         await app.tap(find.byKey(const Key('trip_detail_summary')));
+        expect(find.text('5 notti'), findsOneWidget);
       },
     ),
     Scenario(
@@ -2160,6 +2173,27 @@ final flows = <Flow>[
         expect(app.issues, isEmpty, reason: 'overflow nelle card importanti');
       },
     ),
+    Scenario(
+      28,
+      'dettaglio-viaggio',
+      'viaggio-cambiato',
+      route: '/trips/:id',
+      source: 'lib/features/trips/view/widgets/trip_changed_notice.dart',
+      description:
+          'Valigia AI fatta per un viaggio che finiva un giorno prima: in '
+          'cima compare "Hai cambiato il viaggio" con "Rifai la valigia".',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+          await seedRigenera(c, kSeoulTripId, changed: true);
+        },
+      ),
+      steps: (app) async {
+        await _tripDetail(app, kSeoulTripId);
+        expect(find.byKey(const Key('trip_changed_notice')), findsOneWidget);
+      },
+    ),
   ]),
   Flow('10-profilo', 'Tab Profilo: impostazioni e account', [
     Scenario(
@@ -2396,6 +2430,7 @@ final flows = <Flow>[
       description:
           'Il foglio di un viaggio con una tappa: casa, bagaglio, attività '
           'e alloggio, senza stepper.',
+      setup: _rigeneraSetup(kSavedTripId),
       steps: (app) => _openAiSheet(app, kSavedTripId),
     ),
     Scenario(
@@ -2405,6 +2440,7 @@ final flows = <Flow>[
       source: _aiSheetSrc,
       description:
           'Il foglio con due tappe: avanzamento in alto e meteo della tappa.',
+      setup: _rigeneraSetup(kUpcomingTripId),
       steps: (app) => _openAiSheet(app, kUpcomingTripId),
     ),
     Scenario(
@@ -2415,6 +2451,7 @@ final flows = <Flow>[
       description:
           'Prepara la valigia con una tappa ancora da compilare: l\'avviso '
           'dice quale, e chiede se la compili ora.',
+      setup: _rigeneraSetup(kUpcomingTripId),
       steps: (app) async {
         await _openAiSheet(app, kUpcomingTripId);
         await _tapShown(app, find.text(etichettaDi('activity', 'city')));
