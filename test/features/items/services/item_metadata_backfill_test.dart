@@ -18,10 +18,15 @@ class FakeItemMetadataService extends ItemMetadataService {
 
   int answers;
   final names = <String>[];
+  final sources = <String>{};
 
   @override
-  Future<ItemMetadataResult?> fromName(String name) async {
+  Future<ItemMetadataResult?> fromName(
+    String name, {
+    String source = ItemMetadataService.sourceManual,
+  }) async {
     names.add(name);
+    sources.add(source);
     if (answers-- <= 0) return null;
     return ItemMetadataResult(
       metadata: {'name': name},
@@ -86,6 +91,8 @@ void main() {
     final houses = await backfill(service).run();
 
     expect(service.names, ['capo 1', 'capo 2']);
+    // Il tetto toccato da qui non è un'aggiunta a mano dell'utente.
+    expect(service.sources, {'backfill'});
     expect(houses, {'h1', 'h2'});
     expect(jsonDecode(db['item-1']!.aiMetadata!), {'name': 'capo 1'});
     expect(db['item-1']!.category, ItemCategory.varie);

@@ -684,6 +684,17 @@ void main() {
       ).called(1);
     });
 
+    test('trackAiLimitReached con la fonte', () async {
+      service.trackAiLimitReached(feature: 'item_name', source: 'backfill');
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'ai_limit_reached',
+          properties: {'feature': 'item_name', 'source': 'backfill'},
+        ),
+      ).called(1);
+    });
+
     test('trackPromoCodeRedeemed senza crediti', () async {
       service.trackPromoCodeRedeemed(outcome: 'expired');
       await pump();

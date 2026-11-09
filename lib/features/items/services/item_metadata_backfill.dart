@@ -92,7 +92,10 @@ class ItemMetadataBackfill {
     final houses = <String>{};
     for (final item in pending) {
       if (done >= kItemMetadataBackfillDailyLimit) break;
-      final scheda = await _service.fromName(item.name);
+      final scheda = await _service.fromName(
+        item.name,
+        source: ItemMetadataService.sourceBackfill,
+      );
       if (scheda == null) break;
       done++;
       await prefs.setString(_dayKey, today);

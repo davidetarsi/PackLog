@@ -391,9 +391,14 @@ class CoreAnalyticsService {
   }
 
   /// Tetto AI finito (risposta 429). `feature`: `suitcase`, `scan`,
-  /// `weather`, `item_name`.
-  void trackAiLimitReached({required String feature}) {
-    _safeLogEvent('ai_limit_reached', properties: {'feature': feature});
+  /// `weather`, `item_name`. `source` (solo per `item_name`): `manual` se
+  /// l'ha toccato un'aggiunta dell'utente, `backfill` se il recupero in
+  /// background delle schede.
+  void trackAiLimitReached({required String feature, String? source}) {
+    _safeLogEvent(
+      'ai_limit_reached',
+      properties: {'feature': feature, 'source': ?source},
+    );
   }
 
   /// Una scansione salvata. `count` i capi scritti; gli altri conteggi dicono
