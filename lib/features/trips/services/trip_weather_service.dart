@@ -27,6 +27,12 @@ class TripWeatherException implements Exception {
   String toString() => 'TripWeatherException: $message';
 }
 
+/// La richiesta non è arrivata alla funzione (rete assente, tempo scaduto):
+/// non è un guasto e non va in Sentry.
+class TripWeatherNetworkException extends TripWeatherException {
+  const TripWeatherNetworkException(super.message);
+}
+
 /// Il meteo di un viaggio dalla funzione `trip-weather`.
 class TripWeatherService {
   /// Chiede il meteo di [request]. Solleva [TripWeatherCapException] con il
@@ -48,7 +54,7 @@ class TripWeatherService {
         body: jsonEncode(request.toJson()),
       );
     } catch (e) {
-      throw TripWeatherException('rete: $e');
+      throw TripWeatherNetworkException('rete: $e');
     }
 
     if (response.statusCode == 429) throw const TripWeatherCapException();

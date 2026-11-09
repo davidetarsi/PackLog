@@ -254,6 +254,12 @@ class StoreData {
           11.2558,
         ),
         luggages: [backpack],
+        // Valigia a posti ancora vuota: dà "Rigenera" nel menu del dettaglio.
+        aiResult: AiPackingResult(
+          generatedAt: _stamp,
+          houseId: homeId,
+          slots: const [],
+        ),
         createdAt: _stamp,
         updatedAt: _stamp,
       ),

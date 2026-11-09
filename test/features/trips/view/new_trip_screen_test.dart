@@ -19,11 +19,22 @@ import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/houses/providers/house_provider.dart';
 import 'package:pack_log/features/houses/repositories/house_repository.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
+import 'package:pack_log/features/items/services/category_infer_service.dart';
+import 'package:pack_log/features/kits/model/kit_model.dart';
+import 'package:pack_log/features/kits/providers/kit_provider.dart';
+import 'package:pack_log/features/luggages/repositories/luggage_repository.dart';
+import 'package:pack_log/features/trips/model/ai_packing.dart';
+import 'package:pack_log/features/trips/model/ai_packing_request.dart';
+import 'package:pack_log/features/trips/model/trip_leg.dart';
+import 'package:pack_log/features/trips/services/suitcase_outdated.dart';
+import 'package:pack_log/features/trips/model/pack_trip_job.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
+import 'package:pack_log/features/trips/providers/ai_packing_run_provider.dart';
 import 'package:pack_log/features/trips/providers/trip_provider.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/services/trip_lifecycle_service.dart';
 import 'package:pack_log/features/trips/view/new_trip_screen.dart';
+import 'package:pack_log/features/trips/view/widgets/postcard/trip_itinerary_view.dart';
 import 'package:pack_log/features/trips/view/widgets/place_search.dart';
 import 'package:pack_log/features/trips/view/widgets/trip_calendar.dart';
 import 'package:pack_log/shared/model/location_suggestion_model.dart';
@@ -31,7 +42,8 @@ import 'package:pack_log/shared/model/location_type.dart';
 import 'package:pack_log/shared/services/location_search_service.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
-import 'package:pack_log/shared/widgets/ds_link_button.dart';
+import 'package:pack_log/shared/widgets/ds_choice_pill.dart';
+import 'package:pack_log/shared/widgets/ds_form_sheet.dart';
 
 import '../../../helpers/catalogo_di_prova.dart';
 import '../../../helpers/memory_asset_loader.dart';
@@ -42,8 +54,6 @@ class MockHouseRepository extends Mock implements HouseRepository {}
 
 class MockItemRepository extends Mock implements ItemRepository {}
 
-class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
-
 class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 
 class MockRawAnalytics extends Mock implements AppAnalyticsService {}
@@ -51,6 +61,33 @@ class MockRawAnalytics extends Mock implements AppAnalyticsService {}
 class MockTripLifecycleService extends Mock implements TripLifecycleService {}
 
 class MockLocationSearchService extends Mock implements LocationSearchService {}
+
+class _MockLuggageRepository extends Mock implements LuggageRepository {}
+
+/// Il lavoro AI finto: registra le richieste e resta in corso.
+class _FakeRun extends AiPackingRun {
+  final requests = <AiPackingRequest>[];
+
+  /// `start` solleva: il lancio dell'AI fallisce.
+  bool failStart = false;
+
+  @override
+  AiPackingRunState build() => const AiRunIdle();
+
+  @override
+  bool start(AiPackingRequest request) {
+    if (failStart) throw StateError('start fallito');
+    if (state is AiRunRunning) return false;
+    requests.add(request);
+    state = AiRunRunning(request);
+    return true;
+  }
+}
+
+class _Kits extends KitNotifier {
+  @override
+  Future<List<KitModel>> build(String houseId) async => const [];
+}
 
 /// Onboarding in memoria: il passo salvato si legge dopo il test.
 class _MemoryOnboardingRepository implements IOnboardingRepository {
@@ -78,6 +115,7 @@ final _houses = [
   HouseModel(
     id: 'h1',
     name: 'Casa Milano',
+    isPrimary: true,
     createdAt: DateTime(2026),
     updatedAt: DateTime(2026),
   ),
@@ -102,6 +140,8 @@ final _places = [
     name: 'Marsiglia',
     city: 'Marsiglia',
     country: 'Francia',
+    lat: 43.3,
+    lon: 5.4,
     locationType: LocationType.city,
   ),
 ];
@@ -154,6 +194,26 @@ Future<void> _pickHouse(WidgetTester tester, String id) async {
   await tester.pumpAndSettle();
 }
 
+String _dayLabel(DateTime day) => DateFormat('EEE d MMM', 'it_IT').format(day);
+
+/// Il testo del campo "Quando?" (data di partenza – ritorno).
+String _datesText(WidgetTester tester) => tester
+    .widget<Text>(
+      find
+          .descendant(
+            of: find.byKey(const Key('new_trip_dates')),
+            matching: find.byType(Text),
+          )
+          .first,
+    )
+    .data!;
+
+/// Il testo di una riga dell'itinerario (non il campo "Dove vai?").
+Finder _itineraryRow(String text) => find.descendant(
+  of: find.byType(TripItineraryView),
+  matching: find.text(text),
+);
+
 DateTime _day(int day) => DateTime(_nextMonth.year, _nextMonth.month, day);
 
 /// Il campo place della tappa aperta nel foglio.
@@ -184,15 +244,10 @@ Future<void> _addStop(
   await tester.pumpAndSettle();
 }
 
-/// Cambia la fine della meta: il foglio ha il range completo, quindi il primo
-/// tocco riparte dalla partenza e il secondo sceglie il ritorno.
-Future<void> _moveDestinationEnd(WidgetTester tester, DateTime end) async {
+/// Apre il foglio "Quando?" dal campo, portandolo in vista.
+Future<void> _openDates(WidgetTester tester) async {
   await tester.ensureVisible(find.byKey(const Key('new_trip_dates')));
   await tester.tap(find.byKey(const Key('new_trip_dates')));
-  await tester.pumpAndSettle();
-  await _tapDay(tester, _departure);
-  await _tapDay(tester, end);
-  await tester.tap(find.text('Conferma date'));
   await tester.pumpAndSettle();
 }
 
@@ -206,13 +261,32 @@ Future<void> _pickDates(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-/// Vero se la decorazione dipinge con [color] (sfondo o bordo).
-bool _decorationUsesColor(Decoration decoration, Color color) {
-  if (decoration is! BoxDecoration) return false;
-  final border = decoration.border;
-  return decoration.color == color ||
-      (border is Border && border.top.color == color);
-}
+/// Un viaggio della vecchia schermata: partenza e ritorno con l'ora, meta casa
+/// salvata col nome che la casa aveva allora.
+TripModel _legacyTrip() => TripModel(
+  id: 'trip-1',
+  name: 'Milano',
+  departureDateTime: DateTime(2026, 9, 12, 8, 30),
+  returnDateTime: DateTime(2026, 9, 20, 18, 45),
+  destinationHouseId: 'h1',
+  destinationLocation: LocationSuggestionModel(
+    placeId: 'house_h1',
+    displayName: 'Casa vecchio nome',
+    city: 'Casa vecchio nome',
+  ),
+  legs: [
+    TripLeg(
+      id: 'l1',
+      locationDisplayName: 'Casa al mare',
+      houseId: 'h2',
+      from: DateTime(2026, 9, 15, 10),
+      to: DateTime(2026, 9, 20, 18, 45),
+    ),
+  ],
+  transports: const ['car'],
+  createdAt: DateTime(2026),
+  updatedAt: DateTime(2026),
+);
 
 void main() {
   late MockTripRepository tripRepo;
@@ -222,6 +296,7 @@ void main() {
   late ProviderContainer container;
   late _MemoryOnboardingRepository onboardingRepo;
   late MockRawAnalytics rawAnalytics;
+  late _FakeRun run;
 
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
@@ -258,6 +333,15 @@ void main() {
     ).thenAnswer((_) async => <String>{});
     when(() => lifecycle.computeNextStatusChange(any())).thenReturn(null);
 
+    run = _FakeRun();
+    final itemRepo = MockItemRepository();
+    when(() => itemRepo.getItemsByHouseId(any())).thenAnswer((_) async => []);
+    final luggageRepo = _MockLuggageRepository();
+    when(() => luggageRepo.getAllLuggages()).thenAnswer((_) async => []);
+    when(
+      () => luggageRepo.getLuggagesByHouseId(any()),
+    ).thenAnswer((_) async => []);
+
     final sync = MockSyncOrchestrator();
     when(() => sync.requestSync()).thenReturn(null);
 
@@ -265,9 +349,16 @@ void main() {
       overrides: [
         tripRepositoryProvider.overrideWithValue(tripRepo),
         houseRepositoryProvider.overrideWithValue(houseRepo),
-        itemRepositoryProvider.overrideWithValue(MockItemRepository()),
+        itemRepositoryProvider.overrideWithValue(itemRepo),
+        luggageRepositoryProvider.overrideWithValue(luggageRepo),
+        categoryInferServiceProvider.overrideWith(
+          (ref) => Completer<CategoryInferService>().future,
+        ),
+        aiPackingRunProvider.overrideWith(() => run),
+        for (final id in ['h1', 'h2', 'h3'])
+          kitNotifierProvider(id).overrideWith(_Kits.new),
         coreAnalyticsServiceProvider.overrideWithValue(
-          MockCoreAnalyticsService(),
+          CoreAnalyticsService(rawAnalytics),
         ),
         syncOrchestratorProvider.overrideWithValue(sync),
         tripLifecycleServiceProvider.overrideWithValue(lifecycle),
@@ -322,16 +413,18 @@ void main() {
                   'edit-items ${state.pathParameters['id']} '
                   'from=${state.uri.queryParameters['from']}',
                 ),
-                Text('ai=${state.uri.queryParameters['ai'] ?? 'none'}'),
-                Text('first=${state.uri.queryParameters['first'] ?? 'none'}'),
               ],
             ),
           ),
         ),
         GoRoute(
+          path: '/ai-packing',
+          builder: (_, _) =>
+              Scaffold(appBar: AppBar(), body: const Text('ai-wait')),
+        ),
+        GoRoute(
           path: '/new-trip',
           builder: (_, state) => NewTripScreen(
-            aiIntent: state.uri.queryParameters['ai'] == '1',
             firstRun: state.uri.queryParameters['first'] == '1',
           ),
         ),
@@ -392,332 +485,105 @@ void main() {
       // Come negli altri form con CTA in fondo (StickyCtaScaffold): la
       // tastiera copre i bottoni invece di spingerli sopra di sé.
       await pumpScreen(tester);
-      final before = tester.getTopLeft(find.byKey(const Key('new_trip_next')));
+      final before = tester.getTopLeft(
+        find.byKey(const Key('new_trip_choose_items')),
+      );
 
       tester.view.viewInsets = const FakeViewPadding(bottom: 300);
       addTearDown(tester.view.resetViewInsets);
       await tester.pumpAndSettle();
 
-      final after = tester.getTopLeft(find.byKey(const Key('new_trip_next')));
+      final after = tester.getTopLeft(
+        find.byKey(const Key('new_trip_choose_items')),
+      );
       expect(after.dy, before.dy);
     });
   });
 
-  group('NewTripScreen — valigia con AI', () {
-    testWidgets('nel passo 1 "Prepara con AI" è il primario in alto, '
-        '"Avanti" un contorno neutro sotto', (tester) async {
+  group('NewTripScreen — passo 1 con due strade', () {
+    Future<void> pickPlace(WidgetTester tester) async {
+      await tester.tap(_placeField);
+      await tester.pump();
+      await tester.enterText(_placeField, 'Mar');
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('location_result_0')));
+      await tester.pumpAndSettle();
+    }
+
+    /// Conferma il foglio "Valigia con AI" con le risposte di base.
+    Future<void> confirmSheet(WidgetTester tester) async {
+      for (final label in ['Città e musei', 'Hotel']) {
+        final pill = find.descendant(
+          of: find.byType(DsFormSheet),
+          matching: find.widgetWithText(DsChoicePill, label),
+        );
+        if (pill.evaluate().isNotEmpty &&
+            !tester.widget<DsChoicePill>(pill).selected) {
+          final text = find.descendant(
+            of: find.byType(DsFormSheet),
+            matching: find.text(label),
+          );
+          await tester.ensureVisible(text);
+          await tester.pumpAndSettle();
+          await tester.tap(text);
+          await tester.pumpAndSettle();
+        }
+      }
+      final prepare = find.descendant(
+        of: find.byType(DsFormSheet),
+        matching: find.text('Prepara la valigia'),
+      );
+      await tester.ensureVisible(prepare);
+      await tester.pumpAndSettle();
+      await tester.tap(prepare);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> fillStep(WidgetTester tester) async {
+      caricaCatalogoDelRepo();
+      await pickPlace(tester);
+      await _pickDates(tester);
+    }
+
+    DsButton button(WidgetTester tester, String key) =>
+        tester.widget<DsButton>(find.byKey(Key(key)));
+
+    testWidgets('two_buttons_only', (tester) async {
       await pumpScreen(tester);
 
       final ai = find.byKey(const Key('new_trip_prepare_ai'));
-      final next = find.byKey(const Key('new_trip_next'));
-      final scheme = Theme.of(tester.element(ai)).colorScheme;
-      expect(tester.widget<DsButton>(ai).variant, DsButtonVariant.primary);
-      expect(tester.widget<DsButton>(next).variant, DsButtonVariant.neutral);
-      final container = tester.widget<Container>(
-        find.descendant(of: next, matching: find.byType(Container)).first,
+      final choose = find.byKey(const Key('new_trip_choose_items'));
+      expect(ai, findsOneWidget);
+      expect(choose, findsOneWidget);
+      expect(find.text('Prepara la valigia con AI'), findsOneWidget);
+      expect(find.text('Scegli tu cosa portare'), findsOneWidget);
+      expect(
+        button(tester, 'new_trip_prepare_ai').variant,
+        DsButtonVariant.primary,
       );
-      final border = (container.decoration! as BoxDecoration).border! as Border;
-      expect(border.top.color, scheme.outline);
+      expect(
+        button(tester, 'new_trip_choose_items').variant,
+        DsButtonVariant.secondary,
+      );
       expect(
         find.descendant(of: ai, matching: find.byIcon(Icons.auto_awesome)),
         findsOneWidget,
       );
-      expect(tester.getSize(ai).height, tester.getSize(next).height);
-      double y(String key) => tester.getTopLeft(find.byKey(Key(key))).dy;
-      expect(y('new_trip_prepare_ai'), lessThan(y('new_trip_next')));
-      expect(y('new_trip_next'), lessThan(y('new_trip_later')));
-    });
-
-    testWidgets('a modulo vuoto bottoni e link sono spenti, poi si accendono', (
-      tester,
-    ) async {
-      await pumpScreen(tester);
-      expect(
-        tester
-            .widget<DsButton>(find.byKey(const Key('new_trip_prepare_ai')))
-            .onPressed,
-        isNull,
-      );
-      expect(
-        tester
-            .widget<DsButton>(find.byKey(const Key('new_trip_next')))
-            .onPressed,
-        isNull,
-      );
-      expect(
-        tester
-            .widget<DsLinkButton>(find.byKey(const Key('new_trip_later')))
-            .onPressed,
-        isNull,
-      );
-
-      await _pickHouse(tester, 'h1');
-      await _pickDates(tester);
-      expect(
-        tester
-            .widget<DsButton>(find.byKey(const Key('new_trip_prepare_ai')))
-            .onPressed,
-        isNotNull,
-      );
-      expect(
-        tester
-            .widget<DsLinkButton>(find.byKey(const Key('new_trip_later')))
-            .onPressed,
-        isNotNull,
-      );
-    });
-
-    testWidgets('"Dove vai?" e "Quando?" hanno l\'asterisco, il nome no', (
-      tester,
-    ) async {
-      await pumpScreen(tester);
-      expect(find.text('Dove vai? *'), findsOneWidget);
-      expect(find.text('Quando? *'), findsOneWidget);
-      expect(find.textContaining('Nome del viaggio *'), findsNothing);
-    });
-
-    testWidgets('nel passo 1 solo "Prepara con AI" usa il colore primario', (
-      tester,
-    ) async {
-      await pumpScreen(tester);
-
-      final ai = find.byKey(const Key('new_trip_prepare_ai'));
-      final primary = Theme.of(tester.element(ai)).colorScheme.primary;
-      // Tutto ciò che sta dentro "Prepara con AI" è suo: il resto no.
-      final avanti = find
-          .descendant(of: ai, matching: find.byWidgetPredicate((_) => true))
-          .evaluate()
-          .followedBy(ai.evaluate())
-          .toSet();
-
-      bool usesPrimary(Widget w) {
-        if (w is DsButton) return w.variant == DsButtonVariant.primary;
-        if (w is Text) return w.style?.color == primary;
-        if (w is Icon) return w.color == primary;
-        if (w is Material) return w.color == primary;
-        if (w is ButtonStyleButton) {
-          return w.style?.foregroundColor?.resolve({}) == primary ||
-              w.style?.side?.resolve({})?.color == primary;
-        }
-        if (w is DecoratedBox) {
-          return _decorationUsesColor(w.decoration, primary);
-        }
-        if (w is Container) {
-          return w.color == primary ||
-              (w.decoration != null &&
-                  _decorationUsesColor(w.decoration!, primary));
-        }
-        return false;
+      expect(tester.getSize(ai).height, tester.getSize(choose).height);
+      expect(tester.getTopLeft(ai).dy, lessThan(tester.getTopLeft(choose).dy));
+      for (final gone in [
+        'new_trip_next',
+        'new_trip_later',
+        'new_trip_manual',
+      ]) {
+        expect(find.byKey(Key(gone)), findsNothing);
       }
-
-      final others = find
-          .byWidgetPredicate(usesPrimary)
-          .evaluate()
-          .where((e) => !avanti.contains(e))
-          .map((e) => e.widget.runtimeType.toString())
-          .toList();
-      expect(others, isEmpty);
+      expect(find.text('Prepara la valigia più tardi'), findsNothing);
+      expect(find.text('Prepara a mano'), findsNothing);
     });
 
-    testWidgets('doppio tocco su "Prepara con AI" salva una sola volta', (
-      tester,
-    ) async {
-      final saving = Completer<void>();
-      when(() => tripRepo.addTrip(any())).thenAnswer((_) => saving.future);
-      await pumpScreen(tester);
-      await _pickHouse(tester, 'h1');
-      await _pickDates(tester);
-
-      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
-      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
-      await tester.pump();
-      saving.complete();
-      await tester.pumpAndSettle();
-
-      // Una sola chiamata: `verify` la consuma, quindi la si legge da lì.
-      final trip =
-          verify(() => tripRepo.addTrip(captureAny())).captured.single
-              as TripModel;
-      expect(find.text('edit-items ${trip.id} from=new'), findsOneWidget);
-      expect(find.text('ai=1'), findsOneWidget);
-    });
-
-    testWidgets('"Prepara con AI" salva e apre la valigia con ai=1', (
-      tester,
-    ) async {
-      await pumpScreen(tester);
-      await _pickHouse(tester, 'h1');
-      await _pickDates(tester);
-
-      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
-      await tester.pumpAndSettle();
-
-      final trip = savedTrip();
-      expect(trip.destinationHouseId, 'h1');
-      expect(find.text('edit-items ${trip.id} from=new'), findsOneWidget);
-      expect(find.text('ai=1'), findsOneWidget);
-    });
-
-    testWidgets('"Prepara con AI" a modulo vuoto mostra gli errori', (
-      tester,
-    ) async {
-      await pumpScreen(tester);
-
-      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
-      await tester.pumpAndSettle();
-
-      expect(
-        find.text('Scegli dove vai: serve anche per il meteo.'),
-        findsOneWidget,
-      );
-      verifyNever(() => tripRepo.addTrip(any()));
-    });
-
-    testWidgets('con ai=1 il primario è "Prepara con AI", c\'è il link '
-        '"Prepara a mano" e non "Avanti"', (tester) async {
-      await pumpScreen(tester, open: '/new-trip?ai=1');
-
-      expect(find.byKey(const Key('new_trip_next')), findsNothing);
-      expect(find.text('Avanti: prepara la valigia'), findsNothing);
-      expect(
-        tester
-            .widget<DsButton>(find.byKey(const Key('new_trip_prepare_ai')))
-            .variant,
-        DsButtonVariant.primary,
-      );
-      expect(find.text('Prepara a mano'), findsOneWidget);
-      double y(String key) => tester.getTopLeft(find.byKey(Key(key))).dy;
-      expect(y('new_trip_prepare_ai'), lessThan(y('new_trip_manual')));
-      expect(y('new_trip_manual'), lessThan(y('new_trip_later')));
-    });
-
-    testWidgets('con ai=1, "Prepara a mano" porta al passo 2 senza AI', (
-      tester,
-    ) async {
-      await pumpScreen(tester, open: '/new-trip?ai=1');
-      await _pickHouse(tester, 'h1');
-      await _pickDates(tester);
-
-      await tester.tap(find.byKey(const Key('new_trip_manual')));
-      await tester.pumpAndSettle();
-
-      final trip = savedTrip();
-      expect(find.text('edit-items ${trip.id} from=new'), findsOneWidget);
-      expect(find.text('ai=none'), findsOneWidget);
-    });
-
-    testWidgets('firstRun: titolo "Dove vai?" e il resto è il passo 1 con AI', (
-      tester,
-    ) async {
-      await pumpScreen(tester, open: '/new-trip?ai=1&first=1');
-
-      expect(
-        find.descendant(
-          of: find.byType(AppBar),
-          matching: find.text('Dove vai?'),
-        ),
-        findsOneWidget,
-      );
-      expect(find.byKey(const Key('new_trip_first_close')), findsOneWidget);
-      expect(find.byKey(const Key('new_trip_prepare_ai')), findsOneWidget);
-      expect(find.byKey(const Key('new_trip_manual')), findsOneWidget);
-    });
-
-    testWidgets('senza firstRun non c\'è la X e il titolo è "Nuovo viaggio"', (
-      tester,
-    ) async {
-      await pumpScreen(tester, open: '/new-trip?ai=1');
-
-      expect(find.byKey(const Key('new_trip_first_close')), findsNothing);
-      expect(
-        find.descendant(
-          of: find.byType(AppBar),
-          matching: find.text('Nuovo viaggio'),
-        ),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets('firstRun: la X salva done e porta a /', (tester) async {
-      await pumpScreen(tester, open: '/new-trip?ai=1&first=1');
-      expect(onboardingRepo.step, OnboardingStep.firstTrip);
-
-      await tester.tap(find.byKey(const Key('new_trip_first_close')));
-      await tester.pumpAndSettle();
-
-      expect(onboardingRepo.step, OnboardingStep.done);
-      expect(find.text('home'), findsOneWidget);
-    });
-
-    testWidgets('firstRun: salvare il passo 1 chiude "Dove vai?" (done)', (
-      tester,
-    ) async {
-      await pumpScreen(tester, open: '/new-trip?ai=1&first=1');
-      await _pickHouse(tester, 'h1');
-      await _pickDates(tester);
-
-      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
-      await tester.pumpAndSettle();
-
-      expect(onboardingRepo.step, OnboardingStep.done);
-      expect(find.textContaining('edit-items'), findsOneWidget);
-    });
-
-    testWidgets('firstRun: first_trip_started parte una volta al salvataggio '
-        'e porta first=1 alla valigia', (tester) async {
-      await pumpScreen(tester, open: '/new-trip?ai=1&first=1');
-      await _pickHouse(tester, 'h1');
-      await _pickDates(tester);
-      verifyNever(
-        () => rawAnalytics.logEvent(
-          'first_trip_started',
-          properties: any(named: 'properties'),
-        ),
-      );
-
-      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
-      await tester.pumpAndSettle();
-
-      verify(
-        () => rawAnalytics.logEvent('first_trip_started', properties: {}),
-      ).called(1);
-      expect(find.textContaining('from=new'), findsOneWidget);
-      expect(find.text('first=1'), findsOneWidget);
-    });
-
-    testWidgets('senza firstRun first_trip_started non parte', (tester) async {
-      await pumpScreen(tester, open: '/new-trip?ai=1');
-      await _pickHouse(tester, 'h1');
-      await _pickDates(tester);
-
-      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
-      await tester.pumpAndSettle();
-
-      verifyNever(
-        () => rawAnalytics.logEvent(
-          'first_trip_started',
-          properties: any(named: 'properties'),
-        ),
-      );
-      expect(find.text('first=none'), findsOneWidget);
-    });
-
-    testWidgets('senza firstRun il salvataggio non tocca il passo', (
-      tester,
-    ) async {
-      await pumpScreen(tester, open: '/new-trip?ai=1');
-      await _pickHouse(tester, 'h1');
-      await _pickDates(tester);
-
-      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
-      await tester.pumpAndSettle();
-
-      expect(onboardingRepo.step, OnboardingStep.firstTrip);
-    });
-
-    testWidgets('in modifica di un viaggio non compaiono i bottoni AI', (
-      tester,
-    ) async {
+    testWidgets('edit_shows_save_only', (tester) async {
       final trip = TripModel(
         id: 'trip-1',
         name: 'Toscana',
@@ -737,35 +603,137 @@ void main() {
 
       expect(find.byKey(const Key('edit_trip_save')), findsOneWidget);
       expect(find.byKey(const Key('new_trip_prepare_ai')), findsNothing);
-      expect(find.byKey(const Key('new_trip_manual')), findsNothing);
+      expect(find.byKey(const Key('new_trip_choose_items')), findsNothing);
     });
-  });
 
-  group('NewTripScreen — uscita', () {
-    testWidgets('a modulo vuoto il tocco su Avanti mostra i due errori', (
+    testWidgets('a modulo vuoto i bottoni sono spenti, poi si accendono', (
       tester,
     ) async {
       await pumpScreen(tester);
+      expect(button(tester, 'new_trip_prepare_ai').onPressed, isNull);
+      expect(button(tester, 'new_trip_choose_items').onPressed, isNull);
 
-      await tester.tap(find.byKey(const Key('new_trip_next')));
-      await tester.pumpAndSettle();
-
-      expect(
-        find.text('Scegli dove vai: serve anche per il meteo.'),
-        findsOneWidget,
-      );
-      expect(find.text('Scegli andata e ritorno.'), findsOneWidget);
-      verifyNever(() => tripRepo.addTrip(any()));
+      await fillStep(tester);
+      expect(button(tester, 'new_trip_prepare_ai').onPressed, isNotNull);
+      expect(button(tester, 'new_trip_choose_items').onPressed, isNotNull);
     });
 
-    testWidgets('Avanti salva meta e date e porta a edit-items?from=new', (
+    testWidgets('"Dove vai?" e "Quando?" hanno l\'asterisco, il nome no', (
       tester,
     ) async {
+      await pumpScreen(tester);
+      expect(find.text('Dove vai? *'), findsOneWidget);
+      expect(find.text('Quando? *'), findsOneWidget);
+      expect(find.textContaining('Nome del viaggio *'), findsNothing);
+    });
+
+    testWidgets('con la tastiera aperta i bottoni non salgono', (tester) async {
+      await pumpScreen(tester);
+      final key = find.byKey(const Key('new_trip_choose_items'));
+      final before = tester.getTopLeft(key);
+
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpAndSettle();
+
+      expect(tester.getTopLeft(key).dy, before.dy);
+    });
+
+    testWidgets('ai_does_not_save_trip', (tester) async {
+      await pumpScreen(tester);
+      await fillStep(tester);
+
+      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
+      await tester.pumpAndSettle();
+      await confirmSheet(tester);
+
+      verifyNever(() => tripRepo.addTrip(any()));
+      expect(container.read(tripNotifierProvider).valueOrNull, isEmpty);
+      expect(run.requests, hasLength(1));
+      final request = run.requests.single;
+      expect(request.isNew, isTrue);
+      expect(
+        request.trip.destinationLocation?.displayName,
+        'Marsiglia, Francia',
+      );
+      expect(request.trip.departureDateTime, _departure);
+      expect(request.trip.items, isEmpty);
+      expect(find.text('ai-wait'), findsOneWidget);
+    });
+
+    testWidgets('sheet_closed_keeps_step_filled', (tester) async {
+      await pumpScreen(tester);
+      await fillStep(tester);
+
+      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
+      await tester.pumpAndSettle();
+      expect(find.byType(DsFormSheet), findsOneWidget);
+      // Tocco fuori dal foglio: si chiude senza confermare.
+      await tester.tapAt(const Offset(195, 20));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DsFormSheet), findsNothing);
+      expect(run.requests, isEmpty);
+      verifyNever(() => tripRepo.addTrip(any()));
+      expect(find.byKey(const Key('new_trip_destination')), findsOneWidget);
+      expect(find.text('Nuovo viaggio'), findsOneWidget);
+      expect(button(tester, 'new_trip_prepare_ai').isLoading, isFalse);
+      expect(button(tester, 'new_trip_prepare_ai').onPressed, isNotNull);
+    });
+
+    testWidgets('prepare_ai_error_resets_saving', (tester) async {
+      await pumpScreen(tester);
+      await fillStep(tester);
+      run.failStart = true;
+
+      // Il tocco gira in una zona a parte: l'errore del lancio arriva fin lì
+      // (non va inghiottito) senza far fallire il test.
+      final errors = <Object>[];
+      runZonedGuarded(
+        button(tester, 'new_trip_prepare_ai').onPressed!,
+        (error, _) => errors.add(error),
+      );
+      await tester.pumpAndSettle();
+      await confirmSheet(tester);
+
+      expect(errors, [isA<StateError>()]);
+      expect(button(tester, 'new_trip_prepare_ai').isLoading, isFalse);
+      expect(button(tester, 'new_trip_prepare_ai').onPressed, isNotNull);
+      expect(button(tester, 'new_trip_choose_items').onPressed, isNotNull);
+    });
+
+    testWidgets('setup_kept_on_reopen', (tester) async {
+      await pumpScreen(tester);
+      await fillStep(tester);
+
+      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
+      await tester.pumpAndSettle();
+      await confirmSheet(tester);
+      expect(run.requests, hasLength(1));
+      expect(run.requests.first.trip.aiSetup, isNull);
+
+      // Errore: il lavoro si chiude e dalla pagina d'attesa si torna al passo 1.
+      container.read(aiPackingRunProvider.notifier).clear();
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('new_trip_prepare_ai')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
+      await tester.pumpAndSettle();
+      await confirmSheet(tester);
+
+      expect(run.requests, hasLength(2));
+      expect(run.requests[1].trip.aiSetup, run.requests.first.setup);
+      // Lo stesso id fra i tentativi.
+      expect(run.requests[1].trip.id, run.requests.first.trip.id);
+    });
+
+    testWidgets('choose_items_saves_and_opens_pack', (tester) async {
       await pumpScreen(tester);
       await _pickHouse(tester, 'h1');
       await _pickDates(tester);
 
-      await tester.tap(find.byKey(const Key('new_trip_next')));
+      await tester.tap(find.byKey(const Key('new_trip_choose_items')));
       await tester.pumpAndSettle();
 
       final trip = savedTrip();
@@ -774,7 +742,227 @@ void main() {
       expect(trip.returnDateTime, _return);
       expect(trip.name, 'Casa Milano');
       expect(find.text('edit-items ${trip.id} from=new'), findsOneWidget);
+      expect(run.requests, isEmpty);
     });
+
+    testWidgets('choose_items_while_ai_running_shows_busy_and_saves_nothing', (
+      tester,
+    ) async {
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+      container.read(aiPackingRunProvider);
+      run.start(
+        AiPackingRequest(
+          trip: TripModel(
+            id: 'altro',
+            name: 'Altro',
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+          ),
+          isNew: false,
+          setup: const AiPackingSetup(houseId: 'h1'),
+          job: PackTripJob(body: {}, houseId: 'h1', title: 'X', nights: 1),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('new_trip_choose_items')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Sto già preparando una valigia: ti avviso quando è pronta.'),
+        findsOneWidget,
+      );
+      verifyNever(() => tripRepo.addTrip(any()));
+      expect(find.text('Nuovo viaggio'), findsOneWidget);
+    });
+
+    testWidgets('disabled_tap_shows_missing', (tester) async {
+      for (final key in ['new_trip_prepare_ai', 'new_trip_choose_items']) {
+        await pumpScreen(tester);
+
+        await tester.tap(find.byKey(Key(key)));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Scegli dove vai: serve anche per il meteo.'),
+          findsOneWidget,
+        );
+        expect(find.text('Scegli andata e ritorno.'), findsOneWidget);
+        verifyNever(() => tripRepo.addTrip(any()));
+        expect(run.requests, isEmpty);
+        // Si riparte da una pagina nuova.
+        await tester.pumpWidget(const SizedBox());
+      }
+    });
+
+    testWidgets('doppio tocco su "Scegli tu cosa portare" salva una volta', (
+      tester,
+    ) async {
+      final saving = Completer<void>();
+      when(() => tripRepo.addTrip(any())).thenAnswer((_) => saving.future);
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+
+      await tester.tap(find.byKey(const Key('new_trip_choose_items')));
+      await tester.tap(find.byKey(const Key('new_trip_choose_items')));
+      await tester.pump();
+      saving.complete();
+      await tester.pumpAndSettle();
+
+      final trip =
+          verify(() => tripRepo.addTrip(captureAny())).captured.single
+              as TripModel;
+      expect(find.text('edit-items ${trip.id} from=new'), findsOneWidget);
+    });
+
+    testWidgets('firstRun: titolo "Dove vai?" e due strade', (tester) async {
+      await pumpScreen(tester, open: '/new-trip?first=1');
+
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('Dove vai?'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('new_trip_first_close')), findsOneWidget);
+      expect(find.byKey(const Key('new_trip_prepare_ai')), findsOneWidget);
+      expect(find.byKey(const Key('new_trip_choose_items')), findsOneWidget);
+    });
+
+    testWidgets('senza firstRun non c\'è la X e il titolo è "Nuovo viaggio"', (
+      tester,
+    ) async {
+      await pumpScreen(tester, open: '/new-trip');
+
+      expect(find.byKey(const Key('new_trip_first_close')), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('Nuovo viaggio'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('firstRun: la X salva done e porta a /', (tester) async {
+      await pumpScreen(tester, open: '/new-trip?first=1');
+      expect(onboardingRepo.step, OnboardingStep.firstTrip);
+
+      await tester.tap(find.byKey(const Key('new_trip_first_close')));
+      await tester.pumpAndSettle();
+
+      expect(onboardingRepo.step, OnboardingStep.done);
+      expect(find.text('home'), findsOneWidget);
+    });
+
+    testWidgets(
+      'firstRun: "Scegli tu cosa portare" chiude "Dove vai?" (done)',
+      (tester) async {
+        await pumpScreen(tester, open: '/new-trip?first=1');
+        await _pickHouse(tester, 'h1');
+        await _pickDates(tester);
+
+        await tester.tap(find.byKey(const Key('new_trip_choose_items')));
+        await tester.pumpAndSettle();
+
+        expect(onboardingRepo.step, OnboardingStep.done);
+        expect(find.textContaining('edit-items'), findsOneWidget);
+      },
+    );
+
+    testWidgets('firstRun: la strada AI non chiude "Dove vai?" da sola', (
+      tester,
+    ) async {
+      await pumpScreen(tester, open: '/new-trip?first=1');
+      await fillStep(tester);
+
+      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
+      await tester.pumpAndSettle();
+      await confirmSheet(tester);
+
+      // Lo chiude il lavoro quando la valigia arriva (provider finto qui).
+      expect(onboardingRepo.step, OnboardingStep.firstTrip);
+      verifyNever(() => tripRepo.addTrip(any()));
+    });
+
+    testWidgets('firstRun: first_trip_started parte una volta', (tester) async {
+      await pumpScreen(tester, open: '/new-trip?first=1');
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+      verifyNever(
+        () => rawAnalytics.logEvent(
+          'first_trip_started',
+          properties: any(named: 'properties'),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('new_trip_choose_items')));
+      await tester.pumpAndSettle();
+
+      verify(
+        () => rawAnalytics.logEvent('first_trip_started', properties: {}),
+      ).called(1);
+      expect(find.textContaining('from=new'), findsOneWidget);
+    });
+
+    testWidgets('senza firstRun first_trip_started non parte e il passo '
+        'non cambia', (tester) async {
+      await pumpScreen(tester, open: '/new-trip');
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+
+      await tester.tap(find.byKey(const Key('new_trip_choose_items')));
+      await tester.pumpAndSettle();
+
+      verifyNever(
+        () => rawAnalytics.logEvent(
+          'first_trip_started',
+          properties: any(named: 'properties'),
+        ),
+      );
+      expect(onboardingRepo.step, OnboardingStep.firstTrip);
+    });
+  });
+
+  group('NewTripScreen — uscita', () {
+    testWidgets(
+      'a modulo vuoto il tocco su "Scegli tu cosa portare" mostra i due errori',
+      (tester) async {
+        await pumpScreen(tester);
+
+        await tester.tap(find.byKey(const Key('new_trip_choose_items')));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Scegli dove vai: serve anche per il meteo.'),
+          findsOneWidget,
+        );
+        expect(find.text('Scegli andata e ritorno.'), findsOneWidget);
+        verifyNever(() => tripRepo.addTrip(any()));
+      },
+    );
+
+    testWidgets(
+      '"Scegli tu cosa portare" salva meta e date e porta a edit-items?from=new',
+      (tester) async {
+        await pumpScreen(tester);
+        await _pickHouse(tester, 'h1');
+        await _pickDates(tester);
+
+        await tester.tap(find.byKey(const Key('new_trip_choose_items')));
+        await tester.pumpAndSettle();
+
+        final trip = savedTrip();
+        expect(trip.destinationHouseId, 'h1');
+        expect(trip.departureDateTime, _departure);
+        expect(trip.returnDateTime, _return);
+        expect(trip.name, 'Casa Milano');
+        expect(find.text('edit-items ${trip.id} from=new'), findsOneWidget);
+      },
+    );
 
     testWidgets('scegliere Aereo e Treno salva ["plane","train"]', (
       tester,
@@ -790,7 +978,7 @@ void main() {
         await tester.tap(find.text(label));
         await tester.pumpAndSettle();
       }
-      await tester.tap(find.byKey(const Key('new_trip_next')));
+      await tester.tap(find.byKey(const Key('new_trip_choose_items')));
       await tester.pumpAndSettle();
 
       expect(savedTrip().transports, ['plane', 'train']);
@@ -804,10 +992,60 @@ void main() {
       await _pickHouse(tester, 'h1');
       await _pickDates(tester);
 
-      await tester.tap(find.byKey(const Key('new_trip_next')));
+      await tester.tap(find.byKey(const Key('new_trip_choose_items')));
       await tester.pumpAndSettle();
 
       expect(savedTrip().transports, isEmpty);
+    });
+
+    testWidgets('name_only_edit_keeps_original_fields', (tester) async {
+      final trip = _legacyTrip();
+      when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [trip]);
+      when(() => tripRepo.updateTrip(any())).thenAnswer((_) async {});
+
+      await pumpScreen(tester, open: '/trips/trip-1/edit-info');
+      await tester.enterText(_nameField, 'Altro nome');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('edit_trip_save')));
+      await tester.pumpAndSettle();
+
+      final updated =
+          verify(() => tripRepo.updateTrip(captureAny())).captured.single
+              as TripModel;
+      expect(updated.name, 'Altro nome');
+      expect(updated.departureDateTime, trip.departureDateTime);
+      expect(updated.returnDateTime, trip.returnDateTime);
+      expect(updated.destinationHouseId, 'h1');
+      expect(updated.destinationLocation, trip.destinationLocation);
+      expect(updated.legs, trip.legs);
+      expect(updated.transports, trip.transports);
+    });
+
+    testWidgets('name_only_edit_does_not_show_notice_on_legacy_trip', (
+      tester,
+    ) async {
+      final base = _legacyTrip();
+      final trip = base.copyWith(
+        aiResult: AiPackingResult(
+          generatedAt: DateTime(2026),
+          houseId: 'h1',
+          tripShape: AiTripShape.of(base),
+        ),
+      );
+      when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [trip]);
+      when(() => tripRepo.updateTrip(any())).thenAnswer((_) async {});
+
+      await pumpScreen(tester, open: '/trips/trip-1/edit-info');
+      await tester.enterText(_nameField, 'Altro nome');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('edit_trip_save')));
+      await tester.pumpAndSettle();
+
+      final updated =
+          verify(() => tripRepo.updateTrip(captureAny())).captured.single
+              as TripModel;
+      expect(updated.name, 'Altro nome');
+      expect(suitcaseOutdated(updated, now: DateTime(2020)), isFalse);
     });
 
     testWidgets('modificare il viaggio conserva i mezzi', (tester) async {
@@ -843,22 +1081,6 @@ void main() {
       expect(updated.transports, ['car', 'train']);
     });
 
-    testWidgets('Prepara la valigia più tardi porta a trips?focus=<id>', (
-      tester,
-    ) async {
-      await pumpScreen(tester);
-      await _pickHouse(tester, 'h2');
-      await _pickDates(tester);
-
-      await tester.tap(find.byKey(const Key('new_trip_later')));
-      await tester.pumpAndSettle();
-
-      final trip = savedTrip();
-      expect(trip.destinationHouseId, 'h2');
-      expect(find.text('focus=${trip.id}'), findsOneWidget);
-      expect(find.text('trips-tab'), findsOneWidget);
-    });
-
     testWidgets(
       'una meta dalla ricerca dei luoghi si salva con le coordinate',
       (tester) async {
@@ -872,7 +1094,7 @@ void main() {
         await tester.pumpAndSettle();
         await _pickDates(tester);
 
-        await tester.tap(find.byKey(const Key('new_trip_later')));
+        await tester.tap(find.byKey(const Key('new_trip_choose_items')));
         await tester.pumpAndSettle();
 
         final trip = savedTrip();
@@ -995,87 +1217,161 @@ void main() {
       expect(find.text('Casa al mare'), findsNothing);
     });
 
-    testWidgets(
-      'con le date fuori ordine la riga toccata è la tappa giusta e la elimina',
-      (tester) async {
-        await pumpScreen(tester);
-        await _pickHouse(tester, 'h1');
-        await _pickDates(tester);
-        await _addStop(tester, houseId: 'h2', endDay: 14);
-        await _addStop(tester, houseId: 'h3', endDay: 16);
+    testWidgets('destination_end_editable_with_two_stops', (tester) async {
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+      await _addStop(tester, houseId: 'h2', endDay: 15);
 
-        // La meta finisce il 15: la tappa B ("Casa al mare") finisce il 14,
-        // prima di iniziare. Per data C verrebbe prima di B, ma le righe
-        // restano nell'ordine della catena: A, B, C.
-        await _moveDestinationEnd(tester, _day(15));
-        final mare = tester.getTopLeft(find.text('Casa al mare')).dy;
-        final montagna = tester.getTopLeft(find.text('Casa in montagna')).dy;
-        expect(mare, lessThan(montagna));
+      await tester.ensureVisible(_itineraryRow('Casa Milano'));
+      await tester.tap(_itineraryRow('Casa Milano'));
+      await tester.pumpAndSettle();
 
-        await tester.tap(find.text('Casa in montagna'));
-        await tester.pumpAndSettle();
-        expect(
-          tester.widget<TextField>(_stopPlaceField).controller!.text,
-          'Casa in montagna',
-        );
+      // Il luogo si vede ma non si cambia, e la meta non si elimina.
+      expect(find.text('Modifica tappa'), findsOneWidget);
+      expect(find.byKey(const Key('stop_sheet_place_locked')), findsOneWidget);
+      expect(find.byKey(const Key('stop_sheet_place')), findsNothing);
+      expect(find.byKey(const Key('stop_sheet_remove')), findsNothing);
 
-        await tester.tap(find.byKey(const Key('stop_sheet_remove')));
-        await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('stop_sheet_dates')));
+      await tester.pumpAndSettle();
+      await _tapDay(tester, _day(13));
+      await tester.tap(find.text('Conferma'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('stop_sheet_save')));
+      await tester.pumpAndSettle();
 
-        expect(find.text('Casa in montagna'), findsNothing);
-        expect(find.text('Casa al mare'), findsOneWidget);
-      },
-    );
+      // Il viaggio resta 10-15; la seconda tappa ora parte il 13.
+      expect(
+        _datesText(tester),
+        '${_dayLabel(_departure)} – ${_dayLabel(_day(15))}',
+      );
+      await tester.tap(find.text('Casa al mare'));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining(_dayLabel(_day(13)), findRichText: true),
+        findsWidgets,
+      );
+      expect(find.text('2 notti'), findsOneWidget);
+    });
 
-    testWidgets('una tappa a zero notti blocca Avanti e Più tardi', (
-      tester,
-    ) async {
+    testWidgets('one_stop_destination_row_is_not_tappable', (tester) async {
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+
+      await tester.ensureVisible(_itineraryRow('Casa Milano'));
+      await tester.tap(_itineraryRow('Casa Milano'), warnIfMissed: false);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Modifica tappa'), findsNothing);
+    });
+
+    testWidgets('middle_stop_change_keeps_rows_in_order', (tester) async {
       await pumpScreen(tester);
       await _pickHouse(tester, 'h1');
       await _pickDates(tester);
       await _addStop(tester, houseId: 'h2', endDay: 14);
+      await _addStop(tester, houseId: 'h3', endDay: 16);
 
-      // La meta finisce il 14, come la tappa che parte da lì: zero notti.
-      await _moveDestinationEnd(tester, _day(14));
-
-      expect(
-        find.text('Casa al mare finisce prima di iniziare: controlla le date.'),
-        findsOneWidget,
-      );
-      expect(
-        tester
-            .widget<DsButton>(find.byKey(const Key('new_trip_next')))
-            .onPressed,
-        isNull,
-      );
-
-      await tester.tap(find.byKey(const Key('new_trip_next')));
+      // La tappa intermedia ("Casa al mare") finisce il 18, dopo la fine
+      // dell'ultima: le righe restano nell'ordine della catena, e quella
+      // toccata è la tappa giusta.
+      await tester.ensureVisible(find.text('Casa al mare'));
+      await tester.tap(find.text('Casa al mare'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('new_trip_later')));
+      await tester.tap(find.byKey(const Key('stop_sheet_dates')));
+      await tester.pumpAndSettle();
+      await _tapDay(tester, _day(18));
+      await tester.tap(find.text('Conferma'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('stop_sheet_save')));
       await tester.pumpAndSettle();
 
-      verifyNever(() => tripRepo.addTrip(any()));
+      final mare = tester.getTopLeft(find.text('Casa al mare')).dy;
+      final montagna = tester.getTopLeft(find.text('Casa in montagna')).dy;
+      expect(mare, lessThan(montagna));
+
+      await tester.tap(find.text('Casa in montagna'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(_stopPlaceField).controller!.text,
+        'Casa in montagna',
+      );
+      await tester.tap(find.byKey(const Key('stop_sheet_remove')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Casa in montagna'), findsNothing);
+      expect(find.text('Casa al mare'), findsOneWidget);
     });
 
-    testWidgets('Più tardi a modulo vuoto è spento e non salva', (
-      tester,
-    ) async {
+    testWidgets('when_shows_whole_trip_with_two_stops', (tester) async {
       await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+      await _addStop(tester, houseId: 'h2', endDay: 15);
 
-      await tester.tap(find.byKey(const Key('new_trip_later')));
-      await tester.pumpAndSettle();
-      verifyNever(() => tripRepo.addTrip(any()));
+      expect(
+        _datesText(tester),
+        '${_dayLabel(_departure)} – ${_dayLabel(_day(15))}',
+      );
+      expect(find.text('5 notti'), findsOneWidget);
+    });
 
-      // Il tocco su un bottone spento dice cosa manca.
-      await tester.tap(find.byKey(const Key('new_trip_next')));
+    testWidgets('one_stop_unchanged', (tester) async {
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+
+      expect(
+        _datesText(tester),
+        '${_dayLabel(_departure)} – ${_dayLabel(_return)}',
+      );
+      expect(find.text('2 notti'), findsOneWidget);
+    });
+
+    testWidgets('dates_sheet_moves_departure_and_last_end', (tester) async {
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+      await _addStop(tester, houseId: 'h2', endDay: 15);
+
+      await _openDates(tester);
+      await _tapDay(tester, _day(9));
+      await _tapDay(tester, _day(18));
+      await tester.tap(find.text('Conferma date'));
       await tester.pumpAndSettle();
 
       expect(
-        find.text('Scegli dove vai: serve anche per il meteo.'),
+        _datesText(tester),
+        '${_dayLabel(_day(9))} – ${_dayLabel(_day(18))}',
+      );
+      expect(find.text('Casa al mare'), findsOneWidget);
+    });
+
+    testWidgets('cut_stop_shows_snackbar', (tester) async {
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+      await _addStop(tester, houseId: 'h2', endDay: 15);
+
+      // La meta finisce il 12: partire il 13 la taglia fuori.
+      await _openDates(tester);
+      await _tapDay(tester, _day(13));
+      await _tapDay(tester, _day(18));
+      await tester.tap(find.text('Conferma date'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'Queste date tagliano fuori una tappa: cambiala nell\'itinerario.',
+        ),
         findsOneWidget,
       );
-      expect(find.text('Scegli andata e ritorno.'), findsOneWidget);
-      verifyNever(() => tripRepo.addTrip(any()));
+      expect(
+        _datesText(tester),
+        '${_dayLabel(_departure)} – ${_dayLabel(_day(15))}',
+      );
     });
 
     testWidgets('un salvataggio che fallisce riabilita il bottone', (
@@ -1088,7 +1384,7 @@ void main() {
 
       // Durante il salvataggio il bottone gira: niente pumpAndSettle finché
       // il dialogo d'errore non chiude, altrimenti lo spinner non si ferma mai.
-      await tester.tap(find.byKey(const Key('new_trip_next')));
+      await tester.tap(find.byKey(const Key('new_trip_choose_items')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('Errore di salvataggio'), findsOneWidget);
@@ -1099,12 +1395,12 @@ void main() {
       expect(find.text('Nuovo viaggio'), findsOneWidget);
       expect(
         tester
-            .widget<DsButton>(find.byKey(const Key('new_trip_next')))
+            .widget<DsButton>(find.byKey(const Key('new_trip_choose_items')))
             .isLoading,
         isFalse,
       );
 
-      await tester.tap(find.byKey(const Key('new_trip_next')));
+      await tester.tap(find.byKey(const Key('new_trip_choose_items')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       verify(() => tripRepo.addTrip(any())).called(2);
@@ -1119,7 +1415,7 @@ void main() {
       await _pickHouse(tester, 'h1');
       await _pickDates(tester);
 
-      await tester.tap(find.byKey(const Key('new_trip_next')));
+      await tester.tap(find.byKey(const Key('new_trip_choose_items')));
       await tester.pump();
       await tester.tap(find.byType(BackButton));
       await tester.pump();

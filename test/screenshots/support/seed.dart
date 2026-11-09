@@ -630,9 +630,49 @@ Future<void> seedValigiaPosti(ProviderContainer c) async {
                 'basta portare meno capi.',
           ),
         ],
+        reasons: const [
+          AiReasonPoint(
+            code: 'clima_seoul',
+            title: 'Freddo e vento a Seoul',
+            sentences: [
+              'Le minime sotto zero richiedono strati caldi e accessori.',
+            ],
+            items: ['Giacca invernale', 'Maglioni caldi'],
+          ),
+        ],
       ),
       createdAt: stamp,
       updatedAt: stamp,
+    ),
+  );
+}
+
+/// Dà a [tripId] una valigia a posti (anche vuota), così nel dettaglio compare
+/// "Rigenera". Con [changed] la forma salvata è quella di un viaggio che
+/// finiva un giorno prima: il dettaglio mostra "Hai cambiato il viaggio".
+Future<void> seedRigenera(
+  ProviderContainer c,
+  String tripId, {
+  bool changed = false,
+}) async {
+  final trips = c.read(tripRepositoryProvider);
+  final trip = await trips.getTripById(tripId);
+  final result =
+      trip.aiResult ??
+      AiPackingResult(
+        generatedAt: DateTime(2026, 10, 20, 18, 30),
+        houseId: kHomeId,
+      );
+  final shape = AiTripShape.of(trip);
+  final end = shape.returnAt;
+  await trips.updateTrip(
+    trip.copyWith(
+      aiResult: result.copyWith(
+        slots: result.slots ?? const [],
+        tripShape: changed && end != null
+            ? shape.copyWith(returnAt: end.subtract(const Duration(days: 1)))
+            : shape,
+      ),
     ),
   );
 }

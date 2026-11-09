@@ -210,10 +210,15 @@ void main() {
       expect(result(const []).hasSlots, isTrue);
     });
 
-    test('toJson/fromJson di andata e ritorno con toBuy, checked e note', () {
+    test('toJson/fromJson conserva comprato, residuo e stato di acquisto', () {
       final r =
           result([
-            slot('a', 'Scarf', level: AiSlotLevel.important, toBuy: true),
+            slot(
+              'a',
+              'Costumi',
+              level: AiSlotLevel.important,
+              toBuy: true,
+            ).copyWith(boughtLabel: 'Comprati', remaining: 2),
             slot('b', 'T-shirt', copies: 3, remaining: 2, checked: true),
           ]).copyWith(
             notes: const [AiTripNote(code: 'lavanderia', title: 'T', why: 'W')],
@@ -224,6 +229,8 @@ void main() {
 
       expect(back, r);
       expect(back.slots![0].toBuy, isTrue);
+      expect(back.slots![0].boughtLabel, 'Comprati');
+      expect(back.slots![0].remaining, 2);
       expect(back.slots![1].checked, isTrue);
       expect(back.slots![1].remaining, 2);
       expect(back.slots![0].level, AiSlotLevel.important);

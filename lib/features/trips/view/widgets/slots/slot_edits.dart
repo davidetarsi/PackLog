@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../../core/analytics/analytics_service.dart';
+import '../../../../../core/analytics/core_analytics_service.dart';
 import '../../../../../shared/helpers/design_system.dart';
 import '../../../../../shared/helpers/snack_bar_helper.dart';
 import '../../../model/ai_packing.dart';
@@ -14,6 +14,7 @@ import '../../trip_detail_screen.dart';
 /// la casella di un proposto. Ognuna salva subito e, se non va, lo dice.
 mixin TripSlotEdits on ConsumerState<TripDetailScreen> {
   String get tripId => widget.tripId;
+  Future<void> runSuitcaseMutation(Future<void> Function() change);
 
   /// "Da comprare" sulla card di un importante: la card diventa una riga
   /// "da comprare"; Annulla la riporta.
@@ -21,19 +22,14 @@ mixin TripSlotEdits on ConsumerState<TripDetailScreen> {
     // Il notifier si legge ora: Annulla può arrivare quando la pagina non c'è
     // più, e allora `ref` non si può usare.
     final notifier = ref.read(tripNotifierProvider.notifier);
-    final analytics = ref.read(analyticsServiceProvider);
+    final analytics = ref.read(coreAnalyticsServiceProvider);
     final saved = await updateSlot(
       notifier,
       slot,
       (s) => s.copyWith(toBuy: true),
     );
     if (!saved) return;
-    unawaited(
-      analytics.logEvent(
-        'slot_marked_to_buy',
-        properties: {'level': slot.level.name, 'from': from},
-      ),
-    );
+    analytics.trackSlotMarkedToBuy(level: slot.level.name, from: from);
     if (!mounted) return;
     AppSnackBar.showUndo(
       context,
@@ -97,8 +93,11 @@ mixin TripSlotEdits on ConsumerState<TripDetailScreen> {
     AiSlot slot,
     AiSlot Function(AiSlot) change,
   ) async {
+    final id = tripId;
     try {
-      await notifier.updateAiSlot(tripId, slot.id, change);
+      await runSuitcaseMutation(
+        () => notifier.updateAiSlot(id, slot.id, change),
+      );
       return true;
     } catch (_) {
       if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());

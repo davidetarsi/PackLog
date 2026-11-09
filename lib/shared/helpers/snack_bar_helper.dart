@@ -98,15 +98,18 @@ class AppSnackBar {
   ///
   /// Se la pagina non ha uno `ScaffoldMessenger` (per esempio un'azione
   /// annullata durante il cambio di pagina) non mostra nulla e non lancia.
-  static void showAction(
+  ///
+  /// Con [queue] non toglie lo SnackBar già visibile: questo compare dopo.
+  static ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? showAction(
     BuildContext context,
     String message, {
     required String actionLabel,
     required VoidCallback onAction,
     Key? key,
+    bool queue = false,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
-    _show(
+    return _show(
       context: context,
       key: key,
       message: message,
@@ -117,6 +120,7 @@ class AppSnackBar {
         textColor: colorScheme.onInverseSurface,
         onPressed: onAction,
       ),
+      queue: queue,
     );
   }
 
@@ -137,19 +141,20 @@ class AppSnackBar {
 
   // ── Internal ────────────────────────────────────────────────────────────────
 
-  static void _show({
+  static ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? _show({
     required BuildContext context,
     required String message,
     required Color backgroundColor,
     required Color textColor,
     SnackBarAction? action,
     Key? key,
+    bool queue = false,
   }) {
     // Senza ScaffoldMessenger non c'è dove mostrare lo SnackBar: si esce senza
     // errore, come per un'azione chiesta da una pagina già smontata.
     final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-    _showOn(
+    if (messenger == null) return null;
+    return _showOn(
       messenger,
       context: context,
       message: message,
@@ -157,10 +162,11 @@ class AppSnackBar {
       textColor: textColor,
       action: action,
       key: key,
+      queue: queue,
     );
   }
 
-  static void _showOn(
+  static ScaffoldFeatureController<SnackBar, SnackBarClosedReason> _showOn(
     ScaffoldMessengerState messenger, {
     required BuildContext context,
     required String message,
@@ -168,26 +174,26 @@ class AppSnackBar {
     required Color textColor,
     SnackBarAction? action,
     Key? key,
+    bool queue = false,
   }) {
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          key: key,
-          content: Text(
-            message,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: textColor),
-          ),
-          backgroundColor: backgroundColor,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-          ),
-          margin: EdgeInsets.all(context.spacingMd),
-          action: action,
+    if (!queue) messenger.hideCurrentSnackBar();
+    return messenger.showSnackBar(
+      SnackBar(
+        key: key,
+        content: Text(
+          message,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: textColor),
         ),
-      );
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+        ),
+        margin: EdgeInsets.all(context.spacingMd),
+        action: action,
+      ),
+    );
   }
 }

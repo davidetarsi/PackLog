@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/core/monitoring/monitoring_service.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
@@ -18,10 +20,15 @@ class FakeItemMetadataService extends ItemMetadataService {
 
   int answers;
   final names = <String>[];
+  final sources = <String>{};
 
   @override
-  Future<ItemMetadataResult?> fromName(String name) async {
+  Future<ItemMetadataResult?> fromName(
+    String name, {
+    String source = ItemMetadataService.sourceManual,
+  }) async {
     names.add(name);
+    sources.add(source);
     if (answers-- <= 0) return null;
     return ItemMetadataResult(
       metadata: {'name': name},
@@ -39,6 +46,8 @@ ItemModel _item(int n, {String? aiMetadata, String house = 'h1'}) => ItemModel(
   createdAt: DateTime(2026, 1, n),
   updatedAt: DateTime(2026, 1, n),
 );
+
+class _Monitoring extends Mock implements AppMonitoringService {}
 
 void main() {
   late MockItemRepository repo;
@@ -86,9 +95,50 @@ void main() {
     final houses = await backfill(service).run();
 
     expect(service.names, ['capo 1', 'capo 2']);
+    // Il tetto toccato da qui non è un'aggiunta a mano dell'utente.
+    expect(service.sources, {'backfill'});
     expect(houses, {'h1', 'h2'});
     expect(jsonDecode(db['item-1']!.aiMetadata!), {'name': 'capo 1'});
     expect(db['item-1']!.category, ItemCategory.varie);
+  });
+
+  group('Sentry', () {
+    late _Monitoring monitoring;
+    setUp(() => monitoring = _Monitoring());
+
+    ItemMetadataBackfill withMonitoring() => ItemMetadataBackfill(
+      repository: repo,
+      service: FakeItemMetadataService(),
+      prefs: SharedPreferences.getInstance(),
+      now: () => now,
+      monitoring: monitoring,
+    );
+
+    test('un guasto del giro va in Sentry con l operazione', () async {
+      when(() => repo.getAllItems()).thenThrow(StateError('db rotto'));
+      expect(await withMonitoring().run(), isEmpty);
+      verify(
+        () => monitoring.captureException(
+          any(that: isA<StateError>()),
+          stackTrace: any(named: 'stackTrace'),
+          tags: {'operation': 'item_metadata_backfill'},
+        ),
+      ).called(1);
+    });
+
+    test('rete assente: niente Sentry, si riprova al giro dopo', () async {
+      when(
+        () => repo.getAllItems(),
+      ).thenThrow(const SocketException('offline'));
+      expect(await withMonitoring().run(), isEmpty);
+      verifyNever(
+        () => monitoring.captureException(
+          any(),
+          stackTrace: any(named: 'stackTrace'),
+          tags: any(named: 'tags'),
+        ),
+      );
+    });
   });
 
   test('si ferma alla prima risposta mancata', () async {

@@ -2,6 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/analytics/core_analytics_service.dart';
+import '../../../core/monitoring/monitoring_service.dart';
+import '../../../core/once_per_day.dart';
 import '../model/promo_redeem_result.dart';
 
 /// Codici promo: attivazione sul server e codice "in attesa" sul telefono.
@@ -12,14 +15,22 @@ import '../model/promo_redeem_result.dart';
 /// ([redeemPending], chiamato da `AuthNotifier`). Dal profilo invece si
 /// attiva subito ([redeem]).
 class PromoCodeService {
-  PromoCodeService({SupabaseClient? client, Future<SharedPreferences>? prefs})
-    : _client = client,
-      _prefs = prefs;
+  PromoCodeService({
+    SupabaseClient? client,
+    Future<SharedPreferences>? prefs,
+    CoreAnalyticsService? analytics,
+    AppMonitoringService? monitoring,
+  }) : _client = client,
+       _prefs = prefs,
+       _analytics = analytics,
+       _monitoring = monitoring;
 
   static const String _pendingKey = 'promo_code_pending';
 
   final SupabaseClient? _client;
   final Future<SharedPreferences>? _prefs;
+  final CoreAnalyticsService? _analytics;
+  final AppMonitoringService? _monitoring;
 
   SupabaseClient get _supabase => _client ?? Supabase.instance.client;
   Future<SharedPreferences> get _preferences =>
@@ -43,16 +54,34 @@ class PromoCodeService {
     await prefs.remove(_pendingKey);
   }
 
-  /// Attiva [code] per l'utente loggato.
+  /// Attiva [code] per l'utente loggato. Registra l'esito
+  /// (`promo_code_redeemed`, mai il codice); un guasto che non sia la rete
+  /// assente va anche in Sentry.
   Future<PromoRedeemResult> redeem(String code) async {
+    final result = await _redeem(code);
+    _analytics?.trackPromoCodeRedeemed(
+      outcome: promoOutcomeOf(result),
+      credits: result is PromoRedeemed ? result.credits : null,
+    );
+    return result;
+  }
+
+  Future<PromoRedeemResult> _redeem(String code) async {
     try {
       final data = await _supabase.rpc(
         'redeem_promo_code',
         params: {'p_code': normalize(code)},
       );
       return parseResponse(data);
-    } catch (e) {
+    } catch (e, st) {
       debugPrint('[Promo] attivazione fallita: $e');
+      if (!isNetworkFailure(e)) {
+        _monitoring?.captureException(
+          e,
+          stackTrace: st,
+          tags: {'operation': 'promo_redeem'},
+        );
+      }
       return const PromoFailed();
     }
   }

@@ -1,18 +1,21 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/ds_empty_state.dart';
 import '../../../shared/widgets/ds_group_header.dart';
-import '../../../shared/widgets/ds_text_button.dart';
-import '../model/ai_packing.dart';
+import '../providers/trip_provider.dart';
 import '../providers/to_buy_provider.dart';
+import 'widgets/slots/to_buy_slot_row.dart';
 
 /// Le cose da comprare di tutti i viaggi, raggruppate per viaggio.
 ///
-/// Ogni riga ha "Presa", che porta al viaggio con la barra aperta su quel
+/// Ogni riga ha un'azione concordata col nome, che porta al viaggio con la barra aperta su quel
 /// posto: lì l'utente scrive cosa ha preso e il posto si riempie.
 class ToBuyScreen extends ConsumerWidget {
   const ToBuyScreen({super.key});
@@ -20,6 +23,7 @@ class ToBuyScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final entries = ref.watch(toBuyEntriesProvider);
+    final container = ProviderScope.containerOf(context, listen: false);
 
     return Scaffold(
       appBar: AppBar(title: Text('trips.to_buy.title'.tr())),
@@ -28,15 +32,19 @@ class ToBuyScreen extends ConsumerWidget {
               icon: Icons.shopping_cart_outlined,
               title: 'trips.to_buy.empty'.tr(),
             )
-          : _ToBuyList(entries: entries),
+          : _ToBuyList(
+              entries: entries,
+              onRemove: (entry) => _removeEntry(context, container, entry),
+            ),
     );
   }
 }
 
 class _ToBuyList extends StatelessWidget {
-  const _ToBuyList({required this.entries});
+  const _ToBuyList({required this.entries, required this.onRemove});
 
   final List<ToBuyEntry> entries;
+  final ValueChanged<ToBuyEntry> onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +62,18 @@ class _ToBuyList extends StatelessWidget {
           ),
         );
       }
-      children.add(_ToBuyRow(entry: entry));
+      children.add(
+        _ToBuyRow(
+          entry: entry,
+          onRemove: () => onRemove(entry),
+          onGotIt: () => context.push(
+            Uri(
+              path: '/trips/${entry.trip.id}',
+              queryParameters: {'slot': entry.slot.id},
+            ).toString(),
+          ),
+        ),
+      );
     }
 
     return ListView(
@@ -70,77 +89,69 @@ class _ToBuyList extends StatelessWidget {
 }
 
 class _ToBuyRow extends StatelessWidget {
-  const _ToBuyRow({required this.entry});
+  const _ToBuyRow({
+    required this.entry,
+    required this.onRemove,
+    required this.onGotIt,
+  });
 
   final ToBuyEntry entry;
+  final VoidCallback onRemove;
+  final VoidCallback onGotIt;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    final slot = entry.slot;
-    final muted = cs.onSurfaceVariant;
+    return ToBuySlotRow(slot: entry.slot, onGotIt: onGotIt, onRemove: onRemove);
+  }
+}
 
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: context.spacingXs),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (slot.level == AiSlotLevel.important) ...[
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.flag_outlined,
-                        size: context.iconSizeXs,
-                        color: muted,
-                      ),
-                      SizedBox(width: context.spacingXs),
-                      Text(
-                        'trips.slots.important'.tr(),
-                        style: tt.labelLarge?.strong.copyWith(color: muted),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: context.spacingXxs),
-                ],
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        slot.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: tt.bodyLarge,
-                      ),
-                    ),
-                    if (slot.remaining > 1) ...[
-                      SizedBox(width: context.spacingXs),
-                      Text(
-                        '×${slot.remaining}',
-                        style: tt.bodyLarge?.copyWith(color: muted),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-          DsTextButton(
-            key: Key('to_buy_got_it_${slot.id}'),
-            label: 'trips.slots.got_it'.tr(),
-            onPressed: () => context.push(
-              Uri(
-                path: '/trips/${entry.trip.id}',
-                queryParameters: {'slot': slot.id},
-              ).toString(),
-            ),
-          ),
-        ],
+Future<void> _removeEntry(
+  BuildContext context,
+  ProviderContainer container,
+  ToBuyEntry entry,
+) async {
+  final notifier = container.read(tripNotifierProvider.notifier);
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  if (messenger == null) return;
+  final tripId = entry.trip.id;
+  final slot = entry.slot;
+
+  try {
+    await notifier.serializeEdit(
+      tripId,
+      () => notifier.updateAiSlot(
+        tripId,
+        slot.id,
+        (current) => current.copyWith(removed: true),
       ),
     );
+  } catch (_) {
+    if (messenger.mounted) {
+      AppSnackBar.showErrorOn(messenger, 'errors.save_error'.tr());
+    }
+    return;
   }
+  if (!context.mounted) return;
+  AppSnackBar.showUndo(
+    context,
+    'trips.slots.removed'.tr(args: [slot.name]),
+    onUndo: () {
+      unawaited(() async {
+        try {
+          await notifier.serializeEdit(
+            tripId,
+            () => notifier.updateAiSlot(
+              tripId,
+              slot.id,
+              (current) => current.copyWith(removed: false),
+            ),
+          );
+        } catch (_) {
+          if (messenger.mounted) {
+            AppSnackBar.showErrorOn(messenger, 'errors.save_error'.tr());
+          }
+        }
+      }());
+    },
+  );
 }

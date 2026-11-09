@@ -3,7 +3,7 @@ import 'package:pack_log/core/routing/app_router.dart';
 import 'package:pack_log/features/tour/model/onboarding_state.dart';
 
 void main() {
-  const target = '/new-trip?ai=1&first=1';
+  const target = '/new-trip?first=1';
 
   group('firstTripRedirect', () {
     test('firstTrip su / → "Dove vai?"', () {

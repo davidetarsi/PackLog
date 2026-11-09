@@ -5,7 +5,8 @@ import { caricaArmadio, type Capo as CapoArmadio } from "./capo.ts";
 import { canonicalizeGaps, capienzaBagaglio } from "./dopo.ts";
 import { scenarioDaApp, type ViaggioApp, normalizzaQuantitaViaggio, preparaContestoTappe } from "./contesto_viaggio.ts";
 import { attivitaScenario } from "./prompt.ts";
-import { eAttivitaAcqua, giorniDiMare, normIntensita, quantityFor, essenzialiPerViaggio, RADICI_NOTTE } from "./quantita.ts";
+import { viaggioDiLavoro } from "./inject.ts";
+import { tutteTappeCalde, viaggioCaldoAlMare, eAttivitaAcqua, giorniDiMare, normIntensita, quantityFor, essenzialiPerViaggio, RADICI_NOTTE } from "./quantita.ts";
 import { servePerTappa } from "./tappe.ts";
 import { perIlGeneratore } from "./tassonomia.ts";
 import { attivitaPer, calore, capiUniti, tettoSalvate } from "./uscita.ts";
@@ -63,6 +64,8 @@ function mancantiConVincoli(valigia: Record<string, any>, richiesti: Record<stri
 export interface ParametriQuantita {
   giorni: number;
   cammino?: boolean;
+  mareCaldo?: boolean;
+  tutteTappeCalde?: boolean;
   /** Per i capi: il cammino prevede bucato frequente a mano. */
   lavatrice: boolean;
   /** Per gli essenziali: lavaggio del viaggio o rotazione corta di un intero cammino. */
@@ -98,6 +101,8 @@ export function parametriQuantita(v: Record<string, any> | null | undefined, met
     return {
       giorni, lavatriceEssenziali: interoCammino(sc) || lavatriceEssenziali, attivita, intensita,
       ...(interoCammino(sc) ? { cammino: true } : {}),
+      ...(viaggioCaldoAlMare(attivitaScenario(sc), perTappa.map((t) => t.meteo.temp_max_media)) ? { mareCaldo: true } : {}),
+      ...(tutteTappeCalde(perTappa.map((t) => t.meteo.temp_max_media)) ? { tutteTappeCalde: true } : {}),
       lavatrice: lavatriceBase,
       tempMax: base.meteo.temp_max_media, tempMaxEssenziali: massime.length ? Math.min(...massime) : null,
     };
@@ -108,7 +113,9 @@ export function parametriQuantita(v: Record<string, any> | null | undefined, met
   const tempMax = numeroONull(meteo?.temp_max_media);
   return {
     giorni, lavatriceEssenziali, attivita, intensita, tempMax,
-    ...(eCammino(attivita) ? { cammino: true } : {}), tempMaxEssenziali: tempMax, lavatrice,
+    ...(eCammino(attivita) ? { cammino: true } : {}),
+    ...(tutteTappeCalde([tempMax]) ? { tutteTappeCalde: true } : {}),
+    ...(viaggioCaldoAlMare(attivita, [tempMax]) ? { mareCaldo: true } : {}), tempMaxEssenziali: tempMax, lavatrice,
   };
 }
 
@@ -147,7 +154,9 @@ export function mancantiDelleTappe(valigia: Record<string, any>, armadio: CapoAr
     servePerTappa(t, capi, armadio,
       new Set(armadio.map((g) => g.id)), capienza <= 30 ? 0.25 : capienza <= 55 ? 0.12 : 0,
       giorni <= 2 || capienza <= 8, null, false, mancanti,
-      (capo, bisogno) => copertoDaAssegnazione(capo, bisogno, valigia.richiesti ?? []));
+      (capo, bisogno) => copertoDaAssegnazione(capo, bisogno, valigia.richiesti ?? []),
+      Boolean(parametriQuantita(viaggio, meteo).tutteTappeCalde) &&
+        !eCammino(attivitaScenario(sc)) && !viaggioDiLavoro(attivitaScenario(sc)));
   }
   return mancanti;
 }
@@ -241,7 +250,7 @@ export function analizzaFabbisogni(valigia: Record_, armadio: CapoArmadio[],
   const coperte = new Set(((valigia.essenziali ?? []) as Record_[]).map((e) => famigliaDi(e.radice)?.tipo));
   const essenzialiMancanti = FAMIGLIE.filter((f) => !coperte.has(f.tipo)).map((f) => {
     const [e] = essenzialiPerViaggio(caricaArmadio([{ id: `posto:${f.tipo}`, name: f.nome }]), quantita.giorni,
-      quantita.lavatriceEssenziali, quantita.tempMaxEssenziali, quantita.cammino ?? false);
+      quantita.lavatriceEssenziali, quantita.tempMaxEssenziali, quantita.cammino ?? false, quantita.mareCaldo ?? false);
     return { tipo: f.tipo, categoria: f.categoria, copie: Math.max(1, e?.quantita ?? 1) };
   });
   return { quantita, mancanti, copieMancanti, essenzialiMancanti,

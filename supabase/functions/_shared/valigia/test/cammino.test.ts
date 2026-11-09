@@ -43,12 +43,12 @@ const scelti = (v: any): any[] => [...v.ideali, ...v.ripieghi].filter((g) => g.q
 const conta = (capi: any[], subs: string[]) => capi.filter((g) => subs.includes(g.subCategory))
   .reduce((n, g) => n + g.quantita, 0);
 function genera(righe = tecnici, giorni = 30, bagaglio = "zaino da 30 litri", tempMin = 18, tempMax = 24,
-  input = slots) {
+  input = slots, giorniPioggia = 0) {
   const viaggio = { giorni, lavatrice: false, attivita: ["cammino"], bagaglio };
-  const meteo = { temp_min_media: tempMin, temp_max_media: tempMax, giorni_di_pioggia: 0 };
+  const meteo = { temp_min_media: tempMin, temp_max_media: tempMax, giorni_di_pioggia: giorniPioggia };
   const items = caricaArmadio(righe);
   const valigia = strategySlots(JSON.stringify(input), items,
-    { ...viaggio, temp_min: tempMin, temp_max: tempMax, giorni_pioggia: 0 });
+    { ...viaggio, temp_min: tempMin, temp_max: tempMax, giorni_pioggia: giorniPioggia });
   const posti = postiApp(valigia, { capi: [], essenziali: [] }, new Map(righe.map((g) => [String(g.id), g.quantity ?? null])),
     { viaggio, meteo, armadio: items }).posti;
   return { valigia, posti, capi: scelti(valigia) };
@@ -111,6 +111,14 @@ test("cammino: i posti dell'armadio vuoto rispettano i budget delle famiglie", (
   assert.equal(somma(["intimo"]), 3);
   assert.equal(somma(["calzini"]), 3);
   assert.ok(posti.some((p) => p.tipo === "Flip-Flops"));
+});
+
+test("cammino col caldo: i pantaloni suggeriti restano due, come la quantita' compatta", () => {
+  for (const tempMax of [24, 26, 30, 36]) {
+    const { posti } = genera([], 30, "zaino da 30 litri", 18, tempMax);
+    const lunghi = posti.filter((p) => ["Trousers", "Shorts"].includes(p.tipo)).reduce((n, p) => n + p.copie, 0);
+    assert.equal(lunghi, 2, `tempMax ${tempMax}`);
+  }
 });
 
 test("cammino: posseduti e proposte condividono il budget senza chiedere un altro ricambio", () => {
@@ -204,7 +212,7 @@ test("cammino: il flusso completo mantiene tre ricambi totali e nessuna proposta
 test("cammino: il limite di un paio non nasconde una protezione dalla pioggia mancante", () => {
   const { capi, posti } = genera(tecnici.filter((g) => g.id !== "Scarponi tecnici"), 30, "zaino da 30 litri", 18, 24,
     [slot("maglia", "Upper Body", ["T-Shirt"]), slot("gambe", "Lower Body", ["Trousers"]),
-      { ...slot("scarpe per la pioggia", "Shoes", ["Sneakers", "Hiking Boots"]), minWaterResistance: 2 }]);
+      { ...slot("scarpe per la pioggia", "Shoes", ["Sneakers", "Hiking Boots"]), minWaterResistance: 2 }], 3);
   assert.ok(posti.some((p) => p.requisiti?.minWaterResistance === 2 &&
     ["Shoes", "Sneakers", "Hiking Boots", "Boots"].includes(p.tipo)), "manca una scarpa con protezione sufficiente");
   assert.equal(capi.filter((g) => g.category === "Shoes" && g.subCategory !== "Flip-Flops")

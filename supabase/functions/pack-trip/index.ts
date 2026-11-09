@@ -39,6 +39,7 @@ import { armadioVuotoAmmesso, attivitaGrezze, IngressoNonValido, validaKit, vali
 import { jevHttp, MODELLO as MODELLO_JEV, type ProfiloNoto } from "../_shared/valigia/jev.ts";
 import { kitDelViaggio, riempiPostiConKit } from "../_shared/valigia/kit.ts";
 import { postiApp } from "../_shared/valigia/posti.ts";
+import { campoVersione } from "../_shared/valigia/costanti_app.ts";
 import { uscitaApp } from "../_shared/valigia/uscita.ts";
 import { caricaArmadio, type RigaArmadio } from "../_shared/valigia/capo.ts";
 import { applicaCatalogo } from "../_shared/catalogo/applica.ts";
@@ -177,6 +178,7 @@ Deno.serve(async (req) => {
       ...postiGen,
       posti,
       ...soloKit,
+      ...campoVersione(),
     });
   } catch (e) {
     console.error("[pack-trip]", (e as Error).message);

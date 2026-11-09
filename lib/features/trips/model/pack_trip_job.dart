@@ -1,3 +1,5 @@
+import '../../luggages/model/luggage_model.dart';
+
 /// Ciò che serve a `pack-trip` per generare la valigia, e a mostrare l'attesa.
 class PackTripJob {
   const PackTripJob({
@@ -5,6 +7,9 @@ class PackTripJob {
     required this.houseId,
     required this.title,
     required this.nights,
+    this.isRegeneration = false,
+    this.setupChanged = const [],
+    this.luggage,
   });
 
   /// Corpo della richiesta a `pack-trip`.
@@ -17,6 +22,16 @@ class PackTripJob {
   final String title;
 
   final int nights;
+
+  /// Il viaggio aveva già una valigia AI: questa la sostituisce.
+  final bool isRegeneration;
+
+  /// Risposte del foglio cambiate dalla generazione precedente (vedi
+  /// `setupChangedFields`), per l'analytics.
+  final List<String> setupChanged;
+
+  /// Il bagaglio scelto nel foglio, per il contesto dell'analytics.
+  final LuggageModel? luggage;
 
   /// Id delle attività scelte (catalogo), senza doppioni, nell'ordine delle
   /// tappe: le legge dal corpo della richiesta, destinazione o tappe.

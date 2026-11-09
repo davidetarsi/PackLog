@@ -3,6 +3,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../items/model/item_model.dart';
+import 'trip_model.dart';
 
 part 'ai_packing.freezed.dart';
 part 'ai_packing.g.dart';
@@ -105,7 +106,13 @@ enum AiSlotLevel {
   @JsonValue('importante')
   important,
   @JsonValue('utile')
-  useful,
+  useful;
+
+  /// Valore italiano, lo stesso del JSON.
+  String get dbValue => switch (this) {
+    AiSlotLevel.important => 'importante',
+    AiSlotLevel.useful => 'utile',
+  };
 }
 
 /// Posto della valigia: un oggetto che serve al viaggio e che l'utente può
@@ -131,6 +138,9 @@ class AiSlot with _$AiSlot {
     required int remaining,
     String? reason,
     required String addLabel,
+
+    /// Etichetta grammaticale del pulsante acquisti; assente nei vecchi payload.
+    String? boughtLabel,
     @Default(false) bool toBuy,
     @Default(false) bool checked,
 
@@ -214,6 +224,61 @@ class AiKitAdded with _$AiKitAdded {
       _$AiKitAddedFromJson(json);
 }
 
+/// Una tappa come era quando la valigia è stata fatta.
+@freezed
+class AiTripShapeStop with _$AiTripShapeStop {
+  const factory AiTripShapeStop({
+    required String name,
+    @JsonKey(fromJson: _optDateFromJson, toJson: _optDateToJson) DateTime? from,
+    @JsonKey(fromJson: _optDateFromJson, toJson: _optDateToJson) DateTime? to,
+  }) = _AiTripShapeStop;
+
+  factory AiTripShapeStop.fromJson(Map<String, dynamic> json) =>
+      _$AiTripShapeStopFromJson(json);
+}
+
+/// La forma del viaggio per cui è fatta la valigia: date, tappe e mezzi.
+/// Il nome e il resto non contano: confrontandola con il viaggio di oggi si
+/// capisce se la valigia è ancora quella giusta.
+@freezed
+class AiTripShape with _$AiTripShape {
+  const AiTripShape._();
+
+  @JsonSerializable(explicitToJson: true)
+  const factory AiTripShape({
+    @JsonKey(fromJson: _optDateFromJson, toJson: _optDateToJson)
+    DateTime? departure,
+    @JsonKey(fromJson: _optDateFromJson, toJson: _optDateToJson)
+    DateTime? returnAt,
+    @Default(<AiTripShapeStop>[]) List<AiTripShapeStop> stops,
+    @Default(<String>[]) List<String> transports,
+  }) = _AiTripShape;
+
+  /// La forma di [trip]: la destinazione (se c'è) e poi le tappe, in ordine;
+  /// i mezzi senza ordine. Una casa si riconosce dal suo id: il nome si può
+  /// cambiare senza cambiare il viaggio.
+  factory AiTripShape.of(TripModel trip) {
+    final destination = trip.destinationHouseId ?? trip.destinationDisplayName;
+    return AiTripShape(
+      departure: trip.departureDateTime?.toLocal(),
+      returnAt: trip.returnDateTime?.toLocal(),
+      stops: [
+        if (destination != null) AiTripShapeStop(name: destination),
+        for (final leg in trip.legs)
+          AiTripShapeStop(
+            name: leg.houseId ?? leg.locationDisplayName,
+            from: leg.from?.toLocal(),
+            to: leg.to?.toLocal(),
+          ),
+      ],
+      transports: [...trip.transports]..sort(),
+    );
+  }
+
+  factory AiTripShape.fromJson(Map<String, dynamic> json) =>
+      _$AiTripShapeFromJson(json);
+}
+
 /// Risultato della generazione, salvato con il viaggio.
 @freezed
 class AiPackingResult with _$AiPackingResult {
@@ -247,6 +312,17 @@ class AiPackingResult with _$AiPackingResult {
 
     /// Kit già contati per imparare in questo viaggio: un sì non conta due volte.
     @Default(<String>[]) List<String> kitLearnCounted,
+
+    /// Versione del generatore che ha prodotto la valigia (`versione_generatore`
+    /// della risposta). `null` = risultato vecchio, senza versione.
+    String? generatorVersion,
+
+    /// Il viaggio com'era quando la valigia è stata fatta. `null` = valigia
+    /// vecchia: non si sa se il viaggio è cambiato.
+    AiTripShape? tripShape,
+
+    /// L'utente ha chiuso l'avviso "hai cambiato il viaggio".
+    @Default(false) bool changeNoticeDismissed,
   }) = _AiPackingResult;
 
   /// Il risultato ha i posti (anche se la lista è vuota).
@@ -339,3 +415,8 @@ List<AiWarning> _warningsFromJson(List<dynamic>? raw) {
 String _dateToJson(DateTime value) => value.toUtc().toIso8601String();
 
 DateTime _dateFromJson(String value) => DateTime.parse(value).toLocal();
+
+String? _optDateToJson(DateTime? value) => value?.toUtc().toIso8601String();
+
+DateTime? _optDateFromJson(String? value) =>
+    value == null ? null : DateTime.parse(value).toLocal();

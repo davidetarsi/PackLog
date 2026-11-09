@@ -1,13 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/analytics/core_analytics_service.dart';
+import '../../../core/monitoring/monitoring_service.dart';
 import '../model/promo_redeem_result.dart';
 import '../service/promo_code_service.dart';
 
 part 'promo_code_provider.g.dart';
 
 @Riverpod(keepAlive: true)
-PromoCodeService promoCodeService(Ref ref) => PromoCodeService();
+PromoCodeService promoCodeService(Ref ref) => PromoCodeService(
+  analytics: ref.read(coreAnalyticsServiceProvider),
+  monitoring: ref.read(monitoringServiceProvider),
+);
 
 /// L'esito dell'ultimo codice attivato in automatico dopo il login.
 ///

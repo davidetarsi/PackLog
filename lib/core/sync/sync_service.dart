@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
 import '../analytics/core_analytics_service.dart';
 import '../database/daos/houses_dao.dart';
@@ -9,6 +10,8 @@ import '../database/daos/luggages_dao.dart';
 import '../database/daos/kit_items_dao.dart';
 import '../database/daos/kits_dao.dart';
 import '../database/daos/spaces_dao.dart';
+import '../database/daos/suitcase_edits_dao.dart';
+import '../../features/trips/model/suitcase_edit.dart';
 import '../database/daos/trips_dao.dart';
 import '../database/database.dart';
 import '../database/tables/mixins/syncable_table.dart';
@@ -43,6 +46,7 @@ class SyncService {
   final KitsDao _kitsDao;
   final KitItemsDao _kitItemsDao;
   final TripsDao _tripsDao;
+  final SuitcaseEditsDao _suitcaseEditsDao;
   final SupabaseRepository _remote;
   final AppMonitoringService _monitoring;
   final TombstoneConfigService _tombstoneConfig;
@@ -56,6 +60,7 @@ class SyncService {
     required KitsDao kitsDao,
     required KitItemsDao kitItemsDao,
     required TripsDao tripsDao,
+    required SuitcaseEditsDao suitcaseEditsDao,
     required SupabaseRepository remote,
     required AppMonitoringService monitoring,
     required TombstoneConfigService tombstoneConfig,
@@ -67,6 +72,7 @@ class SyncService {
        _kitsDao = kitsDao,
        _kitItemsDao = kitItemsDao,
        _tripsDao = tripsDao,
+       _suitcaseEditsDao = suitcaseEditsDao,
        _remote = remote,
        _monitoring = monitoring,
        _tombstoneConfig = tombstoneConfig,
@@ -173,6 +179,8 @@ class SyncService {
   /// l'ordine esplicito tiene la semantica chiara e non dipende da PRAGMA.
   Future<void> wipeAllUserData() async {
     debugPrint('[SyncService] wipeAllUserData: clearing local DB');
+    // La coda delle modifiche alla valigia è dell'utente precedente.
+    await _suitcaseEditsDao.deleteAll();
     await _kitItemsDao.wipeAll();
     await _kitsDao.wipeAll();
     await _itemsDao.wipeAll();
@@ -827,6 +835,89 @@ class SyncService {
         );
       }
     }
+
+    await _sendSuitcaseEdits();
+  }
+
+  /// Dimensione di un blocco di modifiche alla valigia inviate in un colpo.
+  static const int _suitcaseEditsBlock = 200;
+
+  /// Codici Postgres per cui riprovare non serve mai: dati non validi (classe
+  /// 22), vincoli violati (classe 23) e RLS che rifiuta la riga, per esempio
+  /// di un altro account (42501).
+  static bool _isPoisonError(Object e) {
+    if (e is! PostgrestException) return false;
+    final code = e.code;
+    return code != null &&
+        (code.startsWith('22') || code.startsWith('23') || code == '42501');
+  }
+
+  /// Invia la coda delle modifiche alla valigia, a blocchi, e toglie in locale
+  /// ciò che è arrivato. Gira dopo le entità e non fa mai fallire il resto
+  /// della sync: se un invio non riesce le righe restano in coda per il giro
+  /// successivo (l'id è la chiave primaria, quindi riprovare non duplica).
+  ///
+  /// Se un blocco viene rifiutato per un errore di dati o di vincolo (una riga
+  /// "avvelenata" bloccherebbe per sempre anche le altre), il blocco si rimanda
+  /// una riga alla volta: quelle arrivate e quelle rifiutate si tolgono in
+  /// locale, quelle che falliscono per altri motivi (rete) restano.
+  Future<void> _sendSuitcaseEdits() async {
+    try {
+      while (true) {
+        final block = await _suitcaseEditsDao.pending(
+          limit: _suitcaseEditsBlock,
+        );
+        if (block.isEmpty) return;
+        try {
+          await _remote.insertSuitcaseEdits([
+            for (final e in block) SyncSerializers.suitcaseEditToJson(e),
+          ]);
+          await _suitcaseEditsDao.deleteByIds([for (final e in block) e.id]);
+        } catch (e) {
+          if (!_isPoisonError(e)) rethrow;
+          if (!await _sendSuitcaseEditsOneByOne(block)) return;
+        }
+        if (block.length < _suitcaseEditsBlock) return;
+      }
+    } catch (e, st) {
+      debugPrint('[SyncService] Invio modifiche valigia fallito: $e');
+      _monitoring.captureException(
+        e,
+        stackTrace: st,
+        tags: const {'operation': 'suitcase_edits_send'},
+      );
+    }
+  }
+
+  /// Rimanda [block] una riga alla volta. Ritorna false se almeno una riga è
+  /// rimasta in coda (errore non di dati): il giro si ferma e riprova al
+  /// prossimo.
+  Future<bool> _sendSuitcaseEditsOneByOne(List<SuitcaseEdit> block) async {
+    var allDone = true;
+    for (final edit in block) {
+      try {
+        await _remote.insertSuitcaseEdits([
+          SyncSerializers.suitcaseEditToJson(edit),
+        ]);
+        await _suitcaseEditsDao.deleteByIds([edit.id]);
+      } catch (e, st) {
+        if (_isPoisonError(e)) {
+          await _suitcaseEditsDao.deleteByIds([edit.id]);
+        } else {
+          allDone = false;
+        }
+        debugPrint('[SyncService] Modifica valigia ${edit.id} rifiutata: $e');
+        _monitoring.captureException(
+          e,
+          stackTrace: st,
+          tags: {
+            'operation': 'suitcase_edits_send',
+            'poison': '${_isPoisonError(e)}',
+          },
+        );
+      }
+    }
+    return allDone;
   }
 
   Future<void> _syncRecord({

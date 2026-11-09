@@ -253,6 +253,38 @@ void main() {
       );
     });
 
+    test('generate_times_out_as_network_error', () async {
+      final service = PackTripService(
+        // Una connessione che non risponde mai.
+        client: () => MockClient((_) => Completer<http.Response>().future),
+        token: () => 'jwt',
+        timeout: const Duration(milliseconds: 50),
+      );
+
+      await expectLater(
+        service.generate(_body, houseId: _houseId),
+        throwsA(isA<PackTripNetworkException>()),
+      );
+    });
+
+    test('il timeout di produzione è di 90 secondi', () {
+      expect(kPackTripTimeout, const Duration(seconds: 90));
+    });
+
+    test(
+      'risposta 200 illeggibile: PackTripInvalidResponseException',
+      () async {
+        final service = _service(
+          () => MockClient((_) async => http.Response('non json', 200)),
+        );
+
+        await expectLater(
+          service.generate(_body, houseId: _houseId),
+          throwsA(isA<PackTripInvalidResponseException>()),
+        );
+      },
+    );
+
     test(
       'cancel: la generate in corso solleva PackTripException(annullata)',
       () async {
@@ -284,6 +316,32 @@ void main() {
   });
 
   group('parsePackTripResponse', () {
+    test('versione_generatore presente: generatorVersion', () {
+      final json = _okResponse()..['versione_generatore'] = '2026-11-08';
+
+      final result = parsePackTripResponse(json, houseId: _houseId, now: _now);
+
+      expect(result.generatorVersion, '2026-11-08');
+    });
+
+    test('versione_generatore assente: null, e il json vecchio si legge', () {
+      final result = parsePackTripResponse(
+        _okResponse(),
+        houseId: _houseId,
+        now: _now,
+      );
+      expect(result.generatorVersion, isNull);
+
+      final old = result.toJson()..remove('generatorVersion');
+      expect(AiPackingResult.fromJson(old).generatorVersion, isNull);
+
+      final withVersion = result.copyWith(generatorVersion: '2026-11-08');
+      final back = AiPackingResult.fromJson(
+        jsonDecode(jsonEncode(withVersion.toJson())) as Map<String, dynamic>,
+      );
+      expect(back.generatorVersion, '2026-11-08');
+    });
+
     test('un avviso con livello sconosciuto si scarta', () {
       final json = _okResponse();
       (json['avvisi'] as List).add(<String, dynamic>{
@@ -400,6 +458,7 @@ void main() {
       'copie': copie,
       'motivo': null,
       'aggiungi': 'Aggiungi la sciarpa',
+      'comprato': 'Comprata',
     };
 
     test('posti letti: remaining == copies, campi mappati', () {
@@ -428,6 +487,7 @@ void main() {
       expect(first.remaining, 2);
       expect(first.reason, isNull);
       expect(first.addLabel, 'Aggiungi la sciarpa');
+      expect(first.boughtLabel, 'Comprata');
       expect(first.toBuy, isFalse);
       expect(first.checked, isFalse);
       final second = result.slots![1];
@@ -438,6 +498,22 @@ void main() {
         const AiTripNote(code: 'lavanderia', title: 'Lavanderia', why: 'Lavi'),
       ]);
     });
+
+    test(
+      'campo comprato assente resta compatibile con viaggi e funzioni vecchi',
+      () {
+        final json = _okResponse()
+          ..['posti'] = [posto('s1')..remove('comprato')];
+        final result = parsePackTripResponse(
+          json,
+          houseId: _houseId,
+          now: _now,
+        );
+        expect(result.slots!.single.boughtLabel, isNull);
+        final roundTrip = AiPackingResult.fromJson(result.toJson());
+        expect(roundTrip.slots!.single.boughtLabel, isNull);
+      },
+    );
 
     test('posti assenti: slots null, avvisi come oggi', () {
       final result = parsePackTripResponse(

@@ -23,6 +23,14 @@ final class PromoFailed extends PromoRedeemResult {
   const PromoFailed();
 }
 
+/// L'esito per l'analytics: `redeemed`, `failed` o il motivo del rifiuto in
+/// snake_case, come lo scrive la RPC.
+String promoOutcomeOf(PromoRedeemResult result) => switch (result) {
+  PromoRedeemed() => 'redeemed',
+  PromoFailed() => 'failed',
+  PromoRejected(:final reason) => reason.code,
+};
+
 /// I codici d'errore della RPC, uno a uno.
 enum PromoRejectReason {
   invalidCode,
@@ -39,6 +47,16 @@ enum PromoRejectReason {
     'too_late' => tooLate,
     'too_many_attempts' => tooManyAttempts,
     _ => invalidCode,
+  };
+
+  /// Il codice della RPC.
+  String get code => switch (this) {
+    invalidCode => 'invalid_code',
+    expired => 'expired',
+    exhausted => 'exhausted',
+    alreadyRedeemed => 'already_redeemed',
+    tooLate => 'too_late',
+    tooManyAttempts => 'too_many_attempts',
   };
 
   /// Chiave di traduzione del messaggio.

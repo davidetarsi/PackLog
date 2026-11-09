@@ -109,6 +109,7 @@ void main() {
           // Le colonne AI arrivano nella v12, i kit e i mezzi nella v13: ogni
           // versione qui è anteriore.
           raw.execute('''
+            DROP TABLE suitcase_edits;
             DROP TABLE kit_items;
             DROP TABLE kits;
             ALTER TABLE trips DROP COLUMN transports;
@@ -157,7 +158,7 @@ void main() {
         expect(
           (await migrated.customSelect('PRAGMA user_version').getSingle())
               .data['user_version'],
-          13,
+          14,
         );
       },
     );
@@ -208,7 +209,7 @@ void main() {
                   .get())
               .first
               .data;
-      expect(db.schemaVersion, 13);
+      expect(db.schemaVersion, 14);
       expect(row['id'], 'l1');
       expect(row['house_id'], 'h1');
       expect(row['name'], 'Zaino');

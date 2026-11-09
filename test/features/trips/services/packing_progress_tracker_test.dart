@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/features/trips/services/packing_progress_tracker.dart';
 
 /// `now` fisso: i test sulle date devono essere deterministici.
@@ -18,7 +20,83 @@ List<PackingEvent> _events({
   now: _now,
 );
 
+class _Analytics extends Mock implements CoreAnalyticsService {}
+
 void main() {
+  group('sendPackingEvent', () {
+    late _Analytics analytics;
+    setUp(() => analytics = _Analytics());
+
+    test('ogni evento del tracker diventa il suo metodo tipato', () {
+      final events = [
+        ...packingEventsFor(
+          tripId: 't1',
+          checkedBefore: 0,
+          checkedAfter: 2,
+          totalItems: 4,
+          departureDateTime: null,
+          now: DateTime(2026, 11, 9),
+        ),
+        ...packingEventsFor(
+          tripId: 't1',
+          checkedBefore: 3,
+          checkedAfter: 4,
+          totalItems: 4,
+          departureDateTime: DateTime(2026, 11, 12),
+          now: DateTime(2026, 11, 9),
+        ),
+      ];
+      expect(events.map((e) => e.name).toSet(), {
+        'packing_started',
+        'packing_progress',
+        'packing_completed',
+      });
+      for (final e in events) {
+        expect(sendPackingEvent(analytics, e), isTrue, reason: e.name);
+      }
+      verify(
+        () => analytics.trackPackingStarted(
+          tripId: 't1',
+          totalItems: 4,
+          daysToDeparture: null,
+        ),
+      ).called(1);
+      verify(
+        () => analytics.trackPackingProgress(
+          tripId: 't1',
+          threshold: 50,
+          daysToDeparture: null,
+        ),
+      ).called(1);
+      verify(
+        () => analytics.trackPackingCompleted(
+          tripId: 't1',
+          totalItems: 4,
+          daysToDeparture: 3,
+        ),
+      ).called(1);
+    });
+
+    test('un nome sconosciuto non manda niente e non lancia', () {
+      expect(
+        sendPackingEvent(analytics, const PackingEvent('packing_paused', {})),
+        isFalse,
+      );
+      verifyZeroInteractions(analytics);
+    });
+
+    test('proprietà malformate: non manda niente e non lancia', () {
+      expect(
+        sendPackingEvent(
+          analytics,
+          const PackingEvent('packing_started', {'trip_id': 't1'}),
+        ),
+        isFalse,
+      );
+      verifyZeroInteractions(analytics);
+    });
+  });
+
   group('packingEventsFor - inizio', () {
     test('la prima spunta emette packing_started senza soglie', () {
       final events = _events(before: 0, after: 1, total: 10);

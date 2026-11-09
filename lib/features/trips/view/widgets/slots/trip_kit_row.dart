@@ -4,7 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../../core/analytics/analytics_service.dart';
+import '../../../../../core/analytics/core_analytics_service.dart';
 import '../../../../../core/catalog/catalog_choices.dart';
 import '../../../../../core/catalog/catalog_provider.dart';
 import '../../../../../shared/helpers/snack_bar_helper.dart';
@@ -12,7 +12,6 @@ import '../../../../items/providers/item_provider.dart';
 import '../../../../kits/providers/kit_provider.dart';
 import '../../../helpers/kit_row_state.dart';
 import '../../../model/trip_model.dart';
-import '../../../providers/trip_provider.dart';
 import 'kit_learn_row.dart';
 import 'kit_suggestion_row.dart';
 import 'slot_actions.dart';
@@ -22,10 +21,16 @@ import 'slot_actions.dart';
 /// uso del viaggio ha già abbastanza sì, la domanda se impararlo
 /// ([KitLearnRow]). Non c'è nulla da mostrare finché non servono.
 class TripKitRow extends ConsumerStatefulWidget {
-  const TripKitRow({super.key, required this.trip, required this.flyKitItems});
+  const TripKitRow({
+    super.key,
+    required this.trip,
+    required this.flyKitItems,
+    required this.changeTrip,
+  });
 
   final TripModel trip;
   final FlyKitItems flyKitItems;
+  final Future<void> Function(TripModel Function(TripModel) change) changeTrip;
 
   @override
   ConsumerState<TripKitRow> createState() => _TripKitRowState();
@@ -41,15 +46,17 @@ class _TripKitRowState extends ConsumerState<TripKitRow> {
 
   Future<void> _add(KitRowState row) async {
     final trip = widget.trip;
-    final notifier = ref.read(tripNotifierProvider.notifier);
-    final kits = ref.read(kitNotifierProvider(_houseId!).notifier);
-    final counted = !trip.aiResult!.kitLearnCounted.contains(row.kit.id);
+    final houseId = _houseId!;
+    final container = ProviderScope.containerOf(context, listen: false);
+    final kits = container.read(kitNotifierProvider(houseId).notifier);
+    var counted = false;
+    var applied = false;
     final box = _rowKey.currentContext?.findRenderObject();
     final from = box is RenderBox && box.hasSize
         ? box.localToGlobal(Offset.zero) & box.size
         : Rect.zero;
-    final analytics = ref.read(analyticsServiceProvider);
-    final updated = applyKitAdded(trip, row, counted: counted);
+    final analytics = ref.read(coreAnalyticsServiceProvider);
+    final updated = applyKitAdded(trip, row, counted: false);
     final landing = [
       for (final item in updated.items)
         if (row.plan.toAdd.any((a) => a.id == item.id) ||
@@ -60,18 +67,27 @@ class _TripKitRowState extends ConsumerState<TripKitRow> {
       await widget.flyKitItems(
         from: from,
         items: landing,
-        save: () => notifier.updateTrip(updated),
+        save: () => widget.changeTrip((latest) {
+          // Il piano precedente al volo può essere superato da una rimozione.
+          final freshRow = pickKitRow(
+            trip: latest,
+            kits:
+                container.read(kitNotifierProvider(houseId)).valueOrNull ?? [],
+            houseItems:
+                container.read(itemNotifierProvider(houseId)).valueOrNull ?? [],
+          );
+          if (freshRow == null || freshRow.kit.id != row.kit.id) return latest;
+          counted = !latest.aiResult!.kitLearnCounted.contains(row.kit.id);
+          applied = true;
+          return applyKitAdded(latest, freshRow, counted: counted);
+        }),
       );
     } catch (_) {
       if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());
       return;
     }
-    unawaited(
-      analytics.logEvent(
-        'kit_suggestion_accepted',
-        properties: {'missing': row.missing.length},
-      ),
-    );
+    if (!applied) return;
+    analytics.trackKitSuggestionAccepted(missing: row.missing.length);
     // Il sì si conta una volta sola per kit e viaggio, anche se la valigia si
     // rigenera.
     var kit = row.kit;
@@ -89,12 +105,12 @@ class _TripKitRowState extends ConsumerState<TripKitRow> {
   }
 
   Future<void> _dismiss(KitRowState row) async {
-    final analytics = ref.read(analyticsServiceProvider);
+    final analytics = ref.read(coreAnalyticsServiceProvider);
     try {
-      await ref
-          .read(tripNotifierProvider.notifier)
-          .updateTrip(applyKitDismissed(widget.trip, row.kit.id));
-      unawaited(analytics.logEvent('kit_suggestion_dismissed'));
+      await widget.changeTrip(
+        (latest) => applyKitDismissed(latest, row.kit.id),
+      );
+      analytics.trackKitSuggestionDismissed();
     } catch (_) {
       if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());
     }
@@ -105,16 +121,11 @@ class _TripKitRowState extends ConsumerState<TripKitRow> {
     if (learn == null) return;
     setState(() => _learn = null);
     final kits = ref.read(kitNotifierProvider(_houseId!).notifier);
-    final analytics = ref.read(analyticsServiceProvider);
+    final analytics = ref.read(coreAnalyticsServiceProvider);
     try {
       if (yes) {
         await kits.learnUse(learn.kitId, learn.use);
-        unawaited(
-          analytics.logEvent(
-            'kit_use_learned',
-            properties: {'kind': useDomain(learn.use)},
-          ),
-        );
+        analytics.trackKitUseLearned(kind: useDomain(learn.use));
       } else {
         await kits.refuseUse(learn.kitId, learn.use);
       }

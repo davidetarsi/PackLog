@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../core/analytics/analytics_service.dart';
+import '../../../core/analytics/core_analytics_service.dart';
 import '../../../features/ai_input/providers/ai_import_notifier.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/ds_text_button.dart';
@@ -31,13 +31,13 @@ class _AiOnboardingIntroScreenState
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        ref.read(analyticsServiceProvider).logEvent('ai_onboarding_started');
+        ref.read(coreAnalyticsServiceProvider).trackAiOnboardingStarted();
       }
     });
   }
 
   void _handleSkip() {
-    ref.read(analyticsServiceProvider).logEvent('ai_onboarding_skipped');
+    ref.read(coreAnalyticsServiceProvider).trackAiOnboardingSkipped();
     ref.read(postLoginOnboardingProvider.notifier).skipAi();
     // Router redirect handles navigation when step changes from aiIntro.
   }

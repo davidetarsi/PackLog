@@ -178,47 +178,78 @@ class _SheetBody extends StatefulWidget {
 class _SheetBodyState extends State<_SheetBody> {
   /// Altezza del piè, misurata dopo il layout.
   double _footerHeight = 0;
+  final GlobalKey _contentKey = GlobalKey();
+  final GlobalKey _footerKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
     final footer = widget.footer;
-    final reserved = footer == null ? 0.0 : _footerHeight;
+    return widget.expand
+        ? Expanded(child: _buildBody(context, footer, double.infinity))
+        : Flexible(
+            child: LayoutBuilder(
+              builder: (context, constraints) =>
+                  _buildBody(context, footer, constraints.maxHeight),
+            ),
+          );
+  }
 
-    // Il contenuto che scorre da solo (calendario) legge lo spazio del piè
-    // da `context.ctaReservedHeight`, come nelle pagine.
+  Widget _buildBody(BuildContext context, Widget? footer, double maxHeight) {
+    final hasRoomForContent =
+        maxHeight.isFinite &&
+        maxHeight - _footerHeight >= kMinInteractiveDimension;
+    final footerInScroll =
+        footer != null && !widget.expand && !hasRoomForContent;
+    final reserved = footer == null || footerInScroll ? 0.0 : _footerHeight;
+    final child = KeyedSubtree(key: _contentKey, child: widget.child);
+
+    Widget measuredFooter() => KeyedSubtree(
+      key: _footerKey,
+      child: _MeasureSize(
+        onChange: (size) {
+          if (mounted && size.height != _footerHeight) {
+            setState(() => _footerHeight = size.height);
+          }
+        },
+        child: DsGlassBand(child: footer!),
+      ),
+    );
+
+    // Con un piè fisso, il contenuto scorre e riserva la sua altezza. Quando
+    // non resta neppure un controllo interattivo di spazio libero, contenuto e
+    // piè condividono invece lo stesso scroll.
     final content = CtaReservedSpaceScope(
       height: reserved,
       child: widget.expand
-          ? widget.child
+          ? child
+          : footerInScroll
+          ? SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(padding: widget.padding, child: child),
+                  measuredFooter(),
+                ],
+              ),
+            )
           : SingleChildScrollView(
               padding: widget.padding.add(EdgeInsets.only(bottom: reserved)),
-              child: widget.child,
+              child: child,
             ),
     );
 
-    final stack = footer == null
+    final stack = footer == null || footerInScroll
         ? content
         : Stack(
             fit: widget.expand ? StackFit.expand : StackFit.loose,
             children: [
               content,
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: _MeasureSize(
-                  onChange: (size) {
-                    if (size.height != _footerHeight) {
-                      setState(() => _footerHeight = size.height);
-                    }
-                  },
-                  child: DsGlassBand(child: footer),
-                ),
-              ),
+              Positioned(left: 0, right: 0, bottom: 0, child: measuredFooter()),
             ],
           );
 
-    return widget.expand ? Expanded(child: stack) : Flexible(child: stack);
+    return stack;
   }
 }
 

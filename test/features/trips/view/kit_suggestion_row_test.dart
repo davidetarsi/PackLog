@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
+import '../../../helpers/mock_suitcase_edits.dart';
 import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
@@ -16,6 +17,8 @@ import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/providers/item_provider.dart';
 import 'package:pack_log/features/kits/model/kit_model.dart';
 import 'package:pack_log/features/kits/repositories/kit_repository.dart';
+import 'package:pack_log/features/luggages/model/luggage_model.dart';
+import 'package:pack_log/features/luggages/providers/luggage_provider.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
@@ -34,8 +37,6 @@ class _MockHouseRepo extends Mock implements HouseRepository {}
 
 class _MockLifecycle extends Mock implements TripLifecycleService {}
 
-class _MockCore extends Mock implements CoreAnalyticsService {}
-
 class _MockRaw extends Mock implements AppAnalyticsService {}
 
 class _MockSync extends Mock implements SyncOrchestrator {}
@@ -49,6 +50,11 @@ class _FixedItems extends ItemNotifier {
 
   @override
   Future<List<ItemModel>> build(String houseId) async => items;
+}
+
+class _FixedLuggages extends LuggageNotifier {
+  @override
+  Future<List<LuggageModel>> build() async => const [];
 }
 
 final _casa = HouseModel(
@@ -212,12 +218,16 @@ void main() {
       ProviderScope(
         overrides: [
           tripRepositoryProvider.overrideWithValue(tripRepo),
+          ...noopSuitcaseEditsOverrides(),
           houseRepositoryProvider.overrideWithValue(houseRepo),
           tripLifecycleServiceProvider.overrideWithValue(lifecycle),
-          coreAnalyticsServiceProvider.overrideWithValue(_MockCore()),
+          coreAnalyticsServiceProvider.overrideWithValue(
+            CoreAnalyticsService(raw),
+          ),
           analyticsServiceProvider.overrideWithValue(raw),
           syncOrchestratorProvider.overrideWithValue(sync),
           kitRepositoryProvider.overrideWithValue(kitRepo),
+          luggageNotifierProvider.overrideWith(() => _FixedLuggages()),
           itemNotifierProvider(
             'h1',
           ).overrideWith(() => _FixedItems(houseItems)),
@@ -366,6 +376,48 @@ void main() {
         {'kway': 1, 'calzetti': 2},
       );
       expect(find.text('K-way'), findsOneWidget);
+    });
+
+    testWidgets('ricalcola il kit dopo una rimozione ancora in salvataggio', (
+      tester,
+    ) async {
+      await pumpDetail(
+        tester,
+        _trip(
+          items: [
+            TripItem(
+              id: 'calzetti',
+              name: 'Calzetti merino',
+              category: ItemCategory.vestiti,
+              quantity: 1,
+            ),
+          ],
+          suggestions: [
+            _suggestion('k1', {'calzetti': 2}),
+          ],
+        ),
+      );
+      final removal = Completer<void>();
+      addTearDown(() {
+        if (!removal.isCompleted) removal.complete();
+      });
+      var writes = 0;
+      when(() => tripRepo.updateTrip(any())).thenAnswer((inv) async {
+        final next = inv.positionalArguments.first as TripModel;
+        if (++writes == 1) await removal.future;
+        current = next;
+      });
+      await tester.tap(find.byKey(const Key('trip_item_calzetti')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('ai_pack_item_remove')));
+      await tester.pump();
+      await addAll(tester);
+      expect(writes, 1);
+      removal.complete();
+      await tester.pumpAndSettle();
+      expect(current.items.single.id, 'calzetti');
+      expect(current.items.single.quantity, 2);
+      expect(current.aiResult!.kitAnswers, {'k1': 'added'});
     });
 
     testWidgets('eventi: accettata e scartata', (tester) async {

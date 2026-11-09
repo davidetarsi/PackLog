@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
+import '../monitoring/monitoring_service.dart';
 import '../../bootstrap.dart';
 import '../../features/onboarding/providers/onboarding_status_provider.dart';
 import '../analytics/core_analytics_service.dart';
@@ -44,8 +45,8 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _housesNavigatorKey = GlobalKey<NavigatorState>();
 final _tripsNavigatorKey = GlobalKey<NavigatorState>();
 
-/// Dove portare un account al primo avvio: "Dove vai?" (`/new-trip` con l'AI
-/// come strada principale), da ogni rotta tranne quelle in cui sta già
+/// Dove portare un account al primo avvio: "Dove vai?" (`/new-trip?first=1`),
+/// da ogni rotta tranne quelle in cui sta già
 /// facendo il suo percorso (nuovo viaggio, i viaggi e la loro valigia, il
 /// primo onboarding) e il login. `null` se non serve nessun redirect.
 @visibleForTesting
@@ -56,7 +57,7 @@ String? firstTripRedirect({
   if (step != OnboardingStep.firstTrip) return null;
   const exempt = ['/new-trip', '/trips', '/onboarding', '/login'];
   if (exempt.any(location.startsWith)) return null;
-  return '/new-trip?ai=1&first=1';
+  return '/new-trip?first=1';
 }
 
 class _AuthChangeNotifier extends ChangeNotifier {
@@ -85,7 +86,10 @@ GoRouter appRouter(Ref ref) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/',
-    observers: [AnalyticsNavigatorObserver(analytics)],
+    observers: [
+      AnalyticsNavigatorObserver(analytics),
+      appSentryNavigatorObserver(),
+    ],
     refreshListenable: authChangeNotifier,
     redirect: (context, state) {
       // 1. Wait for bootstrap
@@ -303,6 +307,22 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) => const ToBuyScreen(),
       ),
       GoRoute(
+        path: '/trips/:id/needs',
+        name: 'trip-needs',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          if (id == null || id.isEmpty) {
+            return _ErrorScreen(message: 'common.content_unavailable'.tr());
+          }
+          return TripDetailScreen(
+            tripId: id,
+            showNeeds: true,
+            initialSlotId: state.uri.queryParameters['slot'],
+          );
+        },
+      ),
+      GoRoute(
         path: '/trips/:id',
         name: 'trip-detail',
         parentNavigatorKey: _rootNavigatorKey,
@@ -315,6 +335,7 @@ GoRouter appRouter(Ref ref) {
           return TripDetailScreen(
             tripId: id,
             initialSlotId: state.uri.queryParameters['slot'],
+            firstReview: state.uri.queryParameters['review'] == '1',
           );
         },
       ),
@@ -328,8 +349,8 @@ GoRouter appRouter(Ref ref) {
           body: 'tour.trip_creation_tooltip.body'.tr(),
           advancesOnOk: true,
           child: NewTripScreen(
-            aiIntent: state.uri.queryParameters['ai'] == '1',
             firstRun: state.uri.queryParameters['first'] == '1',
+            reuseFromId: state.uri.queryParameters['reuseFrom'],
           ),
         ),
       ),
@@ -343,10 +364,7 @@ GoRouter appRouter(Ref ref) {
             return _ErrorScreen(message: 'common.content_unavailable'.tr());
           }
           // Stessa pagina del nuovo viaggio, in modifica.
-          return NewTripScreen(
-            tripId: id,
-            discardOnExit: state.uri.queryParameters['reuse'] == '1',
-          );
+          return NewTripScreen(tripId: id);
         },
       ),
       GoRoute(
@@ -361,8 +379,6 @@ GoRouter appRouter(Ref ref) {
           return PackSuitcaseScreen(
             tripId: id,
             fromNewTrip: state.uri.queryParameters['from'] == 'new',
-            startAi: state.uri.queryParameters['ai'] == '1',
-            firstRun: state.uri.queryParameters['first'] == '1',
           );
         },
       ),
@@ -383,17 +399,10 @@ GoRouter appRouter(Ref ref) {
         },
       ),
       GoRoute(
-        path: '/trips/:id/ai-packing',
+        path: '/ai-packing',
         name: 'trip-ai-packing',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
-          final id = state.pathParameters['id'];
-          final job = state.extra;
-          if (id == null || id.isEmpty || job is! PackTripJob) {
-            return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
-          }
-          return AiPackingWaitScreen(tripId: id, job: job);
-        },
+        builder: (context, state) => const AiPackingWaitScreen(),
       ),
       GoRoute(
         path: '/dev/ds-showcase',

@@ -64,12 +64,7 @@ void main() {
           ),
         ],
       ),
-      GoRoute(
-        path: '/new-trip',
-        builder: (_, state) => Text(
-          state.uri.queryParameters['ai'] == '1' ? 'NEW TRIP AI' : 'NEW TRIP',
-        ),
-      ),
+      GoRoute(path: '/new-trip', builder: (_, _) => const Text('NEW TRIP')),
       GoRoute(
         path: '/houses/:id',
         builder: (_, state) => Text(
@@ -210,7 +205,14 @@ void main() {
     testWidgets('Scansiona con AI apre il selettore immagini', (tester) async {
       await pumpShell(tester);
       await openCreate(tester);
-      await tester.tap(find.byKey(const Key('create_ai_scan')));
+      await tester.ensureVisible(find.byKey(const Key('create_ai_scan')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const Key('create_ai_scan')),
+          matching: find.byIcon(Icons.auto_awesome_outlined),
+        ),
+      );
       await tester.pumpAndSettle();
       expect(find.byIcon(Icons.photo_library_outlined), findsOneWidget);
       expect(find.byIcon(Icons.camera_alt_outlined), findsOneWidget);
@@ -245,20 +247,10 @@ void main() {
       await tester.tap(find.byKey(const Key('create_new_trip')));
       await tester.pumpAndSettle();
       expect(find.text('NEW TRIP'), findsOneWidget);
-    });
-
-    testWidgets('Valigia con AI apre il nuovo viaggio con ai=1 e lo traccia', (
-      tester,
-    ) async {
-      await pumpShell(tester);
-      await openCreate(tester);
-      await tester.tap(find.byKey(const Key('create_ai_suitcase')));
-      await tester.pumpAndSettle();
-      expect(find.text('NEW TRIP AI'), findsOneWidget);
       verify(
         () => analytics.logEvent(
           'create_sheet_choice',
-          properties: {'choice': 'ai_suitcase', 'tab': 'houses'},
+          properties: {'choice': 'new_trip', 'tab': 'houses'},
         ),
       ).called(1);
     });

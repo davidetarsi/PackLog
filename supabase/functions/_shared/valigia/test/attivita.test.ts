@@ -66,33 +66,20 @@ test("trekking: il bisogno del riverbero solo in quota", () => {
   assert.ok(!richiesti(["trekking"], 400).slot.includes("occhiali da sole"));
 });
 
-test("passeggiate: escursioni leggere non equivalgono a trekking tecnico", () => {
-  for (const a of ["escursioni leggere", "Escursione leggera", "ESCURSIONI LEGGERE nella natura"]) {
-    assert.equal(eTrekking([a]), false, a);
-  }
-  for (const a of ["trekking", "escursioni in quota", "escursioni", "escursioni leggere e trekking",
-    "escursioni leggermente impegnative"]) {
+test("escursioni leggere: restano trekking (Davide, 18 e 31 ottobre)", () => {
+  for (const a of ["escursioni leggere", "Escursione leggera", "ESCURSIONI LEGGERE nella natura", "trekking",
+    "escursioni in quota", "escursioni"]) {
     assert.equal(eTrekking([a]), true, a);
   }
-  assert.equal(eTrekking(["escursioni leggere", "trekking"]), true);
+  assert.equal(eTrekking(["visite in citta"]), false);
 });
 
-test("passeggiate: il sistema non impone Hiking ai capi quotidiani o coprenti", () => {
-  for (const attivita of [["escursioni leggere"], ["escursioni leggere", "mare", "visite a siti religiosi"]]) {
-    const { r } = richiesti(attivita);
-    assert.ok(r.richiesti.every((s: any) => !(s.activityTags ?? []).includes("Hiking")),
-      JSON.stringify(r.richiesti));
-    assert.ok([...r.ideali, ...r.ripieghi].some((g: any) => g.item_id === "sneakers"));
-  }
-});
-
-test("passeggiate: anche una preferenza Hiking del modello resta proporzionata alle attivita' dichiarate", () => {
+test("escursioni leggere: i requisiti Hiking del modello non vengono convertiti", () => {
   const input = JSON.parse(SLOTS).map((s: any) => ({ ...s, activityTags: ["Hiking"] }));
   const r = strategySlots(JSON.stringify(input), armadio,
     { giorni: 4, lavatrice: false, attivita: ["escursioni leggere"], temp_min: 14, temp_max: 22,
       bagaglio: "trolley medio" });
-  assert.ok(r.richiesti.every((s: any) => !s.activityTags.includes("Hiking")));
-  assert.ok([...r.ideali, ...r.ripieghi].some((g: any) => g.item_id === "sneakers"));
+  assert.ok(r.richiesti.some((s: any) => s.activityTags.includes("Hiking")));
 });
 
 test("passeggiate: il trekking esplicito conserva scarpe con ruolo tecnico", () => {
@@ -102,17 +89,11 @@ test("passeggiate: il trekking esplicito conserva scarpe con ruolo tecnico", () 
 });
 
 import { servePerTappa } from "../tappe.ts";
-test("passeggiate a tappe: gli obblighi Hiking restano nella sola tappa di trekking", () => {
+test("escursioni leggere a tappe: gli obblighi da trekking valgono come per il trekking", () => {
   const meteo = { temp_min_media: 18, temp_max_media: 25, giorni_di_pioggia: 0 };
-  const controlla = (attivita: string[]) => {
-    const mancanti: any[] = [];
-    servePerTappa({ destinazione: "Tappa", giorni: 4, meteo, attivita }, [], [], new Set(), 0,
-      false, null, false, mancanti);
-    return mancanti;
-  };
-  const leggera = controlla(["escursioni leggere", "visite a siti religiosi"]);
-  assert.ok(!leggera.some((g) => g.ruolo === "trekking" || g.requiredActivityTags?.includes("Hiking")));
-  const tecnica = controlla(["trekking"]);
-  assert.ok(tecnica.some((g) => g.ruolo === "trekking"));
-  assert.ok(tecnica.some((g) => g.requiredActivityTags?.includes("Hiking")));
+  const mancanti: any[] = [];
+  servePerTappa({ destinazione: "Tappa", giorni: 4, meteo, attivita: ["escursioni leggere"] }, [], [], new Set(), 0,
+    false, null, false, mancanti);
+  assert.ok(mancanti.some((g) => g.ruolo === "trekking"));
+  assert.ok(mancanti.some((g) => g.requiredActivityTags?.includes("Hiking")));
 });

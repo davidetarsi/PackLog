@@ -46,12 +46,30 @@ class DsSheetHeader extends StatelessWidget {
               : Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleLarge?.title,
+                      child: Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        runSpacing: context.spacingXs,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.titleLarge?.title,
+                          ),
+                          if (actions.isNotEmpty)
+                            Wrap(
+                              alignment: WrapAlignment.end,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: context.spacingXs,
+                              runSpacing: context.spacingXs,
+                              children: actions,
+                            ),
+                        ],
                       ),
                     ),
-                    ...actions,
                     DsIconButton(
                       key: const Key('sheet_close'),
                       icon: Icons.close,

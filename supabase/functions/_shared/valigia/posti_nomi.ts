@@ -12,6 +12,8 @@ export interface NomePosto {
   en: [string, string];
   /** false se il nome dice gia' il freddo, la pioggia o l'eleganza (Piumino, Guanti, Blazer). */
   qualificabile: boolean;
+  /** true se il freddo non lo qualifica: "Leggings caldi", "Camicie calde" non si dicono. */
+  senzaCaldo?: boolean;
 }
 
 /** Nome solo plurale: la stessa voce per singolare e plurale. */
@@ -22,22 +24,27 @@ export const NOME_FOULARD_LEGGERO: NomePosto = {
   soloPlurale: false, qualificabile: false,
 };
 
+/** Gli scarponi da trekking con calore basso sono scarpe da trail. */
+export const NOME_SCARPE_TREKKING: NomePosto = {
+  it: sp("scarpe da trekking"), genere: "f", en: sp("hiking shoes"), soloPlurale: true, qualificabile: true,
+};
+
 export const NOMI_SOTTOCATEGORIA: Record<string, NomePosto> = {
-  "T-Shirt": { it: ["maglietta", "magliette"], genere: "f", en: ["t-shirt", "t-shirts"], soloPlurale: false, qualificabile: true },
-  "Shirt": { it: ["camicia", "camicie"], genere: "f", en: ["shirt", "shirts"], soloPlurale: false, qualificabile: true },
-  "Polo": { it: ["polo", "polo"], genere: "f", en: ["polo shirt", "polo shirts"], soloPlurale: false, qualificabile: true },
+  "T-Shirt": { it: ["maglietta", "magliette"], genere: "f", en: ["t-shirt", "t-shirts"], soloPlurale: false, qualificabile: true, senzaCaldo: true },
+  "Shirt": { it: ["camicia", "camicie"], genere: "f", en: ["shirt", "shirts"], soloPlurale: false, qualificabile: true, senzaCaldo: true },
+  "Polo": { it: ["polo", "polo"], genere: "f", en: ["polo shirt", "polo shirts"], soloPlurale: false, qualificabile: true, senzaCaldo: true },
   "Hoodie": { it: ["felpa con cappuccio", "felpe con cappuccio"], genere: "f", en: ["hoodie", "hoodies"], soloPlurale: false, qualificabile: true },
   "Sweatshirt": { it: ["felpa", "felpe"], genere: "f", en: ["sweatshirt", "sweatshirts"], soloPlurale: false, qualificabile: true },
   "Sweater": { it: ["maglione", "maglioni"], genere: "m", en: ["sweater", "sweaters"], soloPlurale: false, qualificabile: true },
-  "Tank Top": { it: ["canottiera", "canottiere"], genere: "f", en: ["tank top", "tank tops"], soloPlurale: false, qualificabile: true },
-  "Crop Top": { it: ["top", "top"], genere: "m", en: ["crop top", "crop tops"], soloPlurale: false, qualificabile: true },
+  "Tank Top": { it: ["canottiera", "canottiere"], genere: "f", en: ["tank top", "tank tops"], soloPlurale: false, qualificabile: true, senzaCaldo: true },
+  "Crop Top": { it: ["top", "top"], genere: "m", en: ["crop top", "crop tops"], soloPlurale: false, qualificabile: true, senzaCaldo: true },
   "Thermal Top": { it: ["maglia termica", "maglie termiche"], genere: "f", en: ["thermal top", "thermal tops"], soloPlurale: false, qualificabile: false },
   // Il pile e' gia' un capo caldo: "Pile caldi" non si dice (come la maglia termica).
   "Fleece": { it: ["pile", "pile"], genere: "m", en: ["fleece", "fleeces"], soloPlurale: false, qualificabile: false },
   "Jeans": { it: sp("jeans"), genere: "m", en: sp("jeans"), soloPlurale: true, qualificabile: true },
   "Shorts": { it: sp("pantaloncini"), genere: "m", en: sp("shorts"), soloPlurale: true, qualificabile: true },
   "Trousers": { it: sp("pantaloni"), genere: "m", en: sp("trousers"), soloPlurale: true, qualificabile: true },
-  "Leggings": { it: sp("leggings"), genere: "m", en: sp("leggings"), soloPlurale: true, qualificabile: true },
+  "Leggings": { it: sp("leggings"), genere: "m", en: sp("leggings"), soloPlurale: true, qualificabile: true, senzaCaldo: true },
   "Skirt": { it: ["gonna", "gonne"], genere: "f", en: ["skirt", "skirts"], soloPlurale: false, qualificabile: true },
   "Sweatpants": { it: sp("pantaloni della tuta"), genere: "m", en: sp("sweatpants"), soloPlurale: true, qualificabile: true },
   "Swimwear": { it: ["costume da bagno", "costumi da bagno"], genere: "m", en: ["swimsuit", "swimsuits"], soloPlurale: false, qualificabile: true },
