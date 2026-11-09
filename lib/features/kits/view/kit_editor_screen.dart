@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/analytics/analytics_service.dart';
+import '../../../core/analytics/core_analytics_service.dart';
 import '../../../shared/helpers/search_match.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
@@ -107,7 +107,7 @@ class _KitEditorScreenState extends ConsumerState<KitEditorScreen> {
     if (!_canSave) return;
     setState(() => _busy = true);
     final notifier = ref.read(kitNotifierProvider(widget.houseId).notifier);
-    final analytics = ref.read(analyticsServiceProvider);
+    final analytics = ref.read(coreAnalyticsServiceProvider);
     try {
       await saveKitDraft(
         notifier,
@@ -119,14 +119,9 @@ class _KitEditorScreenState extends ConsumerState<KitEditorScreen> {
         onCreated: (kit) {
           _existing = kit;
           // Il kit esiste: si conta qui, anche se gli oggetti poi falliscono.
-          unawaited(
-            analytics.logEvent(
-              'kit_created',
-              properties: {
-                'items': _items.length,
-                'uses': _uses.activities.length + _uses.transports.length,
-              },
-            ),
+          analytics.trackKitCreated(
+            items: _items.length,
+            uses: _uses.activities.length + _uses.transports.length,
           );
         },
       );

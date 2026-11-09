@@ -1,6 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../core/analytics/analytics_service.dart';
+import '../../../core/analytics/core_analytics_service.dart';
 import '../model/onboarding_state.dart';
 import '../repositories/shared_prefs_onboarding_repository.dart';
 
@@ -92,13 +92,10 @@ class PostLoginOnboarding extends _$PostLoginOnboarding {
     // ha finito il tour da chi lo ha chiuso al primo tip.
     if (next == OnboardingStep.done) {
       ref
-          .read(analyticsServiceProvider)
-          .logEvent(
-            'tour_completed',
-            properties: {
-              'skipped_ai': current.skippedAi,
-              'last_step_index': current.step.tourStepIndex,
-            },
+          .read(coreAnalyticsServiceProvider)
+          .trackTourCompleted(
+            skippedAi: current.skippedAi,
+            lastStepIndex: current.step.tourStepIndex,
           );
     }
   }

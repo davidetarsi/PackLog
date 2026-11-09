@@ -60,7 +60,27 @@ void main() {
       verify(
         () => mockAnalytics.logEvent(
           'trip_created',
-          properties: {'trip_id': 't1', 'is_first_trip': false},
+          properties: {
+            'trip_id': 't1',
+            'is_first_trip': false,
+            'trip_number': 2,
+          },
+        ),
+      ).called(1);
+    });
+
+    test('trackTripCreated con i giorni alla partenza', () async {
+      service.trackTripCreated(tripId: 't', totalTrips: 3, daysToDeparture: 10);
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'trip_created',
+          properties: {
+            'trip_id': 't',
+            'is_first_trip': false,
+            'trip_number': 3,
+            'days_to_departure': 10,
+          },
         ),
       ).called(1);
     });
@@ -168,57 +188,6 @@ void main() {
         ).called(1);
       },
     );
-  });
-
-  group('bulk events', () {
-    test('trackBulkTemplateToggled logs bulk_template_toggled', () async {
-      service.trackBulkTemplateToggled(
-        templateKey: 'beach',
-        isSelected: true,
-        totalSelected: 2,
-      );
-      await pump();
-      verify(
-        () => mockAnalytics.logEvent(
-          'bulk_template_toggled',
-          properties: {
-            'template_key': 'beach',
-            'is_selected': true,
-            'total_selected': 2,
-          },
-        ),
-      ).called(1);
-    });
-
-    test('trackBulkGenderSet logs bulk_gender_set', () async {
-      service.trackBulkGenderSet(gender: 'male');
-      await pump();
-      verify(
-        () => mockAnalytics.logEvent(
-          'bulk_gender_set',
-          properties: {'gender': 'male'},
-        ),
-      ).called(1);
-    });
-
-    test('trackBulkSessionSaved logs bulk_session_saved', () async {
-      service.trackBulkSessionSaved(
-        itemCount: 10,
-        templateCount: 2,
-        hasManualItems: true,
-      );
-      await pump();
-      verify(
-        () => mockAnalytics.logEvent(
-          'bulk_session_saved',
-          properties: {
-            'item_count': 10,
-            'template_count': 2,
-            'has_manual_items': true,
-          },
-        ),
-      ).called(1);
-    });
   });
 
   group('ai events', () {
@@ -331,13 +300,58 @@ void main() {
   });
 
   group('AI & onboarding funnel (P2 #14)', () {
-    test('trackAiItemsSaved logs count + is_onboarding', () async {
-      service.trackAiItemsSaved(count: 4, isOnboarding: true);
+    test('trackAiItemsSaved: conteggi della scansione', () async {
+      service.trackAiItemsSaved(
+        count: 4,
+        isOnboarding: true,
+        found: 6,
+        excluded: 2,
+        renamed: 1,
+        detailsEdited: 1,
+        photos: 2,
+        excludedTypes: const ['Jewelry', 'Other'],
+        renamedTypes: const ['Shorts'],
+      );
       await pump();
       verify(
         () => mockAnalytics.logEvent(
           'ai_items_saved',
-          properties: {'count': 4, 'is_onboarding': true},
+          properties: {
+            'count': 4,
+            'is_onboarding': true,
+            'found': 6,
+            'excluded': 2,
+            'renamed': 1,
+            'details_edited': 1,
+            'photos': 2,
+            'excluded_types': ['Jewelry', 'Other'],
+            'renamed_types': ['Shorts'],
+          },
+        ),
+      ).called(1);
+    });
+
+    test('trackAiScanDoubtResolved', () async {
+      service.trackAiScanDoubtResolved(
+        doubtFields: const ['warmth', 'formality'],
+        choseJev: const ['warmth'],
+        keptGpt: const ['formality'],
+        otherValue: const [],
+        correctedWithoutDoubt: const ['baseColor'],
+        subCategory: 'Sweater',
+      );
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'ai_scan_doubt_resolved',
+          properties: {
+            'doubt_fields': ['warmth', 'formality'],
+            'chose_jev': ['warmth'],
+            'kept_gpt': ['formality'],
+            'other_value': <String>[],
+            'corrected_without_doubt': ['baseColor'],
+            'sub_category': 'Sweater',
+          },
         ),
       ).called(1);
     });
@@ -477,5 +491,313 @@ void main() {
         ).called(1);
       },
     );
+  });
+
+  group('eventi spostati', () {
+    // Nomi e proprietà identici a quando i chiamanti usavano logEvent diretto.
+    Future<void> expectEvent(String name, [Map<String, dynamic>? props]) async {
+      await pump();
+      verify(() => mockAnalytics.logEvent(name, properties: props)).called(1);
+    }
+
+    test('trackAppOpened', () async {
+      service.trackAppOpened(trigger: 'cold_start');
+      await expectEvent('app_opened', {'trigger': 'cold_start'});
+    });
+
+    test('trackOnboardingPageViewed', () async {
+      service.trackOnboardingPageViewed(pageIndex: 1, pageName: 'trips');
+      await expectEvent('onboarding_page_viewed', {
+        'page_index': 1,
+        'page_name': 'trips',
+      });
+    });
+
+    test('trackOnboardingSkipped', () async {
+      service.trackOnboardingSkipped(pageIndex: 0);
+      await expectEvent('onboarding_skipped', {'page_index': 0});
+    });
+
+    test('trackLoginScreenViewed', () async {
+      service.trackLoginScreenViewed();
+      await expectEvent('login_screen_viewed');
+    });
+
+    test('trackConsentGiven', () async {
+      service.trackConsentGiven(policyVersion: '2026-10');
+      await expectEvent('consent_given', {'policy_version': '2026-10'});
+    });
+
+    test('trackLoginAttempted e trackLoginCompleted', () async {
+      service.trackLoginAttempted(method: 'google');
+      await expectEvent('login_attempted', {'method': 'google'});
+      service.trackLoginCompleted(method: 'google');
+      await expectEvent('login_completed', {'method': 'google'});
+    });
+
+    test('trackLoginFailed senza error_type se null', () async {
+      service.trackLoginFailed(method: 'google', reason: 'cancelled');
+      await expectEvent('login_failed', {
+        'method': 'google',
+        'reason': 'cancelled',
+      });
+    });
+
+    test('trackLoginFailed con solo error_type', () async {
+      service.trackLoginFailed(method: 'google', errorType: 'StateError');
+      await expectEvent('login_failed', {
+        'method': 'google',
+        'error_type': 'StateError',
+      });
+    });
+
+    test('trackAnalyticsOptIn e trackAnalyticsOptOut', () async {
+      service.trackAnalyticsOptOut();
+      await expectEvent('analytics_opt_out', {'enabled': false});
+      service.trackAnalyticsOptIn();
+      await expectEvent('analytics_opt_in', {'enabled': true});
+    });
+
+    test('step del tour', () async {
+      const props = {'step_name': 'houseTooltip', 'step_index': 2};
+      service.trackOnboardingStepViewed(stepName: 'houseTooltip', stepIndex: 2);
+      await expectEvent('onboarding_step_viewed', props);
+      service.trackOnboardingStepAdvanced(
+        stepName: 'houseTooltip',
+        stepIndex: 2,
+      );
+      await expectEvent('onboarding_step_advanced', props);
+      service.trackOnboardingClosed(stepName: 'houseTooltip', stepIndex: 2);
+      await expectEvent('onboarding_closed', props);
+    });
+
+    test('tour e onboarding AI senza proprietà', () async {
+      service.trackAiOnboardingStarted();
+      await expectEvent('ai_onboarding_started');
+      service.trackAiOnboardingSkipped();
+      await expectEvent('ai_onboarding_skipped');
+      service.trackTourRelaunched();
+      await expectEvent('tour_relaunched');
+    });
+
+    test('trackTourCompleted', () async {
+      service.trackTourCompleted(skippedAi: true, lastStepIndex: 5);
+      await expectEvent('tour_completed', {
+        'skipped_ai': true,
+        'last_step_index': 5,
+      });
+    });
+
+    test('trackFirstTripStarted', () async {
+      service.trackFirstTripStarted();
+      await expectEvent('first_trip_started', const {});
+    });
+
+    test('trackFirstSuitcaseGenerated', () async {
+      service.trackFirstSuitcaseGenerated(
+        slotsImportant: 1,
+        slotsProposed: 2,
+        slotsTotal: 3,
+        tripItems: 20,
+        fromFirstRun: true,
+      );
+      await expectEvent('first_suitcase_generated', {
+        'slots_important': 1,
+        'slots_proposed': 2,
+        'slots_total': 3,
+        'trip_items': 20,
+        'from_first_run': true,
+      });
+    });
+
+    test('trackKitAutoAdded', () async {
+      service.trackKitAutoAdded(kits: 2, items: 5);
+      await expectEvent('kit_auto_added', {'kits': 2, 'items': 5});
+    });
+
+    test('posti', () async {
+      service.trackSlotFilled(level: 'important', copies: 2);
+      await expectEvent('slot_filled', {'level': 'important', 'copies': 2});
+      service.trackSlotMarkedToBuy(level: 'useful', from: 'card');
+      await expectEvent('slot_marked_to_buy', {
+        'level': 'useful',
+        'from': 'card',
+      });
+      service.trackSlotBought(level: 'useful');
+      await expectEvent('slot_bought', {'level': 'useful'});
+    });
+
+    test('kit', () async {
+      service.trackKitSuggestionAccepted(missing: 2);
+      await expectEvent('kit_suggestion_accepted', {'missing': 2});
+      service.trackKitSuggestionDismissed();
+      await expectEvent('kit_suggestion_dismissed');
+      service.trackKitUseLearned(kind: 'activity');
+      await expectEvent('kit_use_learned', {'kind': 'activity'});
+      service.trackKitCreated(items: 4, uses: 2);
+      await expectEvent('kit_created', {'items': 4, 'uses': 2});
+    });
+
+    test('preparazione della valigia', () async {
+      service.trackPackingStarted(
+        tripId: 't1',
+        totalItems: 10,
+        daysToDeparture: null,
+      );
+      await expectEvent('packing_started', {
+        'trip_id': 't1',
+        'total_items': 10,
+        'days_to_departure': null,
+      });
+      service.trackPackingProgress(
+        tripId: 't1',
+        threshold: 50,
+        daysToDeparture: 2,
+      );
+      await expectEvent('packing_progress', {
+        'trip_id': 't1',
+        'threshold': 50,
+        'days_to_departure': 2,
+      });
+      service.trackPackingCompleted(
+        tripId: 't1',
+        totalItems: 10,
+        daysToDeparture: 0,
+      );
+      await expectEvent('packing_completed', {
+        'trip_id': 't1',
+        'total_items': 10,
+        'days_to_departure': 0,
+      });
+    });
+  });
+
+  group('tetti e codici promo', () {
+    test('trackAiLimitReached', () async {
+      service.trackAiLimitReached(feature: 'weather');
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'ai_limit_reached',
+          properties: {'feature': 'weather'},
+        ),
+      ).called(1);
+    });
+
+    test('trackAiLimitReached con la fonte', () async {
+      service.trackAiLimitReached(feature: 'item_name', source: 'backfill');
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'ai_limit_reached',
+          properties: {'feature': 'item_name', 'source': 'backfill'},
+        ),
+      ).called(1);
+    });
+
+    test('trackPromoCodeRedeemed senza crediti', () async {
+      service.trackPromoCodeRedeemed(outcome: 'expired');
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'promo_code_redeemed',
+          properties: {'outcome': 'expired'},
+        ),
+      ).called(1);
+    });
+
+    test('trackPromoCodeRedeemed con i crediti', () async {
+      service.trackPromoCodeRedeemed(outcome: 'redeemed', credits: 20);
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'promo_code_redeemed',
+          properties: {'outcome': 'redeemed', 'credits': 20},
+        ),
+      ).called(1);
+    });
+  });
+
+  group('valigia AI', () {
+    test('trackAiSuitcaseChanged unisce conteggi e contesto', () async {
+      service.trackAiSuitcaseChanged(
+        tripId: 't1',
+        counts: const {
+          'removed': 1,
+          'removed_types': ['Sweater'],
+        },
+        context: const {
+          'washer': true,
+          'activities': ['beach'],
+        },
+      );
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'ai_suitcase_changed',
+          properties: {
+            'trip_id': 't1',
+            'removed': 1,
+            'removed_types': ['Sweater'],
+            'washer': true,
+            'activities': ['beach'],
+          },
+        ),
+      ).called(1);
+    });
+
+    test('trackAiSuitcaseFinished: esito, durata e proprietà', () async {
+      service.trackAiSuitcaseFinished(
+        outcome: 'ok',
+        durationMs: 41000,
+        tripId: 't1',
+        properties: const {'nights': 4, 'is_regeneration': false},
+      );
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'ai_suitcase_finished',
+          properties: {
+            'outcome': 'ok',
+            'duration_ms': 41000,
+            'trip_id': 't1',
+            'nights': 4,
+            'is_regeneration': false,
+          },
+        ),
+      ).called(1);
+    });
+
+    test('trackAiItemReasonOpened', () async {
+      service.trackAiItemReasonOpened(
+        reasonCode: 'rain',
+        subCategory: 'Jacket',
+      );
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'ai_item_reason_opened',
+          properties: {'reason_code': 'rain', 'sub_category': 'Jacket'},
+        ),
+      ).called(1);
+    });
+
+    test('trackAiWarningDismissed e trackAiSlotRemoved', () async {
+      service.trackAiWarningDismissed(code: 'rain_gear', level: 'important');
+      service.trackAiSlotRemoved(type: 'calze', level: 'useful');
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'ai_warning_dismissed',
+          properties: {'code': 'rain_gear', 'level': 'important'},
+        ),
+      ).called(1);
+      verify(
+        () => mockAnalytics.logEvent(
+          'ai_slot_removed',
+          properties: {'type': 'calze', 'level': 'useful'},
+        ),
+      ).called(1);
+    });
   });
 }

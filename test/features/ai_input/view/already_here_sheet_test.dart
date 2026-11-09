@@ -635,6 +635,13 @@ void main() {
       () => analytics.trackAiItemsSaved(
         count: any(named: 'count'),
         isOnboarding: any(named: 'isOnboarding'),
+        found: any(named: 'found'),
+        excluded: any(named: 'excluded'),
+        renamed: any(named: 'renamed'),
+        detailsEdited: any(named: 'detailsEdited'),
+        photos: any(named: 'photos'),
+        excludedTypes: any(named: 'excludedTypes'),
+        renamedTypes: any(named: 'renamedTypes'),
       ),
     );
     await app.finish();

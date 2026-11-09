@@ -46,7 +46,10 @@ class _RecordingMetadata extends ItemMetadataService {
   final names = <String>[];
 
   @override
-  Future<ItemMetadataResult?> fromName(String name) async {
+  Future<ItemMetadataResult?> fromName(
+    String name, {
+    String source = ItemMetadataService.sourceManual,
+  }) async {
     names.add(name);
     return result;
   }

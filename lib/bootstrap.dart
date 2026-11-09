@@ -50,6 +50,7 @@ import 'package:sqlite3/open.dart';
 import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 
 import 'core/analytics/analytics_service.dart';
+import 'core/analytics/core_analytics_service.dart';
 import 'core/catalog/catalog_repository.dart';
 import 'core/catalog/catalog_store.dart';
 import 'core/auth/secure_local_storage.dart';
@@ -164,7 +165,7 @@ final appBootstrapProvider = FutureProvider<void>((ref) async {
         } catch (e) {
           debugPrint('[Bootstrap] versione app non leggibile: $e');
         }
-        analytics.logEvent('app_opened', properties: {'trigger': 'cold_start'});
+        CoreAnalyticsService(analytics).trackAppOpened(trigger: 'cold_start');
       },
     ),
   );

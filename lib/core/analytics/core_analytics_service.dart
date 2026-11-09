@@ -26,6 +26,12 @@ class CoreAnalyticsService {
     }();
   }
 
+  // ── app_ ──────────────────────────────────────────────────────────────────
+
+  void trackAppOpened({required String trigger}) {
+    _safeLogEvent('app_opened', properties: {'trigger': trigger});
+  }
+
   // ── house_ ────────────────────────────────────────────────────────────────
 
   void trackHouseCreated({required String houseId, required int totalHouses}) {
@@ -169,14 +175,89 @@ class CoreAnalyticsService {
 
   // ── trip_ ─────────────────────────────────────────────────────────────────
 
-  void trackTripCreated({required String tripId, required int totalTrips}) {
+  /// `trip_number`: quanti viaggi ha l'utente con questo (il secondo viaggio
+  /// è il segnale che l'app è tornata utile).
+  void trackTripCreated({
+    required String tripId,
+    required int totalTrips,
+    int? daysToDeparture,
+  }) {
     _safeLogEvent(
       'trip_created',
-      properties: {'trip_id': tripId, 'is_first_trip': totalTrips == 1},
+      properties: {
+        'trip_id': tripId,
+        'is_first_trip': totalTrips == 1,
+        'trip_number': totalTrips,
+        'days_to_departure': ?daysToDeparture,
+      },
     );
   }
 
   void trackTripUpdated() => _safeLogEvent('trip_updated');
+
+  // ── ai_suitcase_ ──────────────────────────────────────────────────────────
+
+  /// La valigia salvata è cambiata rispetto alla proposta AI. [counts] e
+  /// [context] sono già piatti (li calcola la feature): conteggi e
+  /// sottocategorie, mai nomi o destinazione.
+  void trackAiSuitcaseChanged({
+    required String tripId,
+    required Map<String, Object> counts,
+    required Map<String, Object> context,
+  }) {
+    _safeLogEvent(
+      'ai_suitcase_changed',
+      properties: {'trip_id': tripId, ...counts, ...context},
+    );
+  }
+
+  /// Un tentativo di generare la valigia è finito (una volta per tentativo,
+  /// anche annullato). `outcome`: `ok`, `credits`, `empty_wardrobe`,
+  /// `wardrobe_too_large`, `network`, `error`, `cancelled`. [properties]
+  /// sono già piatte: viaggio, armadio, contesto.
+  void trackAiSuitcaseFinished({
+    required String outcome,
+    required int durationMs,
+    required String tripId,
+    required Map<String, Object> properties,
+  }) {
+    _safeLogEvent(
+      'ai_suitcase_finished',
+      properties: {
+        'outcome': outcome,
+        'duration_ms': durationMs,
+        'trip_id': tripId,
+        ...properties,
+      },
+    );
+  }
+
+  /// Aperta la scheda di un capo proposto, con il perché dell'AI.
+  void trackAiItemReasonOpened({
+    required String reasonCode,
+    required String subCategory,
+  }) {
+    _safeLogEvent(
+      'ai_item_reason_opened',
+      properties: {'reason_code': reasonCode, 'sub_category': subCategory},
+    );
+  }
+
+  /// Un avviso "cosa manca" scartato dall'utente.
+  void trackAiWarningDismissed({required String code, required String level}) {
+    _safeLogEvent(
+      'ai_warning_dismissed',
+      properties: {'code': code, 'level': level},
+    );
+  }
+
+  /// Un posto della valigia tolto dall'utente.
+  void trackAiSlotRemoved({required String type, required String level}) {
+    _safeLogEvent(
+      'ai_slot_removed',
+      properties: {'type': type, 'level': level},
+    );
+  }
 
   void trackTripDeleted() => _safeLogEvent('trip_deleted');
 
@@ -186,38 +267,113 @@ class CoreAnalyticsService {
     _safeLogEvent('trip_saved_toggled', properties: {'is_saved': isSaved});
   }
 
-  // ── bulk_ ─────────────────────────────────────────────────────────────────
+  // ── first_ ────────────────────────────────────────────────────────────────
 
-  void trackBulkTemplateToggled({
-    required String templateKey,
-    required bool isSelected,
-    required int totalSelected,
+  void trackFirstTripStarted() =>
+      _safeLogEvent('first_trip_started', properties: const {});
+
+  /// Una volta sola per dispositivo, alla prima valigia con i posti salvata.
+  void trackFirstSuitcaseGenerated({
+    required int slotsImportant,
+    required int slotsProposed,
+    required int slotsTotal,
+    required int tripItems,
+    required bool fromFirstRun,
   }) {
     _safeLogEvent(
-      'bulk_template_toggled',
+      'first_suitcase_generated',
       properties: {
-        'template_key': templateKey,
-        'is_selected': isSelected,
-        'total_selected': totalSelected,
+        'slots_important': slotsImportant,
+        'slots_proposed': slotsProposed,
+        'slots_total': slotsTotal,
+        'trip_items': tripItems,
+        'from_first_run': fromFirstRun,
       },
     );
   }
 
-  void trackBulkGenderSet({required String gender}) {
-    _safeLogEvent('bulk_gender_set', properties: {'gender': gender});
+  // ── slot_ / kit_ ──────────────────────────────────────────────────────────
+
+  void trackSlotFilled({required String level, required int copies}) {
+    _safeLogEvent(
+      'slot_filled',
+      properties: {'level': level, 'copies': copies},
+    );
   }
 
-  void trackBulkSessionSaved({
-    required int itemCount,
-    required int templateCount,
-    required bool hasManualItems,
+  void trackSlotMarkedToBuy({required String level, required String from}) {
+    _safeLogEvent(
+      'slot_marked_to_buy',
+      properties: {'level': level, 'from': from},
+    );
+  }
+
+  void trackSlotBought({required String level}) {
+    _safeLogEvent('slot_bought', properties: {'level': level});
+  }
+
+  void trackKitAutoAdded({required int kits, required int items}) {
+    _safeLogEvent('kit_auto_added', properties: {'kits': kits, 'items': items});
+  }
+
+  void trackKitSuggestionAccepted({required int missing}) {
+    _safeLogEvent('kit_suggestion_accepted', properties: {'missing': missing});
+  }
+
+  void trackKitSuggestionDismissed() =>
+      _safeLogEvent('kit_suggestion_dismissed');
+
+  void trackKitUseLearned({required String kind}) {
+    _safeLogEvent('kit_use_learned', properties: {'kind': kind});
+  }
+
+  void trackKitCreated({required int items, required int uses}) {
+    _safeLogEvent('kit_created', properties: {'items': items, 'uses': uses});
+  }
+
+  // ── packing_ ──────────────────────────────────────────────────────────────
+
+  void trackPackingStarted({
+    required String tripId,
+    required int totalItems,
+    required int? daysToDeparture,
   }) {
     _safeLogEvent(
-      'bulk_session_saved',
+      'packing_started',
       properties: {
-        'item_count': itemCount,
-        'template_count': templateCount,
-        'has_manual_items': hasManualItems,
+        'trip_id': tripId,
+        'total_items': totalItems,
+        'days_to_departure': daysToDeparture,
+      },
+    );
+  }
+
+  void trackPackingProgress({
+    required String tripId,
+    required int threshold,
+    required int? daysToDeparture,
+  }) {
+    _safeLogEvent(
+      'packing_progress',
+      properties: {
+        'trip_id': tripId,
+        'threshold': threshold,
+        'days_to_departure': daysToDeparture,
+      },
+    );
+  }
+
+  void trackPackingCompleted({
+    required String tripId,
+    required int totalItems,
+    required int? daysToDeparture,
+  }) {
+    _safeLogEvent(
+      'packing_completed',
+      properties: {
+        'trip_id': tripId,
+        'total_items': totalItems,
+        'days_to_departure': daysToDeparture,
       },
     );
   }
@@ -234,10 +390,67 @@ class CoreAnalyticsService {
     _safeLogEvent('ai_input_failed', properties: {'error_type': errorType});
   }
 
-  void trackAiItemsSaved({required int count, required bool isOnboarding}) {
+  /// Tetto AI finito (risposta 429). `feature`: `suitcase`, `scan`,
+  /// `weather`, `item_name`. `source` (solo per `item_name`): `manual` se
+  /// l'ha toccato un'aggiunta dell'utente, `backfill` se il recupero in
+  /// background delle schede.
+  void trackAiLimitReached({required String feature, String? source}) {
+    _safeLogEvent(
+      'ai_limit_reached',
+      properties: {'feature': feature, 'source': ?source},
+    );
+  }
+
+  /// Una scansione salvata. `count` i capi scritti; gli altri conteggi dicono
+  /// quanto l'utente ha corretto lo scan. I `*_types` sono sottocategorie
+  /// della tassonomia (come le ha lette l'analisi), mai i nomi.
+  void trackAiItemsSaved({
+    required int count,
+    required bool isOnboarding,
+    required int found,
+    required int excluded,
+    required int renamed,
+    required int detailsEdited,
+    required int photos,
+    required List<String> excludedTypes,
+    required List<String> renamedTypes,
+  }) {
     _safeLogEvent(
       'ai_items_saved',
-      properties: {'count': count, 'is_onboarding': isOnboarding},
+      properties: {
+        'count': count,
+        'is_onboarding': isOnboarding,
+        'found': found,
+        'excluded': excluded,
+        'renamed': renamed,
+        'details_edited': detailsEdited,
+        'photos': photos,
+        'excluded_types': excludedTypes,
+        'renamed_types': renamedTypes,
+      },
+    );
+  }
+
+  /// Un capo salvato con dubbi di Jev o con campi corretti: quali campi
+  /// erano in dubbio e quale valore l'utente ha tenuto. Solo nomi di campo.
+  void trackAiScanDoubtResolved({
+    required List<String> doubtFields,
+    required List<String> choseJev,
+    required List<String> keptGpt,
+    required List<String> otherValue,
+    required List<String> correctedWithoutDoubt,
+    required String subCategory,
+  }) {
+    _safeLogEvent(
+      'ai_scan_doubt_resolved',
+      properties: {
+        'doubt_fields': doubtFields,
+        'chose_jev': choseJev,
+        'kept_gpt': keptGpt,
+        'other_value': otherValue,
+        'corrected_without_doubt': correctedWithoutDoubt,
+        'sub_category': subCategory,
+      },
     );
   }
 
@@ -259,13 +472,126 @@ class CoreAnalyticsService {
 
   void trackOnboardingCompleted() => _safeLogEvent('onboarding_completed');
 
+  void trackOnboardingPageViewed({
+    required int pageIndex,
+    required String pageName,
+  }) {
+    _safeLogEvent(
+      'onboarding_page_viewed',
+      properties: {'page_index': pageIndex, 'page_name': pageName},
+    );
+  }
+
+  void trackOnboardingSkipped({required int pageIndex}) {
+    _safeLogEvent('onboarding_skipped', properties: {'page_index': pageIndex});
+  }
+
+  // ── tour_ ─────────────────────────────────────────────────────────────────
+
+  /// Tour guidato post-login. `step_index` è 1-based e null per gli step
+  /// fuori dal tour (vedi `OnboardingStepTourIndex`).
+  void trackOnboardingStepViewed({
+    required String stepName,
+    required int? stepIndex,
+  }) => _logTourStep('onboarding_step_viewed', stepName, stepIndex);
+
+  void trackOnboardingStepAdvanced({
+    required String stepName,
+    required int? stepIndex,
+  }) => _logTourStep('onboarding_step_advanced', stepName, stepIndex);
+
+  /// Chiude l'intero tour, non solo lo step corrente.
+  void trackOnboardingClosed({
+    required String stepName,
+    required int? stepIndex,
+  }) => _logTourStep('onboarding_closed', stepName, stepIndex);
+
+  void _logTourStep(String event, String stepName, int? stepIndex) {
+    _safeLogEvent(
+      event,
+      properties: {'step_name': stepName, 'step_index': stepIndex},
+    );
+  }
+
+  void trackAiOnboardingStarted() => _safeLogEvent('ai_onboarding_started');
+
+  void trackAiOnboardingSkipped() => _safeLogEvent('ai_onboarding_skipped');
+
+  void trackTourRelaunched() => _safeLogEvent('tour_relaunched');
+
+  /// Solo il completamento naturale: gli abbandoni hanno già il loro evento.
+  void trackTourCompleted({
+    required bool skippedAi,
+    required int? lastStepIndex,
+  }) {
+    _safeLogEvent(
+      'tour_completed',
+      properties: {'skipped_ai': skippedAi, 'last_step_index': lastStepIndex},
+    );
+  }
+
   // ── auth_ ─────────────────────────────────────────────────────────────────
 
-  // Nessun `trackLoginCompleted` qui: `login_completed` ha un solo emettitore,
-  // il tap in LoginScreen, che allega anche `method`. Vedi il commento in
+  // `login_completed` ha un solo emettitore, il tap in LoginScreen
+  // ([trackLoginCompleted]). Vedi il commento in
   // `AuthNotifier._trackAuthTransition` per il doppio conteggio che ne seguiva.
 
   void trackLogout() => _safeLogEvent('logout');
+
+  void trackLoginScreenViewed() => _safeLogEvent('login_screen_viewed');
+
+  void trackConsentGiven({required String policyVersion}) {
+    _safeLogEvent(
+      'consent_given',
+      properties: {'policy_version': policyVersion},
+    );
+  }
+
+  void trackLoginAttempted({required String method}) {
+    _safeLogEvent('login_attempted', properties: {'method': method});
+  }
+
+  void trackLoginCompleted({required String method}) {
+    _safeLogEvent('login_completed', properties: {'method': method});
+  }
+
+  /// `error_type` è il `runtimeType` dell'eccezione, mai il messaggio: quello
+  /// di Supabase può contenere l'email.
+  void trackLoginFailed({
+    required String method,
+    String? reason,
+    String? errorType,
+  }) {
+    _safeLogEvent(
+      'login_failed',
+      properties: {
+        'method': method,
+        'reason': ?reason,
+        'error_type': ?errorType,
+      },
+    );
+  }
+
+  // ── consent_ ──────────────────────────────────────────────────────────────
+
+  /// L'opt-out va emesso PRIMA di chiudere il gate, l'opt-in DOPO averlo
+  /// riaperto: `_safeLogEvent` chiama `logEvent` in modo sincrono, quindi
+  /// l'ordine dei chiamanti resta valido.
+  void trackAnalyticsOptIn() =>
+      _safeLogEvent('analytics_opt_in', properties: {'enabled': true});
+
+  void trackAnalyticsOptOut() =>
+      _safeLogEvent('analytics_opt_out', properties: {'enabled': false});
+
+  // ── promo_ ────────────────────────────────────────────────────────────────
+
+  /// Esito dell'attivazione di un codice promo; mai il codice.
+  void trackPromoCodeRedeemed({required String outcome, int? credits}) {
+    _safeLogEvent(
+      'promo_code_redeemed',
+      properties: {'outcome': outcome, 'credits': ?credits},
+    );
+  }
 
   // ── screen_ ───────────────────────────────────────────────────────────────
 

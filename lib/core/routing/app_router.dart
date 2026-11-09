@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
+import '../monitoring/monitoring_service.dart';
 import '../../bootstrap.dart';
 import '../../features/onboarding/providers/onboarding_status_provider.dart';
 import '../analytics/core_analytics_service.dart';
@@ -85,7 +86,10 @@ GoRouter appRouter(Ref ref) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/',
-    observers: [AnalyticsNavigatorObserver(analytics)],
+    observers: [
+      AnalyticsNavigatorObserver(analytics),
+      appSentryNavigatorObserver(),
+    ],
     refreshListenable: authChangeNotifier,
     redirect: (context, state) {
       // 1. Wait for bootstrap

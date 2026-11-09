@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mocktail/mocktail.dart';
 
+import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/monitoring/monitoring_service.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/providers/item_provider.dart';
@@ -87,6 +89,9 @@ class _Monitoring extends AppMonitoringService {
   }) => captured.add(exception);
 }
 
+class _Analytics extends Mock implements CoreAnalyticsService {}
+
+late _Analytics _analytics;
 late _Monitoring _monitoring;
 late _FakeService _service;
 late _Outcome _outcome;
@@ -155,6 +160,7 @@ Future<void> _pump(
   SharedPreferences.setMockInitialValues(prefs);
   _service = _FakeService();
   _monitoring = _Monitoring();
+  _analytics = _Analytics();
   _outcome = _Outcome();
   _usageBuilds = 0;
 
@@ -162,6 +168,7 @@ Future<void> _pump(
     overrides: [
       packTripServiceProvider.overrideWithValue(_service),
       monitoringServiceProvider.overrideWithValue(_monitoring),
+      coreAnalyticsServiceProvider.overrideWithValue(_analytics),
       tripWeatherNotifierProvider('trip-1').overrideWith(
         () => lateWeather != null
             ? _LateWeather(lateWeather)
@@ -290,8 +297,84 @@ Future<void> _finish(WidgetTester tester) async {
   }
 }
 
+/// Gli esiti di `ai_suitcase_finished` registrati finora, in ordine, con le
+/// loro proprietà.
+List<(String, Map<String, Object>)> _finished() {
+  final calls = verify(
+    () => _analytics.trackAiSuitcaseFinished(
+      outcome: captureAny(named: 'outcome'),
+      durationMs: any(named: 'durationMs'),
+      tripId: 'trip-1',
+      properties: captureAny(named: 'properties'),
+    ),
+  ).captured;
+  return [
+    for (var i = 0; i < calls.length; i += 2)
+      (calls[i] as String, calls[i + 1] as Map<String, Object>),
+  ];
+}
+
 void main() {
   setUp(caricaCatalogoDelRepo);
+  setUpAll(() => registerFallbackValue(<String, Object>{}));
+
+  group('ai_suitcase_finished', () {
+    testWidgets('valigia arrivata: una volta, esito ok, armadio', (
+      tester,
+    ) async {
+      await _pump(tester);
+      _service.last.complete(_result);
+      await _finish(tester);
+
+      final (outcome, props) = _finished().single;
+      expect(outcome, 'ok');
+      expect(props['nights'], 8);
+      expect(props['proposal_items'], 0);
+      expect(props['wardrobe_items'], 3);
+      expect(props['is_regeneration'], isFalse);
+    });
+
+    testWidgets('annullata: una volta, anche se la risposta arriva dopo', (
+      tester,
+    ) async {
+      await _pump(tester);
+      await tester.tap(find.text('Annulla'));
+      await _settle(tester);
+      _service.last.complete(_result);
+      await _settle(tester);
+
+      final (outcome, props) = _finished().single;
+      expect(outcome, 'cancelled');
+      expect(props.containsKey('proposal_items'), isFalse);
+    });
+
+    testWidgets('crediti finiti: esito credits e ai_limit_reached', (
+      tester,
+    ) async {
+      await _pump(tester);
+      _service.last.completeError(const PackTripCreditsException());
+      await _settle(tester);
+
+      expect(_finished().single.$1, 'credits');
+      verify(
+        () => _analytics.trackAiLimitReached(feature: 'suitcase'),
+      ).called(1);
+    });
+
+    testWidgets('errore e poi Riprova: un evento per tentativo', (
+      tester,
+    ) async {
+      await _pump(tester);
+      _service.last.completeError(const PackTripException('500'));
+      await _settle(tester);
+      await tester.tap(find.text('Riprova'));
+      await tester.pump();
+      _service.last.complete(_result);
+      await _finish(tester);
+
+      expect([for (final f in _finished()) f.$1], ['error', 'ok']);
+    });
+  });
 
   group('attesa', () {
     testWidgets(

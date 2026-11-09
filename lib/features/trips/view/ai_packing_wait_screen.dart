@@ -4,13 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/monitoring/monitoring_service.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../items/providers/item_provider.dart';
 import '../../profile/providers/gpt_usage_provider.dart';
 import '../model/ai_packing.dart';
 import '../model/pack_trip_job.dart';
+import '../providers/trip_provider.dart';
+import '../providers/trip_weather_provider.dart';
 import '../services/pack_trip_service.dart';
 import '../services/pack_trip_timing.dart';
+import '../services/suitcase_analytics.dart';
 import 'widgets/wait/ai_wait_body.dart';
 import 'widgets/wait/ai_wait_failure.dart';
 import 'widgets/wait/wait_handoff.dart';
@@ -51,6 +56,9 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
   /// Un'uscita è già partita: nessun'altra può fare pop (chiuderebbe il chiamante).
   bool _leaving = false;
 
+  /// Durata del tentativo in corso, anche per l'annullamento.
+  final _timer = Stopwatch();
+
   @override
   void initState() {
     super.initState();
@@ -68,7 +76,9 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
     _steps?.dispose();
     _steps = null;
     setState(() => _failure = null);
-    final timer = Stopwatch()..start();
+    _timer
+      ..reset()
+      ..start();
     final started = PackTripTiming.load().then(_startSteps);
 
     AiPackingResult? result;
@@ -85,9 +95,11 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
     }
     await started;
 
-    // Annullata o già in uscita: la pagina non deve più fare niente.
+    // Annullata o già in uscita: la pagina non deve più fare niente (un
+    // annullamento ha già registrato il suo esito).
     if (_leaving || !mounted) return;
     ref.invalidate(gptUsageProvider);
+    _trackFinished(packOutcomeOf(failure, cancelled: false), result);
 
     if (result == null) {
       // Offline e casi previsti (crediti, armadio) non sono guasti da segnalare.
@@ -102,7 +114,7 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
       setState(() => _failure = failure);
       return;
     }
-    unawaited(PackTripTiming.record(timer.elapsed));
+    unawaited(PackTripTiming.record(_timer.elapsed));
     _arrived(result);
   }
 
@@ -149,11 +161,61 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
 
   void _cancel() {
     if (_result != null) return;
+    // Annullata mentre la richiesta era in corso; dalla pagina d'errore
+    // l'esito è già stato registrato.
+    if (_failure == null && !_leaving) _trackFinished('cancelled', null);
     _leave(() {
       _service.cancel();
       ref.invalidate(gptUsageProvider);
       context.pop();
     });
+  }
+
+  /// `ai_suitcase_finished`, una volta per tentativo. Armadio e meteo solo
+  /// se già caricati: qui non si avviano richieste.
+  void _trackFinished(String outcome, AiPackingResult? result) {
+    _timer.stop();
+    final analytics = ref.read(coreAnalyticsServiceProvider);
+    if (outcome == 'credits') {
+      analytics.trackAiLimitReached(feature: 'suitcase');
+    }
+
+    final job = widget.job;
+    final trip = ref
+        .read(tripNotifierProvider)
+        .valueOrNull
+        ?.where((t) => t.id == widget.tripId)
+        .firstOrNull;
+    final items = ref.exists(itemNotifierProvider(job.houseId))
+        ? ref.read(itemNotifierProvider(job.houseId)).valueOrNull
+        : null;
+    final weatherState = ref.exists(tripWeatherNotifierProvider(widget.tripId))
+        ? ref.read(tripWeatherNotifierProvider(widget.tripId)).valueOrNull
+        : null;
+    final days = daysToDeparture(trip?.departureDateTime, DateTime.now());
+    analytics.trackAiSuitcaseFinished(
+      outcome: outcome,
+      durationMs: _timer.elapsedMilliseconds,
+      tripId: widget.tripId,
+      properties: {
+        'nights': job.nights,
+        'stops': trip?.aiSetup?.stops.length ?? 0,
+        'is_regeneration': job.isRegeneration,
+        'setup_changed': job.setupChanged,
+        'days_to_departure': ?days,
+        if (result != null) 'proposal_items': result.proposal.length,
+        if (result != null) 'slots_count': result.slots?.length ?? 0,
+        ...wardrobeStats(items ?? const []),
+        if (trip != null)
+          ...tripContext(
+            trip,
+            luggage: job.luggage,
+            weather: weatherState is TripWeatherReady
+                ? weatherState.weather
+                : null,
+          ),
+      },
+    );
   }
 
   void _leaveFor(String location) => _leave(() {

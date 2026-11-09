@@ -41,7 +41,10 @@ class FakeItemMetadataService extends ItemMetadataService {
   void fail(String name, Object error) => _held[name]!.completeError(error);
 
   @override
-  Future<ItemMetadataResult?> fromName(String name) async {
+  Future<ItemMetadataResult?> fromName(
+    String name, {
+    String source = ItemMetadataService.sourceManual,
+  }) async {
     names.add(name);
     final held = _held[name];
     if (held != null) return held.future;
