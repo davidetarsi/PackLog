@@ -2217,6 +2217,55 @@ final flows = <Flow>[
         expect(find.byKey(const Key('trip_changed_notice')), findsOneWidget);
       },
     ),
+    Scenario(
+      29,
+      'necessita',
+      'card-alleggerite',
+      source: _tripDetailSrc,
+      description: 'Importanti con bordo arancione e contenuto neutro.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) => _needsDetail(app),
+    ),
+    Scenario(
+      30,
+      'necessita',
+      'foglio-titolo-lungo',
+      source: _tripDetailSrc,
+      description:
+          'Titolo lungo, X in alto, Da comprare a destra, ricerca espandibile.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+          await c.read(tripNotifierProvider.future);
+          await c
+              .read(tripNotifierProvider.notifier)
+              .updateAiSlot(
+                kSeoulTripId,
+                'slot-magliette',
+                (s) => s.copyWith(name: 'Mocassini eleganti per il viaggio'),
+              );
+        },
+      ),
+      steps: (app) async {
+        await _needsDetail(app);
+        await app.tester.drag(
+          find.byType(ListView).first,
+          const Offset(0, -1200),
+        );
+        await app.settle();
+        await app.tester.ensureVisible(
+          find.byKey(const Key('slot_row_slot-magliette')),
+        );
+        await app.tap(find.byKey(const Key('slot_row_slot-magliette')));
+        expect(app.issues, isEmpty);
+      },
+    ),
   ]),
   Flow('10-profilo', 'Tab Profilo: impostazioni e account', [
     Scenario(

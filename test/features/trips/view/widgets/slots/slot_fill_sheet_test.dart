@@ -702,4 +702,34 @@ void main() {
     expect(tester.widget<TextField>(find.byType(TextField)).enabled, isTrue);
     expect(sheet, findsOneWidget);
   });
+  testWidgets('riaprendo mostra gli oggetti collegati alla richiesta', (
+    tester,
+  ) async {
+    final slot = _slot().copyWith(
+      remaining: 2,
+      addedItems: {'inventory-tee': 1},
+    );
+    await pumpSheet(
+      tester,
+      slot,
+      tripItems: [
+        TripItem(
+          id: 'inventory-tee',
+          name: 'T-shirt bianca',
+          category: ItemCategory.vestiti,
+          quantity: 1,
+          originHouseId: 'h1',
+        ),
+        TripItem(
+          id: 'unrelated',
+          name: 'Jeans',
+          category: ItemCategory.vestiti,
+          quantity: 1,
+          originHouseId: 'h1',
+        ),
+      ],
+    );
+    expect(find.text('T-shirt bianca'), findsOneWidget);
+    expect(find.text('Jeans'), findsNothing);
+  });
 }

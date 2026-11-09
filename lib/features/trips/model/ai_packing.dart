@@ -141,6 +141,9 @@ class AiSlot with _$AiSlot {
 
     /// Etichetta grammaticale del pulsante acquisti; assente nei vecchi payload.
     String? boughtLabel,
+
+    /// Quantità aggiunte a questa richiesta, per id oggetto del viaggio.
+    @Default(<String, int>{}) Map<String, int> addedItems,
     @Default(false) bool toBuy,
     @Default(false) bool checked,
 

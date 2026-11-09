@@ -8,14 +8,9 @@ import '../widgets/ds_text_button.dart';
 
 /// Helper per i dialog comuni dell'applicazione.
 ///
-/// Ogni dialogo è un [DsDialog] aperto con [showDsDialog]. Convenzione
-/// bottoni: due pill di pari larghezza ([DsDialog.twoActions]). Prima erano
-/// due link testuali di peso identico, e per giunta "Annulla" era colorato
-/// d'accento — cioè l'azione accentata era quella che non fa nulla.
-///
-/// La conferma distruttiva è rossa e non arancione: stessa forma e stesso
-/// peso della primaria, ma un "Elimina" arancione accanto a un "Annulla"
-/// grigio farebbe sembrare la cancellazione la strada consigliata.
+/// Ogni dialogo è un [DsDialog] aperto con [showDsDialog]. Le conferme normali
+/// mantengono due pill; nelle distruttive Annulla è primaria e la conferma è
+/// testuale rossa.
 class DialogHelpers {
   DialogHelpers._();
 
@@ -86,6 +81,7 @@ class DialogHelpers {
     String? confirmLabel,
     String? cancelLabel,
     bool isDestructive = false,
+    bool confirmAsText = false,
   }) async {
     final confirmed = await showDsDialog<bool>(
       context,
@@ -99,6 +95,7 @@ class DialogHelpers {
             confirmLabel: confirmLabel ?? 'common.confirm'.tr(),
             onConfirm: () => Navigator.pop(dialogContext, true),
             isDestructive: isDestructive,
+            confirmAsText: confirmAsText,
           ),
         ],
       ),
@@ -315,9 +312,8 @@ class _ProtectedDeleteDialogState extends State<_ProtectedDeleteDialog> {
         ],
       ),
       actions: [
-        // Stesse pill delle altre conferme. Il bottone resta visibile ma
-        // spento finché l'email non combacia: l'attrito lo fa la digitazione,
-        // e uno spento senza accento lo dice già da sé.
+        // Il bottone resta visibile ma disabilitato finché l'email non
+        // combacia; _TwoActions protegge anche dai doppi tap.
         DsDialog.twoActions(
           cancelLabel: 'dialogs.cancel'.tr(),
           onCancel: () => Navigator.pop(context, false),

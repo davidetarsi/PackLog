@@ -30,6 +30,9 @@ class DsTextButton extends StatelessWidget {
   /// 48), per allinearlo al testo sopra.
   final bool flushStart;
 
+  /// Se falso, usa il peso standard del tema anziché quello forte.
+  final bool emphasized;
+
   const DsTextButton({
     super.key,
     required this.label,
@@ -39,6 +42,7 @@ class DsTextButton extends StatelessWidget {
     this.destructive = false,
     this.accent = false,
     this.flushStart = false,
+    this.emphasized = true,
   });
 
   @override
@@ -54,9 +58,10 @@ class DsTextButton extends StatelessWidget {
         ? colorScheme.primary
         : colorScheme.onSurface;
 
-    final textStyle = Theme.of(
-      context,
-    ).textTheme.labelLarge?.strong.copyWith(color: color);
+    final baseStyle = Theme.of(context).textTheme.labelLarge;
+    final textStyle = (emphasized ? baseStyle?.strong : baseStyle)?.copyWith(
+      color: color,
+    );
 
     final text = Text(label, style: textStyle);
 

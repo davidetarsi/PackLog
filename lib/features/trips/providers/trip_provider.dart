@@ -297,7 +297,13 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
       items: items,
       aiResult: result.withSlot(
         slotId,
-        (s) => s.copyWith(remaining: max(0, s.remaining - item.quantity)),
+        (s) => s.copyWith(
+          remaining: max(0, s.remaining - item.quantity),
+          addedItems: {
+            ...s.addedItems,
+            item.id: (s.addedItems[item.id] ?? 0) + item.quantity,
+          },
+        ),
       ),
       updatedAt: DateTime.now(),
     );

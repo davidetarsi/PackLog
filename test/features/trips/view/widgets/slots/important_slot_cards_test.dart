@@ -109,22 +109,24 @@ void main() {
       expect(find.byKey(const Key('slot_to_buy_imp-giacca')), findsOneWidget);
     });
 
-    testWidgets('importante ($name): bordo ed etichetta arancioni', (
+    testWidgets('importante ($name): bordo arancione ed etichetta neutra', (
       tester,
     ) async {
       await pump(tester, theme: theme);
 
       expectOrangeBorder(tester);
-      expect(labelColor(tester), colors(tester).primary);
+      expect(labelColor(tester), colors(tester).onSurfaceVariant);
     });
   }
 
-  testWidgets('Aggiungi accentato, Da comprare neutro', (tester) async {
+  testWidgets('azioni neutre con enfasi moderata', (tester) async {
     await pump(tester, theme: AppTheme.dark);
 
     DsTextButton button(String key) =>
         tester.widget<DsTextButton>(find.byKey(Key(key)));
-    expect(button('slot_add_imp-giacca').accent, isTrue);
+    expect(button('slot_add_imp-giacca').accent, isFalse);
+    expect(button('slot_add_imp-giacca').emphasized, isFalse);
+    expect(button('slot_to_buy_imp-giacca').emphasized, isFalse);
     expect(button('slot_to_buy_imp-giacca').accent, isFalse);
   });
 }

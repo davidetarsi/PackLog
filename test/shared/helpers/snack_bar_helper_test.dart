@@ -158,4 +158,17 @@ void main() {
       AppTheme.light.colorScheme.error,
     );
   });
+  testWidgets('Annulla non rende permanente lo snackbar', (tester) async {
+    await pumpHost(
+      tester,
+      (context) =>
+          AppSnackBar.showUndo(context, 'Segnato da comprare', onUndo: () {}),
+    );
+    await tester.tap(find.text('apri'));
+    await tester.pumpAndSettle();
+    expect(find.text('Segnato da comprare'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 7));
+    await tester.pumpAndSettle();
+    expect(find.byType(SnackBar), findsNothing);
+  });
 }

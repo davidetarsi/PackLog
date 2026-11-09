@@ -57,6 +57,7 @@ mixin TripSlotEdits on ConsumerState<TripDetailScreen> {
           if (reason != null && reason.isNotEmpty) reason,
         ].join(' '),
         confirmLabel: 'trips.slots.remove_confirm'.tr(),
+        isDestructive: true,
       );
       if (!ok) return;
     }
