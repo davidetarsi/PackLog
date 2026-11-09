@@ -86,7 +86,7 @@ test("Jev che non risponde: la scheda si fa lo stesso, con la nota", async () =>
 
 test("dalla foto: immagine nel messaggio, un capo o tanti, testo libero = nessun capo", async () => {
   const chiamate: unknown[][] = [];
-  const r = await schedeDaFoto("QUJD", { modello: modelloFinto([JSON.stringify([pile, { ...pile, subCategory: "Jeans" }])], chiamate), jev: jevSicuro });
+  const r = await schedeDaFoto("QUJD", { modello: modelloFinto([JSON.stringify([pile, { ...pile, name: "jeans blu", subCategory: "Jeans" }])], chiamate), jev: jevSicuro });
   assert.deepEqual(chiamate[0], [[
     { type: "image", source: { type: "base64", media_type: "image/jpeg", data: "QUJD" } },
     { type: "text", text: promptScan() },
