@@ -364,15 +364,38 @@ Come il catalogo è diventato codice, dove si discosta e perché:
   tecniche, non testo dell'utente. Decisione di Davide del 9 nov.
 - **`SentryNavigatorObserver` senza transazioni automatiche**: solo le
   schermate come breadcrumb negli errori, niente quota di performance.
-- **`ai_slot_removed` resta contato anche dopo Annulla** (come
-  `slot_marked_to_buy`): si legge come "tentativi di togliere un posto".
-  Lo stato finale della valigia è nell'ultimo `ai_suitcase_changed`.
+- **`ai_slot_removed` e `ai_warning_dismissed` si contano una volta per
+  proposta**: ogni posto e ogni avviso al massimo una volta finché la valigia
+  non si rigenera, anche con due salvataggi sovrapposti o con "togli, Annulla,
+  togli". Un posto tolto e poi rimesso con Annulla resta contato (come
+  `slot_marked_to_buy`): si legge come "posti che l'utente ha voluto
+  togliere". Lo stato finale della valigia è nell'ultimo
+  `ai_suitcase_changed`. Il ricordo di cosa è già stato contato vive in
+  memoria: dopo un riavvio dell'app si riparte dal viaggio salvato.
 - **Limite noto, accettato il 9 nov**: il meteo di `ai_suitcase_changed`
   viene dalla copia sul telefono senza controllo del viaggio; dopo un
   cambio di date o tappe le fasce possono essere quelle vecchie. Da
   sistemare quando servirà leggerle davvero.
 - **Limite noto, accettato il 9 nov**: ogni scrittura della valigia rilegge
   le schede di tutto l'armadio (pochi ms); da ottimizzare se si nota.
+
+### Chiusi con un dubbio (da riguardare se i dati sembrano strani)
+
+- **Doppi conteggi con salvataggi sovrapposti** (9 nov). Due salvataggi
+  dello stesso viaggio partiti quasi insieme si confrontano tutti e due con
+  il viaggio di prima. Per avvisi e posti è risolto ricordando cosa è già
+  stato contato (strada 2). Restano da vedere:
+  - `ai_suitcase_changed` può ancora partire due volte con la stessa
+    fotografia della valigia: innocuo, perché vale l'ultimo;
+  - la correzione di fondo sarebbe mettere in fila tutti i salvataggi di un
+    viaggio (`serializeEdit`, strada 1). Tocca come salvano più schermate e
+    va provata bene; da fare se compaiono altri doppioni.
+- **Limite noto**: il meteo di `ai_suitcase_changed` può essere quello di
+  prima di un cambio di date o tappe (vedi sopra).
+- **Limite noto**: ogni scrittura della valigia rilegge le schede di tutto
+  l'armadio (vedi sopra).
+- **Soglia 21 gradi** nelle fasce di temperatura: è la stessa scelta dubbia
+  del generatore.
 
 ## Avvisi su Telegram
 
