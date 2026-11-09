@@ -234,9 +234,11 @@ export function normalizza(grezzo: unknown, nome?: string | null): Normalizzata 
 
   let cat = g.category;
   let sub = g.subCategory;
-  // Se la prima parola del nome e' un tipo ("Pile leggero", "Muta"), vince il nome.
+  // Se la prima parola del nome e' un tipo ("Pile leggero", "Muta") e GPT ha scelto "Other"
+  // o un tipo di un'altra categoria (Sweatpants per "Pantaloni" resta), vince il nome.
   const tipoNome = TIPI_PER_NOME.get(semplifica(nomeOk.trim().split(/\s+/)[0] ?? ""));
-  if (tipoNome) {
+  if (tipoNome && (sub === tassonomia.ALTRO
+    || tassonomia.categoriaDi(sub as string) !== tipoNome.cat)) {
     sub = tipoNome.sub;
     cat = tipoNome.cat;
   }

@@ -69,3 +69,8 @@ test("prompt_scan_ha_i_due_casi", () => {
   assert.ok(p.includes("No person as the main subject"));
   assert.ok(!p.includes("IGNORE any clothing items in the background"));
 });
+
+test("stessa_categoria_resta", () => {
+  const z = daSub("Pantaloni della tuta", "Sweatpants", "Lower Body");
+  assert.equal(z.metadata.subCategory, "Sweatpants");
+});
