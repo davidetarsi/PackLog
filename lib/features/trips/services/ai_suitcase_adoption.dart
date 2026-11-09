@@ -16,18 +16,25 @@ const _firstSuitcaseLoggedKey = 'first_suitcase_logged';
 /// risultato. Il "da comprare" dei posti passa ai posti dello stesso tipo
 /// della valigia precedente. Un oggetto non più in casa viene saltato. Con
 /// [houseItems] null (gli oggetti della casa non si leggono) la proposta si
-/// salva lo stesso, con oggetti e bagagli del viaggio com'erano.
+/// salva lo stesso, con oggetti e bagagli del viaggio com'erano. La valigia
+/// ricorda la forma del viaggio per cui è fatta (`tripShape`): [shape], che
+/// è quella del viaggio della richiesta; senza, quella di [trip].
 TripModel adoptedTrip({
   required TripModel trip,
   required AiPackingResult proposal,
   required AiPackingSetup setup,
   LuggageModel? luggage,
   List<ItemModel>? houseItems,
+  AiTripShape? shape,
 }) {
-  final result = carryKitCounted(
-    trip.aiResult,
-    carryToBuy(trip.aiResult, proposal),
-  );
+  final result =
+      carryKitCounted(
+        trip.aiResult,
+        carryToBuy(trip.aiResult, proposal),
+      ).copyWith(
+        tripShape: shape ?? AiTripShape.of(trip),
+        changeNoticeDismissed: false,
+      );
   final proposed = houseItems == null
       ? null
       : proposedItems(result, houseItems);

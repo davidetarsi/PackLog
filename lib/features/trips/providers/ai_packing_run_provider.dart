@@ -231,6 +231,9 @@ class AiPackingRun extends _$AiPackingRun {
       setup: request.setup,
       luggage: request.luggage,
       houseItems: houseItems,
+      // La valigia è fatta per il viaggio della richiesta: se date o tappe
+      // cambiano durante l'attesa, l'avviso compare.
+      shape: AiTripShape.of(request.trip),
     );
     final notifier = ref.read(tripNotifierProvider.notifier);
     // Un viaggio nuovo con quell'id può esserci già (un Riprova dopo un

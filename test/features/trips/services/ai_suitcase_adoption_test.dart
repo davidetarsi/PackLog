@@ -130,4 +130,19 @@ void main() {
     expect(result.kitLearnCounted, containsAll(['kit-1', 'kit-2']));
     expect(result.kitAnswers, isEmpty);
   });
+
+  test('adopted_trip_stores_shape', () {
+    final trip = _trip(
+      aiResult: _result().copyWith(changeNoticeDismissed: true),
+    ).copyWith(transports: ['treno']);
+    final adopted = adoptedTrip(
+      trip: trip,
+      proposal: _result(),
+      setup: setup,
+      houseItems: const [],
+    );
+    expect(adopted.aiResult!.tripShape, AiTripShape.of(trip));
+    expect(adopted.aiResult!.tripShape!.transports, ['treno']);
+    expect(adopted.aiResult!.changeNoticeDismissed, isFalse);
+  });
 }

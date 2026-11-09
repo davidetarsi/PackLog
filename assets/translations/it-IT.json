@@ -274,7 +274,9 @@
       "legend_mine": "{} tue",
       "legend_proposed": "{} proposte da PackLog",
       "legend_important": "{} importanti da sistemare",
-      "duplicated": "Viaggio duplicato"
+      "duplicated": "Viaggio duplicato",
+      "changed_notice": "Hai cambiato il viaggio: la valigia potrebbe non andare più bene.",
+      "changed_redo": "Rifalla con AI"
     },
     "to_buy": {
       "entry": "Da comprare · {}",
@@ -454,6 +456,7 @@
       "choose_items": "Scegli tu cosa portare",
       "where_missing": "Scegli dove vai: serve anche per il meteo.",
       "when_missing": "Scegli andata e ritorno.",
+      "dates_cut_stops": "Queste date tagliano fuori una tappa: cambiala nell'itinerario.",
       "stop_no_nights": "{} finisce prima di iniziare: controlla le date.",
       "discard_title": "Lasciare il nuovo viaggio?",
       "discard_message": "Quello che hai inserito andrà perso.",

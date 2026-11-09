@@ -86,9 +86,10 @@ final _scenarios = <(int, String, AppSetup, _Steps)>[
     'foglio-ai',
     AppSetup(seedWith: _data.seed, locale: _locale),
     (app) async {
-      // "Rigenera" dal menu del dettaglio: la pagina si apre con `?ai=1`.
-      await app.go('/trips');
-      await app.push('/trips/${StoreData.weekendTripId}/edit-items?ai=1');
+      // "Rigenera" dal menu del dettaglio: il foglio si apre sopra il dettaglio.
+      await _detail(app, StoreData.weekendTripId);
+      await app.tap(find.byWidgetPredicate((w) => w is PopupMenuButton));
+      await app.tap(find.text('trips.pack.ai.regenerate'.tr()));
       final replace = find.text('trips.pack.ai.replace_confirm'.tr());
       if (replace.evaluate().isNotEmpty) await app.tap(replace);
       await _tapShown(app, find.text(etichettaDi('activity', 'city')));

@@ -35,16 +35,24 @@ final class StopRemoved extends StopSheetResult {
 /// La tappa parte da [start], cioè dalla fine della precedente, il cui nome è
 /// [previousName]. Chiede solo il posto e il giorno in cui finisce. Restituisce
 /// uno [StopSheetResult], oppure `null` se il foglio si chiude senza scelte.
+///
+/// Con [placeLocked] (la meta) il luogo si vede ma non si cambia, e la tappa
+/// non si elimina: si cambia solo il giorno in cui finisce.
 Future<StopSheetResult?> showStopSheet(
   BuildContext context, {
   required DateTime start,
   required String previousName,
   DraftStop? initial,
+  bool placeLocked = false,
 }) {
   return showDsFormSheet<StopSheetResult>(
     context,
-    builder: (_) =>
-        _StopSheet(start: start, previousName: previousName, initial: initial),
+    builder: (_) => _StopSheet(
+      start: start,
+      previousName: previousName,
+      initial: initial,
+      placeLocked: placeLocked,
+    ),
   );
 }
 
@@ -52,11 +60,13 @@ class _StopSheet extends StatefulWidget {
   final DateTime start;
   final String previousName;
   final DraftStop? initial;
+  final bool placeLocked;
 
   const _StopSheet({
     required this.start,
     required this.previousName,
     this.initial,
+    this.placeLocked = false,
   });
 
   @override
@@ -134,7 +144,7 @@ class _StopSheetState extends State<_StopSheet> {
               expand: true,
               onPressed: _canSave ? _save : null,
             ),
-            if (_editing)
+            if (_editing && !widget.placeLocked)
               DsLinkButton(
                 key: const Key('stop_sheet_remove'),
                 label: 'trips.new.stop_remove'.tr(),
@@ -147,16 +157,28 @@ class _StopSheetState extends State<_StopSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DsFieldLabel.prominent('trips.new.where_stop'.tr()),
-          PlaceSearch(
-            key: const Key('stop_sheet_place'),
-            initialText: widget.initial?.place.name,
-            onSelected: (place) => setState(() => _place = place),
-            // Scrivere dopo la scelta vuol dire un posto
-            // diverso da quello mostrato: la scelta decade.
-            onTextChanged: (_) {
-              if (_place != null) setState(() => _place = null);
-            },
-          ),
+          if (widget.placeLocked)
+            DsFieldBox(
+              key: const Key('stop_sheet_place_locked'),
+              icon: Icons.place_outlined,
+              child: Text(
+                widget.initial!.place.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: tt.bodyLarge?.copyWith(color: cs.onSurfaceVariant),
+              ),
+            )
+          else
+            PlaceSearch(
+              key: const Key('stop_sheet_place'),
+              initialText: widget.initial?.place.name,
+              onSelected: (place) => setState(() => _place = place),
+              // Scrivere dopo la scelta vuol dire un posto
+              // diverso da quello mostrato: la scelta decade.
+              onTextChanged: (_) {
+                if (_place != null) setState(() => _place = null);
+              },
+            ),
           DsFieldLabel.prominent('trips.new.when'.tr()),
           DsFieldBox(
             key: const Key('stop_sheet_dates'),

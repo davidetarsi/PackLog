@@ -546,4 +546,69 @@ void main() {
       expect(draft.pendingStops, isEmpty);
     });
   });
+
+  group('TripDraft.withTripDates', () {
+    TripDraft twoStops() => TripDraft.empty()
+        .withDestination(lisbona())
+        .withFirstDates(d(10), d(12))
+        .addStop(porto(), d(15));
+
+    test('with_trip_dates_moves_departure_and_last_end', () {
+      final next = twoStops().withTripDates(d(9), d(18))!;
+
+      expect(next.departure, d(9));
+      expect(next.returnDate, d(18));
+      expect(next.stops.map((s) => s.end), [d(12), d(18)]);
+      expect(next.stopsWithoutNights, isEmpty);
+    });
+
+    test('one_stop_is_with_first_dates', () {
+      final base = TripDraft.empty()
+          .withDestination(lisbona())
+          .withFirstDates(d(10), d(12));
+      final next = base.withTripDates(d(11), d(14))!;
+
+      expect(next.departure, d(11));
+      expect(next.stops.single.end, d(14));
+    });
+
+    test('with_trip_dates_rejects_cut_stop', () {
+      // Partenza non prima della fine della prima tappa.
+      expect(twoStops().withTripDates(d(12), d(18)), isNull);
+      expect(twoStops().withTripDates(d(13), d(18)), isNull);
+      // Ritorno non dopo l'inizio dell'ultima.
+      expect(twoStops().withTripDates(d(10), d(12)), isNull);
+      expect(twoStops().withTripDates(d(10), d(11)), isNull);
+    });
+
+    test('with_trip_dates_ignores_pending_stops', () {
+      // Le tappe di Riusa in attesa non sono tappe vere: il campo vale per la
+      // sola meta (come withFirstDates) e le tappe nascono a zero notti.
+      final reused = TripDraft.reuseOf(
+        TripModel(
+          id: 't',
+          name: 'Lisbona',
+          destinationLocation: lisbona().location,
+          legs: [
+            TripLeg(
+              id: 'l1',
+              locationDisplayName: 'Porto, Portogallo',
+              from: d(5),
+              to: d(8),
+            ),
+          ],
+          createdAt: o29,
+          updatedAt: o29,
+        ),
+      );
+      expect(reused.pendingStops, hasLength(1));
+
+      final next = reused.withTripDates(d(10), d(14))!;
+
+      expect(next.pendingStops, isEmpty);
+      expect(next.stops, hasLength(2));
+      expect(next.stops.map((s) => s.end), [d(14), d(14)]);
+      expect(next.stopsWithoutNights, {1});
+    });
+  });
 }
