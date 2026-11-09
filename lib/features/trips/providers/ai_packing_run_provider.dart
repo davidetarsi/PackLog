@@ -106,6 +106,7 @@ class AiPackingRun extends _$AiPackingRun {
   void clear() {
     _generation++;
     _pending = null;
+    _dropWeatherDraft();
     state = const AiRunIdle();
   }
 
@@ -113,6 +114,19 @@ class AiPackingRun extends _$AiPackingRun {
     final generation = ++_generation;
     state = AiRunRunning(request);
     return _run(request, generation);
+  }
+
+  /// Toglie la bozza del meteo del viaggio nuovo del lavoro corrente.
+  void _dropWeatherDraft() {
+    final current = state;
+    final request = switch (current) {
+      AiRunRunning(:final request) => request,
+      AiRunFailed(:final request) => request,
+      _ => null,
+    };
+    if (request != null && request.isNew) {
+      ref.read(tripWeatherDraftsProvider.notifier).remove(request.trip.id);
+    }
   }
 
   bool _stale(int generation) => generation != _generation;
@@ -229,6 +243,8 @@ class AiPackingRun extends _$AiPackingRun {
     }
     _pending = null;
     _itemsError = houseItems == null;
+    // Il viaggio è salvato: il meteo lo trova fra i viaggi, la bozza non serve.
+    ref.read(tripWeatherDraftsProvider.notifier).remove(adopted.id);
     return adopted;
   }
 

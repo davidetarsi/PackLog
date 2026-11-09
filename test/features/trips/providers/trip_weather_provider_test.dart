@@ -292,4 +292,19 @@ void main() {
     expect(state, isA<TripWeatherNotAvailable>());
     expect(service.calls, 0);
   });
+
+  test('draft_put_does_not_reload_saved_trip_weather', () async {
+    // Un viaggio salvato il cui ultimo meteo è fallito (nessuna copia).
+    final service = _FakeService()..error = const TripWeatherException('x');
+    final container = _container(service, _trip());
+    await container.read(tripWeatherNotifierProvider('t1').future);
+    expect(service.calls, 1);
+
+    // La bozza di un altro viaggio non rifà la richiesta di questo.
+    container
+        .read(tripWeatherDraftsProvider.notifier)
+        .put(_trip().copyWith(id: 'altro'));
+    await container.read(tripWeatherNotifierProvider('t1').future);
+    expect(service.calls, 1);
+  });
 }
