@@ -948,6 +948,30 @@ void main() {
       },
     );
 
+    test('posto riempito: un capo aggiunto, dal posto', () async {
+      await load(suitcase);
+      await notifier().fillAiSlot('t1', 's1', packed('C'));
+      final counts = (await changes()).single;
+      expect(counts['added'], 1);
+      expect(counts['added_from_slots'], 1);
+      expect(counts['removed'], 0);
+    });
+
+    test('oggetti aggiunti al viaggio: ai_suitcase_changed', () async {
+      await load(suitcase);
+      when(() => mockRepository.addItemsToTrip(any(), any())).thenAnswer((
+        inv,
+      ) async {
+        final added = inv.positionalArguments[1] as List<TripItem>;
+        stored = stored.copyWith(items: [...stored.items, ...added]);
+      });
+      await notifier().addItemsToTrip('t1', [packed('D')]);
+      final counts = (await changes()).single;
+      expect(counts['added'], 1);
+      expect(counts['added_from_slots'], 0);
+      expect(counts['kept'], 2);
+    });
+
     test('avviso scartato: ai_warning_dismissed una volta', () async {
       await load(suitcase);
       await notifier().updateTrip(
