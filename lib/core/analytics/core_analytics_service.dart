@@ -107,7 +107,7 @@ class CoreAnalyticsService {
   // ── navigation_ ───────────────────────────────────────────────────────────
 
   /// Tocco su "Crea" nella barra. `tab` = tab da cui si apre il foglio
-  /// (`houses`/`trips`): l'ordine delle voci del foglio dipende da lì.
+  /// (`houses`/`trips`).
   void trackCreateTapped({required String tab}) {
     _safeLogEvent('create_tapped', properties: {'tab': tab});
   }

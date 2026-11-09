@@ -614,7 +614,7 @@ final flows = <Flow>[
       route: '/',
       source: 'lib/shared/widgets/create_sheet.dart',
       description:
-          'Crea dalla tab Case: Scansiona con AI (con la casa), link a mano, poi Nuova casa e Nuovo viaggio.',
+          'Crea dalla tab Case: la card Nuovo viaggio, poi Aggiungi oggetti, Scansiona i vestiti (con la casa) e Nuova casa.',
       steps: _openCreateSheet,
     ),
     Scenario(
@@ -1440,7 +1440,7 @@ final flows = <Flow>[
       route: '/trips',
       source: 'lib/shared/widgets/create_sheet.dart',
       description:
-          'Crea dalla tab Viaggi: Nuovo viaggio sale sopra Nuova casa.',
+          'Crea dalla tab Viaggi: stesse voci e stesso ordine che dalla tab Case.',
       steps: (app) => _openCreateSheet(app, '/trips'),
     ),
     Scenario(
