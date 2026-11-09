@@ -330,6 +330,7 @@
       "discard_title": "Uscire senza salvare?",
       "discard_message": "Le modifiche alla valigia andranno perse.",
       "ai": {
+        "reassurance": "Con questa valigia hai il necessario per questo viaggio. Se vuoi portare altro, aggiungilo dalla ricerca.",
         "search_hint": "Aggiungi dal tuo armadio",
         "in_departure_note": "Da indossare in partenza: è ingombrante e così non occupa spazio in valigia.",
         "why_title": "Perché è in valigia",

@@ -4,15 +4,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
+import 'package:pack_log/core/consent/consent_provider.dart';
+import 'package:pack_log/core/auth/auth_provider.dart';
+import 'package:pack_log/core/database/daos/suitcase_edits_dao.dart';
+import 'package:pack_log/core/database/database.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
+import 'package:pack_log/features/trips/model/suitcase_edit.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
+import 'package:pack_log/features/trips/providers/suitcase_edits_provider.dart';
 import 'package:pack_log/features/trips/providers/trip_provider.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/services/ai_suitcase_adoption.dart';
+
+import '../../../helpers/mock_suitcase_edits.dart';
+import '../../../helpers/test_database_setup.dart';
 
 /// Mock implementation of TripRepository for testing.
 class MockTripRepository extends Mock implements TripRepository {}
@@ -80,6 +89,7 @@ void main() {
         coreAnalyticsServiceProvider.overrideWithValue(mockAnalytics),
         syncOrchestratorProvider.overrideWithValue(mockSync),
         itemRepositoryProvider.overrideWithValue(mockItemRepo),
+        suitcaseEditsDaoProvider.overrideWithValue(noopSuitcaseEditsDao()),
       ],
     );
   });
@@ -1357,6 +1367,305 @@ void main() {
 
       expect(current().items, isEmpty);
       verifyNever(() => mockRepository.updateTrip(any()));
+    });
+  });
+
+  group('TripNotifier - coda delle modifiche alla valigia', () {
+    late AppDatabase db;
+    late MockItemRepository items;
+    late ProviderContainer c;
+    late ProviderContainer Function(SuitcaseEditsDao) build;
+
+    /// La coda si scrive in background: si aspetta che compaia.
+    Future<List<SuitcaseEdit>> pendingSoon() async {
+      for (var i = 0; i < 50; i++) {
+        final p = await db.suitcaseEditsDao.pending();
+        if (p.isNotEmpty) return p;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      return const [];
+    }
+
+    AiPackingResult result() => AiPackingResult(
+      generatedAt: DateTime(2026, 11),
+      houseId: 'h1',
+      generatorVersion: 'v9',
+      proposal: const [
+        AiPackedItem(
+          itemId: 'i1',
+          quantity: 1,
+          reason: AiReason(code: 'c', label: 'l', sentence: 's'),
+        ),
+      ],
+    );
+
+    TripItem item() => TripItem(
+      id: 'i1',
+      name: 'Nome privato',
+      category: ItemCategory.vestiti,
+      quantity: 1,
+    );
+
+    TripModel trip({bool withResult = true, bool withItem = true}) => TripModel(
+      id: 't1',
+      name: 'Seul',
+      items: [if (withItem) item()],
+      luggages: const [],
+      departureDateTime: DateTime.now().add(const Duration(days: 30)),
+      aiResult: withResult ? result() : null,
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+    );
+
+    setUp(() {
+      db = createTestDatabase();
+      items = MockItemRepository();
+      when(() => items.getItemsByIds(any())).thenAnswer(
+        (_) async => [
+          ItemModel(
+            id: 'i1',
+            houseId: 'h1',
+            name: 'Nome privato',
+            category: ItemCategory.vestiti,
+            aiMetadata:
+                '{"category":"vestiti","warmth":3,"name":"Nome privato"}',
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+          ),
+        ],
+      );
+      final sync = MockSyncOrchestrator();
+      when(() => sync.requestSync()).thenReturn(null);
+      final analytics = MockCoreAnalyticsService();
+      when(() => analytics.trackTripUpdated()).thenAnswer((_) async {});
+      build = (dao) => ProviderContainer(
+        overrides: [
+          tripRepositoryProvider.overrideWithValue(mockRepository),
+          coreAnalyticsServiceProvider.overrideWithValue(analytics),
+          syncOrchestratorProvider.overrideWithValue(sync),
+          itemRepositoryProvider.overrideWithValue(items),
+          suitcaseEditsDaoProvider.overrideWithValue(dao),
+          currentUserIdProvider.overrideWithValue('u-1'),
+        ],
+      );
+      c = build(db.suitcaseEditsDao);
+    });
+
+    tearDown(() async {
+      c.dispose();
+      await closeTestDatabase(db);
+    });
+
+    Future<void> load(TripModel t, TripModel after) async {
+      var calls = 0;
+      when(
+        () => mockRepository.getAllTrips(),
+      ).thenAnswer((_) async => calls++ == 0 ? [t] : [after]);
+      await c.read(tripNotifierProvider.future);
+    }
+
+    test(
+      'togliere un proposto con updateTrip mette un evento in coda',
+      () async {
+        final after = trip(withItem: false);
+        await load(trip(), after);
+        when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+
+        await c.read(tripNotifierProvider.notifier).updateTrip(after);
+
+        final pending = await pendingSoon();
+        expect(pending, hasLength(1));
+        expect(pending.single.action.dbValue, 'tolto');
+        expect(pending.single.origin.dbValue, 'proposta');
+        expect(pending.single.tripId, 't1');
+        expect(pending.single.generatorVersion, 'v9');
+        expect(pending.single.userId, 'u-1');
+        expect(pending.single.itemKey, hasLength(64));
+        expect(pending.single.card['appCategory'], isNotNull);
+        expect(pending.single.card['category'], 'vestiti');
+        expect(pending.single.card['warmth'], 3);
+        expect(pending.single.toString(), isNot(contains('Nome privato')));
+      },
+    );
+
+    test('senza utente non si mette niente in coda', () async {
+      final after = trip(withItem: false);
+      c.dispose();
+      c = ProviderContainer(
+        overrides: [
+          tripRepositoryProvider.overrideWithValue(mockRepository),
+          coreAnalyticsServiceProvider.overrideWithValue(
+            MockCoreAnalyticsService(),
+          ),
+          syncOrchestratorProvider.overrideWithValue(MockSyncOrchestrator()),
+          itemRepositoryProvider.overrideWithValue(items),
+          suitcaseEditsDaoProvider.overrideWithValue(db.suitcaseEditsDao),
+          currentUserIdProvider.overrideWithValue(null),
+        ],
+      );
+      await load(trip(), after);
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+      when(
+        () => (c.read(coreAnalyticsServiceProvider) as MockCoreAnalyticsService)
+            .trackTripUpdated(),
+      ).thenAnswer((_) async {});
+      when(
+        () => (c.read(syncOrchestratorProvider) as MockSyncOrchestrator)
+            .requestSync(),
+      ).thenReturn(null);
+
+      await c.read(tripNotifierProvider.notifier).updateTrip(after);
+
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(await db.suitcaseEditsDao.pending(), isEmpty);
+    });
+
+    test('un salvataggio fallito non mette niente', () async {
+      final after = trip(withItem: false);
+      await load(trip(), after);
+      when(
+        () => mockRepository.updateTrip(any()),
+      ).thenAnswer((_) async => throw Exception('disco pieno'));
+
+      await expectLater(
+        c.read(tripNotifierProvider.notifier).updateTrip(after),
+        throwsException,
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(await db.suitcaseEditsDao.pending(), isEmpty);
+    });
+
+    test('un viaggio senza aiResult non mette niente', () async {
+      final before = trip(withResult: false);
+      final after = trip(withResult: false, withItem: false);
+      await load(before, after);
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+
+      await c.read(tripNotifierProvider.notifier).updateTrip(after);
+
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(await db.suitcaseEditsDao.pending(), isEmpty);
+    });
+
+    test('add_page_done_records_added_items', () async {
+      // "Fatto" della pagina di aggiunta: updateTrip sul viaggio attuale con
+      // l'oggetto aggiunto e uno tolto. Origine utente per l'aggiunto.
+      final before = trip();
+      final after = before.copyWith(
+        items: [
+          TripItem(
+            id: 'i2',
+            name: 'Nome privato due',
+            category: ItemCategory.vestiti,
+            quantity: 1,
+          ),
+        ],
+      );
+      await load(before, after);
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+
+      await c.read(tripNotifierProvider.notifier).updateTrip(after);
+
+      for (var i = 0; i < 50; i++) {
+        if ((await db.suitcaseEditsDao.pending()).length >= 2) break;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      final pending = await db.suitcaseEditsDao.pending();
+      final byAction = {for (final e in pending) e.action.dbValue: e};
+      expect(pending, hasLength(2));
+      expect(byAction['aggiunto']?.origin.dbValue, 'utente');
+      expect(byAction['tolto']?.origin.dbValue, 'proposta');
+      expect(pending.any((e) => e.toString().contains('Nome privato')), isFalse);
+    });
+
+    test('trip_info_change_records_no_edits', () async {
+      // Date e tappe (Modifica viaggio) non sono una modifica della valigia.
+      final before = trip();
+      final after = before.copyWith(
+        name: 'Altro nome',
+        departureDateTime: DateTime.now().add(const Duration(days: 40)),
+      );
+      await load(before, after);
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+
+      await c.read(tripNotifierProvider.notifier).updateTrip(after);
+
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(await db.suitcaseEditsDao.pending(), isEmpty);
+    });
+
+    test('un DAO che non risponde mai non blocca updateTrip', () async {
+      final after = trip(withItem: false);
+      await load(trip(), after);
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+      final dao = MockSuitcaseEditsDao();
+      registerFallbackValue(<SuitcaseEdit>[]);
+      when(
+        () => dao.enqueue(any()),
+      ).thenAnswer((_) => Completer<void>().future);
+      c.dispose();
+      c = build(dao);
+      await load(trip(), after);
+
+      await c
+          .read(tripNotifierProvider.notifier)
+          .updateTrip(after)
+          .timeout(const Duration(seconds: 2));
+
+      expect(c.read(tripNotifierProvider).value!.single.items, isEmpty);
+    });
+
+    test('un consenso che lancia non cambia stato né esito', () async {
+      final after = trip(withItem: false);
+      final dao = noopSuitcaseEditsDao();
+      c.dispose();
+      c = ProviderContainer(
+        overrides: [
+          tripRepositoryProvider.overrideWithValue(mockRepository),
+          coreAnalyticsServiceProvider.overrideWithValue(
+            MockCoreAnalyticsService(),
+          ),
+          syncOrchestratorProvider.overrideWithValue(MockSyncOrchestrator()),
+          itemRepositoryProvider.overrideWithValue(items),
+          suitcaseEditsDaoProvider.overrideWithValue(dao),
+          consentServiceProvider.overrideWith((ref) => throw StateError('x')),
+        ],
+      );
+      await load(trip(), after);
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+      final analytics = c.read(coreAnalyticsServiceProvider);
+      when(
+        () => (analytics as MockCoreAnalyticsService).trackTripUpdated(),
+      ).thenAnswer((_) async {});
+      when(
+        () => (c.read(syncOrchestratorProvider) as MockSyncOrchestrator)
+            .requestSync(),
+      ).thenReturn(null);
+
+      await c.read(tripNotifierProvider.notifier).updateTrip(after);
+
+      verifyNever(() => dao.enqueue(any()));
+      expect(c.read(tripNotifierProvider).hasError, isFalse);
+      expect(c.read(tripNotifierProvider).value!.single.items, isEmpty);
+    });
+
+    test('un DAO che lancia non cambia stato né esito', () async {
+      final after = trip(withItem: false);
+      final dao = MockSuitcaseEditsDao();
+      registerFallbackValue(<SuitcaseEdit>[]);
+      when(() => dao.enqueue(any())).thenAnswer((_) async => throw 'rotto');
+      c.dispose();
+      c = build(dao);
+      await load(trip(), after);
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+
+      await c.read(tripNotifierProvider.notifier).updateTrip(after);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      verify(() => dao.enqueue(any())).called(1);
+      expect(c.read(tripNotifierProvider).hasError, isFalse);
+      expect(c.read(tripNotifierProvider).value!.single.items, isEmpty);
     });
   });
 }

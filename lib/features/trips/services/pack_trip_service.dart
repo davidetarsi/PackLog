@@ -242,6 +242,7 @@ AiPackingResult parsePackTripResponse(
       notes: notes,
       kitAdded: kitAdded,
       kitSuggestions: kitSuggestions,
+      generatorVersion: json['versione_generatore'] as String?,
     );
   } on PackTripException {
     rethrow;

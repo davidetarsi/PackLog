@@ -37,6 +37,13 @@ class ItemsDao extends DatabaseAccessor<AppDatabase>
   Future<List<Item>> getAllItems() =>
       (select(items)..where((i) => i.isDeleted.equals(false))).get();
 
+  /// Gli oggetti con questi [ids], in una sola query (anche se eliminati:
+  /// serve solo a leggerne la scheda).
+  Future<List<Item>> getItemsByIds(List<String> ids) {
+    if (ids.isEmpty) return Future.value(const []);
+    return (select(items)..where((i) => i.id.isIn(ids))).get();
+  }
+
   /// Ottiene tutti gli oggetti non eliminati come stream
   Stream<List<Item>> watchAllItems() =>
       (select(items)..where((i) => i.isDeleted.equals(false))).watch();

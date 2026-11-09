@@ -42,11 +42,11 @@ function errorResponse(status: number, message: string): Response {
  *     la cancellazione viene dal JWT decoded server-side, MAI da body o
  *     params: un client malizioso non può cancellare account altrui.
  *   - `SERVICE_ROLE_KEY` necessaria solo perché DELETE su `auth.users`
- *     richiede privilegi admin; le 5 tabelle dati sarebbero accessibili
+ *     richiede privilegi admin; le tabelle dati sarebbero accessibili
  *     anche al ruolo `authenticated` via RLS, ma usiamo service_role per
  *     uniformità e per registrare un audit chiaro.
  *
- * Returns: { deleted: { houses, items, spaces, luggages, trips, users } }
+ * Returns: { deleted: { houses, items, spaces, luggages, valigia_modifiche, trips, users } }
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -74,6 +74,8 @@ Deno.serve(async (req) => {
   // 2. DELETE su tabelle dati. Ordine reverse-FK: figli prima dei padri.
   //    items dipende da houses+spaces; spaces+luggages+trips dipendono da
   //    houses. Quindi: items → spaces → luggages → trips → houses.
+  //    `valigia_modifiche` non ha FK verso trips (l'evento sopravvive al
+  //    viaggio) ma si cancella con l'account: sta prima di trips.
   //    Per ogni tabella usiamo `.select('id', { head: true, count: 'exact' })`
   //    DOPO la delete per ottenere la conta (utile per audit/debug).
   //
@@ -83,7 +85,16 @@ Deno.serve(async (req) => {
   //    duplicare il check per evitare wipe accidentali cross-tenant.
   const deleted: Record<string, number> = {};
 
-  for (const table of ["items", "spaces", "luggages", "trips", "houses"]) {
+  for (
+    const table of [
+      "items",
+      "spaces",
+      "luggages",
+      "valigia_modifiche",
+      "trips",
+      "houses",
+    ]
+  ) {
     try {
       const { count, error } = await supabaseAdmin
         .from(table)

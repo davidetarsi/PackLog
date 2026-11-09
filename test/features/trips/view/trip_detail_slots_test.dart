@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../helpers/mock_suitcase_edits.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
@@ -21,6 +22,7 @@ import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/services/trip_lifecycle_service.dart';
 import 'package:pack_log/features/trips/view/trip_detail_screen.dart';
+import 'package:pack_log/features/trips/view/widgets/ai/ai_pack_reassurance.dart';
 import 'package:pack_log/features/trips/view/widgets/slots/slot_widgets.dart';
 import 'package:pack_log/features/trips/view/widgets/slots/trip_items_card.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
@@ -168,9 +170,11 @@ TripModel _trip({
   List<TripItem>? items,
   AiPackingResult? aiResult,
   bool withResult = true,
+  DateTime? departureDateTime,
 }) => TripModel(
   id: 'trip-1',
   name: 'Seul',
+  departureDateTime: departureDateTime,
   items: items ?? _items(),
   aiResult: withResult
       ? aiResult ??
@@ -277,6 +281,7 @@ void main() {
       ProviderScope(
         overrides: [
           tripRepositoryProvider.overrideWithValue(tripRepo),
+          ...noopSuitcaseEditsOverrides(),
           houseRepositoryProvider.overrideWithValue(houseRepo),
           itemRepositoryProvider.overrideWithValue(itemRepo),
           luggageRepositoryProvider.overrideWithValue(luggageRepo),
@@ -342,6 +347,32 @@ void main() {
       expect(find.byKey(const Key('slot_card_imp-giacca')), findsOneWidget);
       expect(find.byKey(const Key('trip_item_i-aux')), findsNothing);
       expect(find.byType(DsCheckbox), findsNothing);
+    });
+
+    testWidgets('prima della partenza c è la frase rassicurante', (
+      tester,
+    ) async {
+      await pumpDetail(tester, _trip(), showNeeds: false);
+      expect(find.byType(AiPackReassurance), findsOneWidget);
+
+      await pumpDetail(tester, _trip(), showNeeds: false, firstReview: true);
+      expect(find.byType(AiPackReassurance), findsOneWidget);
+    });
+
+    testWidgets('a viaggio partito la frase rassicurante non c è', (
+      tester,
+    ) async {
+      final partito = _trip(departureDateTime: DateTime(2020, 1, 1));
+      await pumpDetail(tester, partito, showNeeds: false);
+      expect(find.byType(AiPackReassurance), findsNothing);
+
+      await pumpDetail(tester, partito, showNeeds: false, firstReview: true);
+      expect(find.byType(AiPackReassurance), findsNothing);
+    });
+
+    testWidgets('nella pagina necessità la frase non c è', (tester) async {
+      await pumpDetail(tester, _trip(), showNeeds: true);
+      expect(find.byType(AiPackReassurance), findsNothing);
     });
 
     testWidgets('Fatto chiude la prima revisione e torna ai Viaggi', (

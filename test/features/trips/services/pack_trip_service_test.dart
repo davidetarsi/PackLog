@@ -316,6 +316,32 @@ void main() {
   });
 
   group('parsePackTripResponse', () {
+    test('versione_generatore presente: generatorVersion', () {
+      final json = _okResponse()..['versione_generatore'] = '2026-11-08';
+
+      final result = parsePackTripResponse(json, houseId: _houseId, now: _now);
+
+      expect(result.generatorVersion, '2026-11-08');
+    });
+
+    test('versione_generatore assente: null, e il json vecchio si legge', () {
+      final result = parsePackTripResponse(
+        _okResponse(),
+        houseId: _houseId,
+        now: _now,
+      );
+      expect(result.generatorVersion, isNull);
+
+      final old = result.toJson()..remove('generatorVersion');
+      expect(AiPackingResult.fromJson(old).generatorVersion, isNull);
+
+      final withVersion = result.copyWith(generatorVersion: '2026-11-08');
+      final back = AiPackingResult.fromJson(
+        jsonDecode(jsonEncode(withVersion.toJson())) as Map<String, dynamic>,
+      );
+      expect(back.generatorVersion, '2026-11-08');
+    });
+
     test('un avviso con livello sconosciuto si scarta', () {
       final json = _okResponse();
       (json['avvisi'] as List).add(<String, dynamic>{

@@ -106,7 +106,13 @@ enum AiSlotLevel {
   @JsonValue('importante')
   important,
   @JsonValue('utile')
-  useful,
+  useful;
+
+  /// Valore italiano, lo stesso del JSON.
+  String get dbValue => switch (this) {
+    AiSlotLevel.important => 'importante',
+    AiSlotLevel.useful => 'utile',
+  };
 }
 
 /// Posto della valigia: un oggetto che serve al viaggio e che l'utente può
@@ -306,6 +312,10 @@ class AiPackingResult with _$AiPackingResult {
 
     /// Kit già contati per imparare in questo viaggio: un sì non conta due volte.
     @Default(<String>[]) List<String> kitLearnCounted,
+
+    /// Versione del generatore che ha prodotto la valigia (`versione_generatore`
+    /// della risposta). `null` = risultato vecchio, senza versione.
+    String? generatorVersion,
 
     /// Il viaggio com'era quando la valigia è stata fatta. `null` = valigia
     /// vecchia: non si sa se il viaggio è cambiato.

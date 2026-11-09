@@ -29,6 +29,7 @@ import '../services/suitcase_outdated.dart';
 import 'widgets/trip_changed_notice.dart';
 import '../providers/trip_provider.dart';
 import 'widgets/pack/pack_luggage_selector.dart';
+import 'widgets/ai/ai_pack_reassurance.dart';
 import 'widgets/ai/ai_pack_rows.dart';
 import 'widgets/ai/ai_pack_item_sheet.dart';
 import 'widgets/pack/pack_summary_line.dart';
@@ -534,7 +535,10 @@ class _TripDetail extends ConsumerWidget {
               ),
             if (hasSlots && !showNeeds)
               Padding(
-                padding: EdgeInsets.only(bottom: context.spacingMd),
+                padding: EdgeInsets.only(
+                  top: context.spacingSm,
+                  bottom: context.spacingMd,
+                ),
                 child: AiPackRows(
                   warnings: const [],
                   readIds: const {},
@@ -544,6 +548,11 @@ class _TripDetail extends ConsumerWidget {
                   onSearch: (_) {},
                   onDismiss: (_) {},
                 ),
+              ),
+            if (hasSlots && !showNeeds && trip.notDeparted)
+              Padding(
+                padding: EdgeInsets.only(bottom: context.spacingMd),
+                child: const AiPackReassurance(),
               ),
             if (hasSlots && !showNeeds) ...[
               TripSlotsContext(trip: trip, actions: slotActions),

@@ -10,7 +10,6 @@ bool suitcaseOutdated(TripModel trip, {required DateTime now}) {
   if (result == null || shape == null || result.changeNoticeDismissed) {
     return false;
   }
-  final departure = trip.departureDateTime;
-  if (departure != null && !now.isBefore(departure)) return false;
+  if (!trip.notDepartedAt(now)) return false;
   return shape != AiTripShape.of(trip);
 }

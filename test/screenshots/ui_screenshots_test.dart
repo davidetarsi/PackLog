@@ -2545,7 +2545,11 @@ final flows = <Flow>[
       steps: (app) async {
         await _tripDetail(app, kUpcomingTripId);
         // La riga è più in basso nella lista: prima la si porta a schermo.
-        await app.tester.ensureVisible(find.text('Giacca impermeabile').first);
+        await app.tester.scrollUntilVisible(
+          find.text('Giacca impermeabile'),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
         await app.settle();
         await app.tap(find.text('Giacca impermeabile'));
       },

@@ -95,6 +95,7 @@ SyncService syncService(Ref ref) {
     kitsDao: db.kitsDao,
     kitItemsDao: db.kitItemsDao,
     tripsDao: db.tripsDao,
+    suitcaseEditsDao: db.suitcaseEditsDao,
     remote: ref.read(supabaseRepositoryProvider),
     monitoring: ref.read(monitoringServiceProvider),
     tombstoneConfig: ref.read(tombstoneConfigServiceProvider),
