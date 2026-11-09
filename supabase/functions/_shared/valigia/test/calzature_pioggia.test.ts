@@ -7,7 +7,7 @@ import { postiApp } from "../posti.ts";
 const richiesta = { slot: "calzature per la pioggia", category: "Shoes", subCategories: ["Sneakers", "Boots"],
   minWarmth: 1, maxWarmth: 2, minWaterResistance: 1, formality: ["Casual"], activityTags: ["Everyday"],
   frequency: "once", essential: true, reason: "camminare con la pioggia" };
-const viaggio = { giorni: 4, lavatrice: false, attivita: ["escursioni leggere"], bagaglio: "bagaglio a mano" };
+const viaggio = { giorni: 4, lavatrice: false, attivita: ["visite in citta"], bagaglio: "bagaglio a mano" };
 const meteo = { temp_min_media: 25, temp_max_media: 31, giorni_di_pioggia: 2 };
 const stivali = (warmth = 3, waterResistance = 1): RigaArmadio => ({ id: "stivali", name: "Stivali medi",
   quantity: 1, ai_metadata: { category: "Shoes", subCategory: "Boots", warmth, waterResistance,
@@ -70,7 +70,7 @@ test("pioggia: il compromesso non promuove protezione insufficiente o scarpe inv
 test("pioggia: la tolleranza al calore conserva gli altri vincoli e non vale all'asciutto", () => {
   for (const extra of [{ minWaterResistance: 0 }, { formality: ["Formal"] },
     { activityTags: ["Sport"] }, { coverage: ["Full"] }]) {
-    const { scelti, valigia } = genera([stivali()], extra, ["escursioni leggere", "riunioni di lavoro"]);
+    const { scelti, valigia } = genera([stivali()], extra, ["visite in citta", "riunioni di lavoro"]);
     assert.ok(!scelti.some((g) => g.item_id === "stivali" &&
       g.assegnazioni?.some((a: any) => a.slot === richiesta.slot)), JSON.stringify(extra));
     assert.ok(valigia.mancanti.some((g: any) => g.slot === richiesta.slot), JSON.stringify(extra));

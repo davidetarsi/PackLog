@@ -5,6 +5,27 @@ import 'package:pack_log/features/promo/model/promo_redeem_result.dart';
 import 'package:pack_log/features/promo/service/promo_code_service.dart';
 
 void main() {
+  group('promoOutcomeOf', () {
+    test('un esito per ogni risultato, motivi in snake_case', () {
+      expect(
+        promoOutcomeOf(PromoRedeemed(credits: 5, expiresAt: DateTime(2026))),
+        'redeemed',
+      );
+      expect(promoOutcomeOf(const PromoFailed()), 'failed');
+      const reasons = {
+        PromoRejectReason.invalidCode: 'invalid_code',
+        PromoRejectReason.expired: 'expired',
+        PromoRejectReason.exhausted: 'exhausted',
+        PromoRejectReason.alreadyRedeemed: 'already_redeemed',
+        PromoRejectReason.tooLate: 'too_late',
+        PromoRejectReason.tooManyAttempts: 'too_many_attempts',
+      };
+      reasons.forEach((reason, outcome) {
+        expect(promoOutcomeOf(PromoRejected(reason)), outcome);
+      });
+    });
+  });
+
   group('PromoCodeService.parseResponse', () {
     test('codice attivato: crediti e scadenza', () {
       final result = PromoCodeService.parseResponse({

@@ -69,6 +69,7 @@ void main() {
       kitsDao: database.kitsDao,
       kitItemsDao: database.kitItemsDao,
       tripsDao: database.tripsDao,
+      suitcaseEditsDao: database.suitcaseEditsDao,
       remote: mockRemote,
       monitoring: mockMonitoring,
       tombstoneConfig: mockTombstoneConfig,

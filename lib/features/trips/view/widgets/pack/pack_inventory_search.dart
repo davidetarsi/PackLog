@@ -10,7 +10,7 @@ import '../../../../houses/providers/house_provider.dart';
 import '../../../../items/model/item_model.dart';
 import '../../../../items/providers/item_provider.dart';
 import '../../../../items/view/item_sheet.dart';
-import '../ai/ai_home_group.dart';
+import '../ai/ai_wardrobe_row.dart';
 import 'pack_parts.dart';
 
 class PackInventorySearch extends ConsumerStatefulWidget {
@@ -18,8 +18,6 @@ class PackInventorySearch extends ConsumerStatefulWidget {
   final Set<String> excludedItemIds;
   final TextEditingController? controller;
   final ValueChanged<String>? onQueryChanged;
-  final String resultKeyPrefix;
-  final String addRowKey;
   final Future<void> Function(ItemModel item, int copies) onAdd;
 
   const PackInventorySearch({
@@ -28,8 +26,6 @@ class PackInventorySearch extends ConsumerStatefulWidget {
     required this.excludedItemIds,
     this.controller,
     this.onQueryChanged,
-    this.resultKeyPrefix = 'pack_inventory_result',
-    this.addRowKey = 'pack_inventory_add_row',
     required this.onAdd,
   });
 
@@ -141,7 +137,7 @@ class _PackInventorySearchState extends ConsumerState<PackInventorySearch> {
                 children: [
                   for (final item in results)
                     AiWardrobeRow(
-                      key: Key('${widget.resultKeyPrefix}_${item.id}'),
+                      key: Key('pack_inventory_result_${item.id}'),
                       name: item.name,
                       subtitle: item.category.displayName,
                       onAdd: () => widget.onAdd(item, 1),
@@ -153,7 +149,7 @@ class _PackInventorySearchState extends ConsumerState<PackInventorySearch> {
             SizedBox(height: context.spacingMd),
           if (showAdd)
             PackAddRow(
-              key: Key(widget.addRowKey),
+              key: const Key('pack_inventory_add_row'),
               name: _query,
               houseName: houseName,
               onTap: () async {

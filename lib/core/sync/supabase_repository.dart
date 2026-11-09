@@ -335,6 +335,18 @@ class SupabaseRepository {
     return _parseServerUpdatedAt(result, entity: 'trip');
   }
 
+  // === SUITCASE EDITS (valigia_modifiche) ===
+
+  /// Invia un blocco di modifiche alla valigia. L'id è generato sul telefono e
+  /// fa da chiave primaria: un invio ripetuto non crea doppioni
+  /// (`ON CONFLICT (id) DO NOTHING`). `user_id` lo mette il server.
+  Future<void> insertSuitcaseEdits(List<Map<String, dynamic>> rows) async {
+    if (rows.isEmpty) return;
+    await _client
+        .from('valigia_modifiche')
+        .upsert(rows, onConflict: 'id', ignoreDuplicates: true);
+  }
+
   // === HELPERS ===
 
   /// Estrae `updated_at` ufficiale del server dal risultato di un upsert.

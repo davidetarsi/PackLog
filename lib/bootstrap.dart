@@ -50,6 +50,7 @@ import 'package:sqlite3/open.dart';
 import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 
 import 'core/analytics/analytics_service.dart';
+import 'core/analytics/core_analytics_service.dart';
 import 'core/catalog/catalog_repository.dart';
 import 'core/catalog/catalog_store.dart';
 import 'core/auth/secure_local_storage.dart';
@@ -62,6 +63,7 @@ import 'core/monitoring/app_error_observer.dart';
 import 'core/monitoring/bootstrap_error_buffer.dart';
 import 'core/monitoring/monitoring_service.dart';
 import 'core/routing/app_router.dart';
+import 'features/trips/view/widgets/wait/ai_packing_run_listener.dart';
 import 'core/sync/sync_provider.dart';
 import 'features/onboarding/providers/onboarding_status_provider.dart';
 import 'shared/config/app_config.dart';
@@ -164,7 +166,7 @@ final appBootstrapProvider = FutureProvider<void>((ref) async {
         } catch (e) {
           debugPrint('[Bootstrap] versione app non leggibile: $e');
         }
-        analytics.logEvent('app_opened', properties: {'trigger': 'cold_start'});
+        CoreAnalyticsService(analytics).trackAppOpened(trigger: 'cold_start');
       },
     ),
   );
@@ -554,6 +556,9 @@ class MyApp extends ConsumerWidget {
         darkTheme: AppTheme.dark,
         themeMode: themeMode,
         routerConfig: routerConfig,
+        // L'avviso della valigia AI vive sopra tutte le pagine.
+        builder: (context, child) =>
+            AiPackingRunListener(child: child ?? const SizedBox.shrink()),
         localizationsDelegates: context.localizationDelegates,
         supportedLocales: context.supportedLocales,
         locale: context.locale,

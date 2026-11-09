@@ -35,7 +35,10 @@ class _FakeService extends ItemMetadataService {
   void release() => _gate.complete();
 
   @override
-  Future<ItemMetadataResult?> fromName(String name) async {
+  Future<ItemMetadataResult?> fromName(
+    String name, {
+    String source = ItemMetadataService.sourceManual,
+  }) async {
     await _gate.future;
     return result;
   }

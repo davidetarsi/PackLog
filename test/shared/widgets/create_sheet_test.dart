@@ -99,7 +99,14 @@ void main() {
       tester,
       houses: [_house('a'), _house('b', primary: true)],
     );
-    await tester.tap(find.byKey(const Key('create_ai_scan')));
+    await tester.ensureVisible(find.byKey(const Key('create_ai_scan')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('create_ai_scan')),
+        matching: find.byIcon(Icons.auto_awesome_outlined),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(read()!.action, CreateAction.aiScan);
     expect(read()!.houseId, 'b');
@@ -152,7 +159,12 @@ void main() {
 
     await tester.ensureVisible(find.byKey(const Key('create_ai_scan')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('create_ai_scan')));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('create_ai_scan')),
+        matching: find.byIcon(Icons.auto_awesome_outlined),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(read()!.action, CreateAction.aiScan);
     expect(read()!.houseId, 'a');
@@ -174,23 +186,34 @@ void main() {
     expect(read()!.action, CreateAction.newTrip);
   });
 
-  testWidgets('ordine fisso: le due AI in alto, poi oggetti, viaggio, casa', (
-    tester,
-  ) async {
+  testWidgets('create_sheet_order_and_single_card', (tester) async {
     double y(String key) => tester.getTopLeft(find.byKey(Key(key))).dy;
 
     await openSheet(tester, houses: [_house('a')]);
     final order = [
-      'create_ai_scan',
-      'create_ai_suitcase',
-      'create_manual_items',
       'create_new_trip',
+      'create_manual_items',
+      'create_ai_scan',
       'create_new_house',
     ];
     for (var i = 1; i < order.length; i++) {
       expect(y(order[i - 1]), lessThan(y(order[i])), reason: order[i]);
     }
-    expect(find.text('create_sheet.without_ai'), findsOneWidget);
+    // Una sola card in evidenza: Nuovo viaggio. La scansione è una riga.
+    final card = find.byWidgetPredicate(
+      (w) => w.runtimeType.toString() == '_AiCard',
+    );
+    expect(card, findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('create_new_trip')),
+        matching: find.text('create_sheet.new_trip'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('create_ai_suitcase')), findsNothing);
+    expect(find.text('create_sheet.without_ai'), findsNothing);
+    expect(find.text('create_sheet.ai_suitcase'), findsNothing);
   });
 
   testWidgets('la casa sta sotto il testo della scansione, in colore neutro', (
@@ -198,7 +221,7 @@ void main() {
   ) async {
     await openSheet(tester, houses: [_house('a')]);
     final chooser = find.byKey(const Key('create_destination'));
-    final title = find.text('create_sheet.ai_scan');
+    final title = find.text('create_sheet.ai_scan_hint');
 
     expect(tester.getTopLeft(chooser).dx, tester.getTopLeft(title).dx);
     expect(
@@ -217,14 +240,22 @@ void main() {
     expect(label.style?.color, scheme.onSurface);
   });
 
-  testWidgets('senza case: scansione e oggetti spenti, Viaggio con AI attivo, '
+  testWidgets('senza case: scansione e oggetti spenti, Nuovo viaggio attivo, '
       'Nuova casa in evidenza', (tester) async {
     final read = await openSheet(tester, houses: const []);
-    expect(find.text('create_sheet.need_house'), findsOneWidget);
+    expect(
+      find.text('create_sheet.need_house', skipOffstage: false),
+      findsOneWidget,
+    );
     expect(find.text('create_sheet.manual_need_house'), findsOneWidget);
     expect(find.byKey(const Key('create_destination')), findsNothing);
 
-    await tester.tap(find.byKey(const Key('create_ai_scan')));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('create_ai_scan')),
+        matching: find.byIcon(Icons.auto_awesome_outlined),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.byKey(const Key('create_manual_items')));
     await tester.pumpAndSettle();
@@ -249,33 +280,72 @@ void main() {
     );
     expect(title.style?.color, scheme.primary);
 
-    await tester.tap(find.byKey(const Key('create_ai_suitcase')));
+    await tester.tap(find.byKey(const Key('create_new_trip')));
     await tester.pumpAndSettle();
-    expect(read()!.action, CreateAction.aiSuitcase);
+    expect(read()!.action, CreateAction.newTrip);
   });
 
-  testWidgets('Viaggio con AI restituisce aiSuitcase', (tester) async {
-    final read = await openSheet(tester, houses: [_house('a')]);
-    expect(find.text('create_sheet.ai_suitcase'), findsOneWidget);
-    expect(find.text('create_sheet.ai_suitcase_hint'), findsOneWidget);
-
-    await tester.tap(find.byKey(const Key('create_ai_suitcase')));
+  testWidgets('scan_row_disabled_without_house_or_credits', (tester) async {
+    // Senza casa: spenta, con il suggerimento della casa.
+    var read = await openSheet(tester, houses: const []);
+    expect(
+      find.text('create_sheet.need_house', skipOffstage: false),
+      findsOneWidget,
+    );
+    await tester.ensureVisible(find.byKey(const Key('create_ai_scan')));
     await tester.pumpAndSettle();
-    expect(read()!.action, CreateAction.aiSuitcase);
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('create_ai_scan')),
+        matching: find.byIcon(Icons.auto_awesome_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(read(), isNull);
+    expect(find.byType(CreateSheet), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+
+    // Usi finiti: spenta, ma Nuovo viaggio resta attivo.
+    read = await openSheet(tester, houses: [_house('a')], aiExhausted: true);
+    expect(
+      find.text('create_sheet.ai_exhausted', skipOffstage: false),
+      findsOneWidget,
+    );
+    await tester.ensureVisible(find.byKey(const Key('create_ai_scan')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('create_ai_scan')),
+        matching: find.byIcon(Icons.auto_awesome_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(read(), isNull);
+    await tester.tap(find.byKey(const Key('create_new_trip')));
+    await tester.pumpAndSettle();
+    expect(read()!.action, CreateAction.newTrip);
   });
 
   testWidgets(
-    'usi AI esauriti: le due card spente, gli oggetti a mano restano',
+    'usi AI esauriti: la scansione spenta, oggetti a mano e viaggio restano',
     (tester) async {
       final read = await openSheet(
         tester,
         houses: [_house('a')],
         aiExhausted: true,
       );
-      expect(find.text('create_sheet.ai_exhausted'), findsNWidgets(2));
-      await tester.tap(find.byKey(const Key('create_ai_scan')));
+      expect(
+        find.text('create_sheet.ai_exhausted', skipOffstage: false),
+        findsOneWidget,
+      );
+      await tester.ensureVisible(find.byKey(const Key('create_ai_scan')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('create_ai_suitcase')));
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const Key('create_ai_scan')),
+          matching: find.byIcon(Icons.auto_awesome_outlined),
+        ),
+      );
       await tester.pumpAndSettle();
       expect(read(), isNull);
 

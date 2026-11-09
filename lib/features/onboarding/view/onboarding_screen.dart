@@ -2,7 +2,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/analytics/analytics_service.dart';
 import '../../../core/analytics/core_analytics_service.dart';
 import '../../../features/onboarding/providers/onboarding_status_provider.dart';
 import '../../../shared/constants/app_constants.dart';
@@ -64,11 +63,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     try {
       if (skipped) {
         ref
-            .read(analyticsServiceProvider)
-            .logEvent(
-              'onboarding_skipped',
-              properties: {'page_index': _currentPage},
-            );
+            .read(coreAnalyticsServiceProvider)
+            .trackOnboardingSkipped(pageIndex: _currentPage);
       } else {
         ref.read(coreAnalyticsServiceProvider).trackOnboardingCompleted();
       }
@@ -118,13 +114,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 onPageChanged: (index) {
                   setState(() => _currentPage = index);
                   ref
-                      .read(analyticsServiceProvider)
-                      .logEvent(
-                        'onboarding_page_viewed',
-                        properties: {
-                          'page_index': index,
-                          'page_name': _pageNames[index],
-                        },
+                      .read(coreAnalyticsServiceProvider)
+                      .trackOnboardingPageViewed(
+                        pageIndex: index,
+                        pageName: _pageNames[index],
                       );
                 },
                 children: const [

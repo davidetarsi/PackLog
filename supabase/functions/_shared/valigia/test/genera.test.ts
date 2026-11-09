@@ -10,12 +10,6 @@ import { generaValigia, scenarioDaApp } from "../genera.ts";
 import { postiApp } from "../posti.ts";
 import { uscitaApp } from "../uscita.ts";
 import { caricaArmadio } from "../capo.ts";
-import { chiaveCaso, impronta, riproduciCaso } from "./support/replay_valigia.ts";
-
-const motore = JSON.parse(readFileSync(process.env.PACKING_ENGINE_CHANGES
-  ?? new URL("./baseline_motore_migliorato.json", import.meta.url), "utf8"));
-const mare = JSON.parse(readFileSync(process.env.PACKING_SUMMER_CHANGES
-  ?? new URL("./baseline_quantita_mare.json", import.meta.url), "utf8"));
 
 const file = process.env.ORACOLO_CELLE ?? new URL("./oracolo_celle_campione.json", import.meta.url);
 const casi: any[] = JSON.parse(readFileSync(file, "utf8"));
@@ -25,6 +19,9 @@ for (const c of JSON.parse(readFileSync(new URL("./oracolo_quantita.json", impor
 }
 const numeri = (x: unknown) =>
   JSON.parse(JSON.stringify(x), (_k, v) => typeof v === "string" ? v.replace(/(\d)\.0\b/g, "$1") : v);
+
+// `leggero` sui pantaloni serve solo ai suggerimenti dell'app: il bench non lo conosce.
+const senzaLeggero = (x: unknown) => JSON.parse(JSON.stringify(x), (k, v) => (k === "leggero" ? undefined : v));
 
 function jevCome(a: any): ChiediJev {
   return async (stato, domande) => {
@@ -43,8 +40,6 @@ function jevCome(a: any): ChiediJev {
 }
 
 test("flusso completo: prompt storico, risultati e delta revisionati del motore", async () => {
-  assert.equal(motore.input, impronta(casi), "Delta del motore riferiti ad altri input");
-  assert.equal(mare.input, impronta(casi), "Delta mare riferiti ad altri input");
   let n = 0;
   for (const c of casi) {
     const { scenario, geo, meteo } = structuredClone(c.viaggio);
@@ -70,27 +65,13 @@ test("flusso completo: prompt storico, risultati e delta revisionati del motore"
     assert.deepEqual(
       postiApp(r.valigia, r.motivi as any, salvate, { ...contesto, fabbisogni: r.fabbisogni }),
       postiApp(r.valigia, r.motivi as any, salvate, contesto), `${nome}: fabbisogni del motore e adapter coerenti`);
-    const key = chiaveCaso(c, "completo");
-    const cambiato = { ...motore.casi[key]?.campi, ...mare.casi[key]?.campi };
-    if (cambiato.valigia) {
-      // Il replay diretto e' congelato dal delta; il flusso completo deve ricostruirlo senza divergenze.
-      const replay = riproduciCaso(c, "completo");
-      for (const campo of ["valigia", "motivi", "perche"] as const) {
-        if (cambiato[campo]) {
-          assert.equal(impronta(replay[campo]), cambiato[campo].dopo, `${nome}: replay ${campo} fuori baseline`);
-        }
-        assert.deepEqual(numeri(r[campo]), numeri(replay[campo]), `${nome}: flusso completo ${campo}`);
-      }
-      n++;
-      continue;
-    }
-    // I casi non interessati conservano il confronto esatto con il bench Python storico.
+    // Confronto esatto con l'oracolo del bench Python (nessun baseline del TS stesso).
     const valigia = structuredClone(r.valigia) as any;
     for (const rich of valigia.richiesti ?? []) { delete rich.capoTipico; delete rich.maxWarmth; delete rich.vincoliPosto; }
-    assert.deepEqual(numeri(valigia), numeri(c.atteso), nome);
+    assert.deepEqual(senzaLeggero(numeri(valigia)), senzaLeggero(numeri(c.atteso)), nome);
     // nei testi interni (reason) "2.0" e "2" valgono uguale, come in confronta_celle
-    assert.deepEqual(numeri(r.motivi), numeri(c.motivi), nome);
-    assert.deepEqual(JSON.parse(JSON.stringify(r.perche)), c.perche, nome);
+    assert.deepEqual(senzaLeggero(numeri(r.motivi)), senzaLeggero(numeri(c.motivi)), nome);
+    assert.deepEqual(senzaLeggero(r.perche), senzaLeggero(c.perche), nome);
     n++;
   }
   assert.ok(n > 0);

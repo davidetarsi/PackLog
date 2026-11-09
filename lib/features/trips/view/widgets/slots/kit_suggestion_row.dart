@@ -40,19 +40,29 @@ class KitSuggestionRow extends StatelessWidget {
           padding: EdgeInsets.only(top: context.spacingXs),
           child: Row(
             children: [
-              Flexible(
-                child: KitUsePill(
-                  icon: Icons.inventory_2_outlined,
-                  label: 'kits.trip_pill'.tr(args: [kitName]),
-                ),
-              ),
-              SizedBox(width: context.spacingSm),
+              // Pillola e avanzamento stanno in un solo Expanded: con due
+              // figli flessibili il Row divide lo spazio a metà e, se la
+              // pillola ne usa meno, il resto resta vuoto e la X si stacca
+              // dal bordo.
               Expanded(
-                child: Text(
-                  'kits.trip_progress'.tr(args: ['$taken', '$total']),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: KitUsePill(
+                        icon: Icons.inventory_2_outlined,
+                        label: 'kits.trip_pill'.tr(args: [kitName]),
+                      ),
+                    ),
+                    SizedBox(width: context.spacingSm),
+                    Flexible(
+                      child: Text(
+                        'kits.trip_progress'.tr(args: ['$taken', '$total']),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               DsIconButton(

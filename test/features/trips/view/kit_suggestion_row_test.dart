@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
+import '../../../helpers/mock_suitcase_edits.dart';
 import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
@@ -35,8 +36,6 @@ class _MockTripRepo extends Mock implements TripRepository {}
 class _MockHouseRepo extends Mock implements HouseRepository {}
 
 class _MockLifecycle extends Mock implements TripLifecycleService {}
-
-class _MockCore extends Mock implements CoreAnalyticsService {}
 
 class _MockRaw extends Mock implements AppAnalyticsService {}
 
@@ -219,9 +218,12 @@ void main() {
       ProviderScope(
         overrides: [
           tripRepositoryProvider.overrideWithValue(tripRepo),
+          ...noopSuitcaseEditsOverrides(),
           houseRepositoryProvider.overrideWithValue(houseRepo),
           tripLifecycleServiceProvider.overrideWithValue(lifecycle),
-          coreAnalyticsServiceProvider.overrideWithValue(_MockCore()),
+          coreAnalyticsServiceProvider.overrideWithValue(
+            CoreAnalyticsService(raw),
+          ),
           analyticsServiceProvider.overrideWithValue(raw),
           syncOrchestratorProvider.overrideWithValue(sync),
           kitRepositoryProvider.overrideWithValue(kitRepo),

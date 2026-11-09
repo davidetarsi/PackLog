@@ -67,6 +67,7 @@ void main() {
       final raw = sqlite3.open(file.path);
       try {
         raw.execute('''
+          DROP TABLE suitcase_edits;
           DROP TABLE kit_items;
           DROP TABLE kits;
           ALTER TABLE trips DROP COLUMN transports;
@@ -80,7 +81,7 @@ void main() {
 
       final migrated = AppDatabase.forTesting(NativeDatabase(file));
       addTearDown(migrated.close);
-      expect(migrated.schemaVersion, 13);
+      expect(migrated.schemaVersion, 14);
       for (final table in tables) {
         final after =
             (await migrated
@@ -113,7 +114,7 @@ void main() {
       expect(
         (await migrated.customSelect('PRAGMA user_version').getSingle())
             .data['user_version'],
-        13,
+        14,
       );
     },
   );

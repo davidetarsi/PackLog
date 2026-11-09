@@ -572,8 +572,78 @@ void main() {
           'scan',
           ['warmth'],
         ]);
+        // Nessun dubbio, ma un campo corretto: si sa che GPT ha sbagliato
+        // senza che Jev lo segnalasse.
+        verify(
+          () => analytics.trackAiScanDoubtResolved(
+            doubtFields: [],
+            choseJev: [],
+            keptGpt: [],
+            otherValue: [],
+            correctedWithoutDoubt: ['warmth'],
+            subCategory: 'T-Shirt',
+          ),
+        ).called(1);
+        verify(
+          () => analytics.trackAiItemsSaved(
+            count: 2,
+            isOnboarding: false,
+            found: 2,
+            excluded: 0,
+            renamed: 1,
+            detailsEdited: 1,
+            photos: 1,
+            excludedTypes: [],
+            renamedTypes: ['T-Shirt'],
+          ),
+        ).called(1);
       },
     );
+
+    test('un errore dell analytics non fa fallire il salvataggio', () async {
+      final service = MockAiClothingAnalyzerService();
+      final itemRepo = MockItemRepository();
+      final syncOrchestrator = MockSyncOrchestrator();
+      final analytics = MockCoreAnalyticsService();
+      final container = _makeContainer(
+        service: service,
+        itemRepo: itemRepo,
+        syncOrchestrator: syncOrchestrator,
+        analytics: analytics,
+      );
+      addTearDown(container.dispose);
+      when(
+        () => itemRepo.saveAiItemsToHouse(
+          houseId: any(named: 'houseId'),
+          newItems: any(named: 'newItems'),
+        ),
+      ).thenAnswer((_) async {});
+      when(() => syncOrchestrator.requestSync()).thenReturn(null);
+      when(
+        () => analytics.trackAiItemsSaved(
+          count: any(named: 'count'),
+          isOnboarding: any(named: 'isOnboarding'),
+          found: any(named: 'found'),
+          excluded: any(named: 'excluded'),
+          renamed: any(named: 'renamed'),
+          detailsEdited: any(named: 'detailsEdited'),
+          photos: any(named: 'photos'),
+          excludedTypes: any(named: 'excludedTypes'),
+          renamedTypes: any(named: 'renamedTypes'),
+        ),
+      ).thenThrow(StateError('analytics rotto'));
+
+      await _seedOneGroup(container, service, results: [_fakeResult()]);
+      final notifier = container.read(aiImportNotifierProvider.notifier)
+        ..setSelectedHouseId('house-99');
+      await notifier.saveItems();
+
+      // Gli oggetti sono salvati: lo stato si svuota, nessun errore (un
+      // errore lascerebbe i risultati e un nuovo tocco li salverebbe due volte).
+      final state = container.read(aiImportNotifierProvider);
+      expect(state.errorMessage, isNull);
+      expect(state.photoGroups, isEmpty);
+    });
 
     test('un capo escluso non produce evento', () async {
       final service = MockAiClothingAnalyzerService();
@@ -855,7 +925,17 @@ void main() {
       expect(captured[0], 'house-99');
       expect(inserted.map((item) => item.name), ['Jeans', 'Felpa', 'Gonna']);
       verify(
-        () => analytics.trackAiItemsSaved(count: 3, isOnboarding: false),
+        () => analytics.trackAiItemsSaved(
+          count: 3,
+          isOnboarding: false,
+          found: 4,
+          excluded: 1,
+          renamed: 0,
+          detailsEdited: 0,
+          photos: 1,
+          excludedTypes: ['T-Shirt'],
+          renamedTypes: [],
+        ),
       ).called(1);
       verifyNever(() => itemRepo.insertMultipleItems(any()));
     });

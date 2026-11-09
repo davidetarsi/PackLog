@@ -29,11 +29,14 @@ import 'package:pack_log/shared/widgets/ds_dialog.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/model/trip_weather.dart';
+import 'package:pack_log/features/trips/providers/trip_provider.dart';
 import 'package:pack_log/features/trips/providers/trip_weather_provider.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/services/trip_lifecycle_service.dart';
-import 'package:pack_log/features/trips/view/ai_packing_wait_screen.dart';
-import 'package:pack_log/features/trips/view/pack_suitcase_screen.dart';
+import 'package:pack_log/features/trips/model/pack_trip_job.dart';
+import 'package:pack_log/features/trips/providers/ai_packing_run_provider.dart';
+import 'package:pack_log/features/trips/services/pack_trip_service.dart';
+import 'package:pack_log/features/trips/services/ai_packing_launcher.dart';
 import 'package:pack_log/shared/model/location_suggestion_model.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/theme/theme.dart';
@@ -54,8 +57,6 @@ class MockLuggageRepository extends Mock implements LuggageRepository {}
 class MockSpaceRepository extends Mock implements SpaceRepository {}
 
 class MockTripLifecycleService extends Mock implements TripLifecycleService {}
-
-class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
 
 class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 
@@ -91,6 +92,69 @@ class _Kits extends KitNotifier {
 
   @override
   Future<List<KitModel>> build(String houseId) async => kits;
+}
+
+/// `pack-trip` finto: registra il lavoro e risponde con l'esito del test.
+class _OutcomeService extends PackTripService {
+  _OutcomeService(this.outcome, this.jobs) : super(token: () => 'jwt');
+  final AiPackingResult? Function() outcome;
+  final List<PackTripJob> jobs;
+
+  @override
+  Future<AiPackingResult> generate(
+    Map<String, dynamic> body, {
+    required String houseId,
+  }) async {
+    jobs.add(PackTripJob(body: body, houseId: houseId, title: '', nights: 0));
+    return outcome() ?? (throw const PackTripException('nessun esito'));
+  }
+}
+
+/// Pagina ospite: al primo frame fa quello che fanno "Rigenera" e "Rifalla con
+/// AI" nel dettaglio, `startAiPacking` sul viaggio letto dal provider.
+class _AiHost extends ConsumerStatefulWidget {
+  const _AiHost({required this.tripId});
+  final String tripId;
+
+  @override
+  ConsumerState<_AiHost> createState() => _AiHostState();
+}
+
+class _AiHostState extends ConsumerState<_AiHost> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _start());
+  }
+
+  Future<void> _start() async {
+    final trips = await ref.read(tripNotifierProvider.future);
+    if (!mounted) return;
+    final trip = trips.firstWhere((t) => t.id == widget.tripId);
+    await startAiPacking(context, ref, trip: trip, isNew: false);
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      const Scaffold(body: Center(child: Text('Pagina ospite')));
+}
+
+/// Attesa finta: all'arrivo della valigia va al dettaglio e azzera il lavoro.
+class _FakeWait extends ConsumerWidget {
+  const _FakeWait();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final run = ref.watch(aiPackingRunProvider);
+    if (run is AiRunDone) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        context.go('/trips/${run.tripId}?review=1');
+        ref.read(aiPackingRunProvider.notifier).clear();
+      });
+    }
+    return const Scaffold(body: Center(child: Text('In attesa')));
+  }
 }
 
 class _Weather extends TripWeatherNotifier {
@@ -186,23 +250,6 @@ final _suitcaseProposal = [
   _packed('i-scarponi'),
 ];
 
-final _avvisoBoxer = AiWarning(
-  id: 'w1',
-  code: 'boxer',
-  level: AiWarningLevel.important,
-  title: 'Ti servono più pezzi di boxer',
-  why: 'Fino alla lavatrice ne servirebbero 6.',
-  search: 'felp',
-);
-
-final _avvisoSenzaCerca = AiWarning(
-  id: 'w2',
-  code: 'pantaloni',
-  level: AiWarningLevel.useful,
-  title: 'Mancano dei pantaloni impermeabili',
-  why: 'Pioggia quasi ogni giorno.',
-);
-
 /// Un viaggio fra dieci giorni, con coordinate: la valigia AI è disponibile.
 final _partenza = DateTime.now().add(const Duration(days: 10));
 
@@ -256,7 +303,6 @@ void main() {
   late MockLuggageRepository luggageRepo;
   late MockSpaceRepository spaceRepo;
   late MockTripLifecycleService lifecycle;
-  late MockCoreAnalyticsService analytics;
   late MockSyncOrchestrator sync;
   late MockAppAnalytics appAnalytics;
   late _MemoryOnboardingRepository onboardingRepo;
@@ -286,7 +332,6 @@ void main() {
     luggageRepo = MockLuggageRepository();
     spaceRepo = MockSpaceRepository();
     lifecycle = MockTripLifecycleService();
-    analytics = MockCoreAnalyticsService();
     sync = MockSyncOrchestrator();
     appAnalytics = MockAppAnalytics();
     onboardingRepo = _MemoryOnboardingRepository();
@@ -327,51 +372,24 @@ void main() {
     ).thenAnswer((_) async => luggages);
   }
 
-  /// Apre la pagina valigia: dalla pagina "trips" (tocco su "apri"), oppure
-  /// direttamente con `?ai=1` se [direct].
-  ///
-  /// Con [fromNew] la pagina è il passo 2 di "Nuovo viaggio"; con [fromDetail]
-  /// si parte dal dettaglio del viaggio, che apre la pagina con "apri". Il
-  /// dettaglio finto mostra "Dettaglio viaggio".
-  Future<void> pumpPack(
+  /// Monta l'app con la pagina ospite `_AiHost`, che lancia da sola
+  /// `startAiPacking` (come il tocco su "Rigenera"). Parte dalla pagina ospite;
+  /// con [fromDetail] parte dal dettaglio finto ("Dettaglio viaggio"), che la
+  /// apre con "apri".
+  Future<void> pumpAiHost(
     WidgetTester tester, {
-    bool direct = false,
-    bool fromNew = false,
     bool fromDetail = false,
-    bool firstRun = false,
   }) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    PackSuitcaseScreen packPage(GoRouterState state) => PackSuitcaseScreen(
-      tripId: state.pathParameters['id']!,
-      startAi: state.uri.queryParameters['ai'] == '1',
-      fromNewTrip: state.uri.queryParameters['from'] == 'new',
-      firstRun: state.uri.queryParameters['first'] == '1',
-    );
-
     final router = GoRouter(
-      initialLocation: fromNew
-          ? '/trips/trip-1/edit-items?from=new&ai=1${firstRun ? '&first=1' : ''}'
-          : fromDetail
+      initialLocation: fromDetail
           ? '/trips/trip-1'
-          : direct
-          ? '/trips/trip-1/edit-items?ai=1'
-          : '/trips',
+          : '/trips/trip-1/edit-items',
       routes: [
-        GoRoute(
-          path: '/trips',
-          builder: (context, state) => Scaffold(
-            body: Center(
-              child: ElevatedButton(
-                onPressed: () => context.push('/trips/trip-1/edit-items'),
-                child: const Text('apri'),
-              ),
-            ),
-          ),
-        ),
         GoRoute(
           path: '/trips/:id',
           builder: (context, state) => Scaffold(
@@ -388,22 +406,14 @@ void main() {
         ),
         GoRoute(
           path: '/trips/:id/edit-items',
-          builder: (context, state) => packPage(state),
+          builder: (context, state) =>
+              _AiHost(tripId: state.pathParameters['id']!),
         ),
-        // Pagina d'attesa finta: registra il lavoro e torna con [aiOutcome].
+        // Pagina d'attesa finta: all'arrivo apre il dettaglio in revisione,
+        // come la vera.
         GoRoute(
-          path: '/trips/:id/ai-packing',
-          builder: (context, state) {
-            jobs.add(state.extra! as PackTripJob);
-            return Scaffold(
-              body: Center(
-                child: ElevatedButton(
-                  onPressed: () => context.pop<AiPackingResult>(aiOutcome),
-                  child: const Text('Risultato'),
-                ),
-              ),
-            );
-          },
+          path: '/ai-packing',
+          builder: (context, state) => const _FakeWait(),
         ),
       ],
     );
@@ -420,11 +430,16 @@ void main() {
             (ref) => Completer<CategoryInferService>().future,
           ),
           tripLifecycleServiceProvider.overrideWithValue(lifecycle),
-          coreAnalyticsServiceProvider.overrideWithValue(analytics),
+          coreAnalyticsServiceProvider.overrideWithValue(
+            CoreAnalyticsService(appAnalytics),
+          ),
           analyticsServiceProvider.overrideWithValue(appAnalytics),
           onboardingRepositoryProvider.overrideWithValue(onboardingRepo),
           syncOrchestratorProvider.overrideWithValue(sync),
           tripWeatherNotifierProvider('trip-1').overrideWith(_Weather.new),
+          packTripServiceProvider.overrideWithValue(
+            _OutcomeService(() => aiOutcome, jobs),
+          ),
           kitNotifierProvider('h1').overrideWith(() => _Kits(houseKits)),
         ],
         child: EasyLocalization(
@@ -447,7 +462,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    if (!direct && !fromNew) {
+    if (fromDetail) {
       await tester.tap(find.text('apri'));
       await tester.pumpAndSettle();
     }
@@ -457,13 +472,6 @@ void main() {
     await tester.ensureVisible(find.text(text).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text(text).first);
-    await tester.pumpAndSettle();
-  }
-
-  Future<void> tapKey(WidgetTester tester, Key key) async {
-    await tester.ensureVisible(find.byKey(key));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(key));
     await tester.pumpAndSettle();
   }
 
@@ -503,12 +511,10 @@ void main() {
   /// L'ultimo viaggio passato a `updateTrip`.
   TripModel savedTrip() => savedTrips().last;
 
-  group('valigia AI: icona Prepara con AI / Rigenera', () {
+  group('valigia AI: Rigenera apre il foglio sopra la pagina', () {
     testWidgets('con la valigia piena chiede se sostituirla', (tester) async {
       arrange(trip: _viaggioAi(), items: _houseItems);
-      await pumpPack(tester);
-
-      await tapKey(tester, const Key('pack_ai_suitcase'));
+      await pumpAiHost(tester);
 
       expect(find.text('Vuoi sostituire la valigia?'), findsOneWidget);
       expect(jobs, isEmpty);
@@ -518,9 +524,8 @@ void main() {
       tester,
     ) async {
       arrange(trip: _viaggioAi(), items: _houseItems);
-      await pumpPack(tester);
+      await pumpAiHost(tester);
 
-      await tapKey(tester, const Key('pack_ai_suitcase'));
       await tester.tap(
         find.descendant(
           of: find.byType(DsDialog),
@@ -535,7 +540,7 @@ void main() {
     });
 
     testWidgets(
-      'risposta del foglio e risultato: la pagina mostra la proposta e salva aiSetup e aiResult',
+      'risposta del foglio e risultato: un solo salvataggio con aiSetup e aiResult, poi il dettaglio in revisione',
       (tester) async {
         aiOutcome = AiPackingResult(
           generatedAt: DateTime(2026, 10, 24),
@@ -543,29 +548,24 @@ void main() {
           proposal: _suitcaseProposal,
         );
         arrange(trip: _viaggio(), items: _houseItems, luggages: [_zaino]);
-        await pumpPack(tester);
+        await pumpAiHost(tester);
 
-        await tapKey(tester, const Key('pack_ai_suitcase'));
         await tapInSheet(tester, 'Zaino blu');
         await prepareInSheet(tester);
-        await tapText(tester, 'Risultato');
+        await tester.pumpAndSettle();
 
         expect(jobs, hasLength(1));
         expect(jobs.single.houseId, 'h1');
         expect(jobs.single.body['house_id'], 'h1');
 
-        // Prima il salvataggio delle risposte, poi quello del risultato.
+        // Le risposte non si scrivono all'avvio: un solo salvataggio, all'arrivo.
         final saves = savedTrips();
-        expect(saves.first.aiSetup?.houseId, 'h1');
-        expect(saves.last.aiSetup?.houseId, 'h1');
-        expect(saves, hasLength(2));
-        expect(saves.last.aiResult?.proposal, hasLength(4));
-        expect(saves.last.luggages.map((l) => l.id), ['l1']);
-
-        expect(find.text('Maglietta'), findsOneWidget);
-        expect(find.text('Boxer'), findsOneWidget);
-        expect(find.text('Felpa'), findsNothing);
-        expect(find.text('Fatto · 4 oggetti'), findsOneWidget);
+        expect(saves, hasLength(1));
+        expect(saves.single.aiSetup?.houseId, 'h1');
+        expect(saves.single.aiResult?.proposal, hasLength(4));
+        expect(saves.single.luggages.map((l) => l.id), ['l1']);
+        expect(saves.single.items.map((i) => i.id), isNot(contains('i-felpa')));
+        expect(find.text('Dettaglio viaggio'), findsOneWidget);
       },
     );
 
@@ -573,300 +573,46 @@ void main() {
       tester,
     ) async {
       arrange(trip: _viaggio(), items: _houseItems);
-      await pumpPack(tester);
-
-      await tapKey(tester, const Key('pack_ai_suitcase'));
+      await pumpAiHost(tester);
 
       expect(find.text('Vuoi sostituire la valigia?'), findsNothing);
       expect(find.text('Valigia con AI'), findsOneWidget);
     });
 
-    testWidgets('senza coordinate l icona lo dice con la snackbar e non genera', (
-      tester,
-    ) async {
-      arrange(
-        trip: _viaggio(
-          destination: LocationSuggestionModel(
-            placeId: 'p-x',
-            displayName: 'Luogo senza mappa',
-            city: 'Luogo senza mappa',
-            country: 'Islanda',
-          ),
-        ),
-        items: _houseItems,
-      );
-      await pumpPack(tester);
-
-      await tapKey(tester, const Key('pack_ai_suitcase'));
-
-      expect(
-        find.text(
-          'Una tappa non ha ancora una posizione sulla mappa: impostala per preparare la valigia con AI.',
-        ),
-        findsOneWidget,
-      );
-      expect(find.text('Valigia con AI'), findsNothing);
-      expect(jobs, isEmpty);
-      verifyNever(() => tripRepo.updateTrip(any()));
-    });
-
-    testWidgets('startAi apre il foglio da solo, senza domanda', (
-      tester,
-    ) async {
-      arrange(trip: _viaggio(), items: _houseItems);
-      await pumpPack(tester, direct: true);
-
-      expect(find.text('Valigia con AI'), findsOneWidget);
-      expect(find.text('Vuoi sostituire la valigia?'), findsNothing);
-    });
-  });
-
-  group('valigia AI: avvisi e motivi', () {
     testWidgets(
-      '"Ok, capito" segna l avviso come letto: resta nel foglio e si salva subito',
+      'senza coordinate Rigenera lo dice con la snackbar e non genera',
       (tester) async {
         arrange(
-          trip: _viaggioAi(warnings: [_avvisoBoxer]),
+          trip: _viaggio(
+            destination: LocationSuggestionModel(
+              placeId: 'p-x',
+              displayName: 'Luogo senza mappa',
+              city: 'Luogo senza mappa',
+              country: 'Islanda',
+            ),
+          ),
           items: _houseItems,
         );
-        await pumpPack(tester);
+        await pumpAiHost(tester);
 
-        expect(find.text('Cosa manca a questo viaggio'), findsOneWidget);
-        await tapKey(tester, const Key('pack_row_missing'));
-        expect(find.byType(DsFormSheet), findsOneWidget);
-        expect(find.text('Importante'), findsOneWidget);
-
-        await tapKey(tester, const Key('ai_warning_dismiss_w1'));
-
-        // L'avviso resta, segnato come letto e senza "Ok, capito".
         expect(
-          find.descendant(
-            of: find.byType(DsFormSheet),
-            matching: find.text(_avvisoBoxer.title),
+          find.text(
+            'Una tappa non ha ancora una posizione sulla mappa: impostala per preparare la valigia con AI.',
           ),
           findsOneWidget,
         );
-        expect(find.text('Letto'), findsOneWidget);
-        expect(find.text('Importante'), findsNothing);
-        expect(find.byKey(const Key('ai_warning_dismiss_w1')), findsNothing);
-        expect(find.byKey(const Key('ai_warning_search_w1')), findsOneWidget);
-
-        // Salvato senza "Fatto".
-        final saved = savedTrip().aiResult!;
-        expect(saved.dismissedWarnings, ['w1']);
-
-        await tester.tap(
-          find.descendant(
-            of: find.byType(DsFormSheet),
-            matching: find.byIcon(Icons.close),
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        // La riga resta da riaprire, senza il numero dei non letti.
-        expect(find.text('Cosa manca a questo viaggio'), findsOneWidget);
-        expect(find.text('Non manca niente'), findsNothing);
-        expect(
-          find.descendant(
-            of: find.byKey(const Key('pack_row_missing')),
-            matching: find.text('1'),
-          ),
-          findsNothing,
-        );
-
-        await tapKey(tester, const Key('pack_row_missing'));
-        expect(find.text('Letto'), findsOneWidget);
+        expect(find.text('Valigia con AI'), findsNothing);
+        expect(jobs, isEmpty);
+        verifyNever(() => tripRepo.updateTrip(any()));
       },
     );
-
-    testWidgets('gli avvisi letti vanno in fondo, dopo quelli da leggere', (
-      tester,
-    ) async {
-      arrange(
-        trip: _viaggioAi(
-          warnings: [_avvisoBoxer, _avvisoSenzaCerca],
-          dismissed: const ['w1'],
-        ),
-        items: _houseItems,
-      );
-      await pumpPack(tester);
-
-      expect(
-        find.descendant(
-          of: find.byKey(const Key('pack_row_missing')),
-          matching: find.text('1'),
-        ),
-        findsOneWidget,
-      );
-      await tapKey(tester, const Key('pack_row_missing'));
-      final unread = tester.getTopLeft(find.byKey(const Key('ai_warning_w2')));
-      final read = tester.getTopLeft(find.byKey(const Key('ai_warning_w1')));
-      expect(unread.dy, lessThan(read.dy));
-    });
-
-    testWidgets('segnare un avviso come letto non chiede conferma uscendo', (
-      tester,
-    ) async {
-      arrange(
-        trip: _viaggioAi(warnings: [_avvisoBoxer]),
-        items: _houseItems,
-      );
-      await pumpPack(tester);
-
-      await tapKey(tester, const Key('pack_row_missing'));
-      await tapKey(tester, const Key('ai_warning_dismiss_w1'));
-      await tester.tap(
-        find.descendant(
-          of: find.byType(DsFormSheet),
-          matching: find.byIcon(Icons.close),
-        ),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.byType(BackButton));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Uscire senza salvare?'), findsNothing);
-      expect(find.text('apri'), findsOneWidget);
-    });
-
-    testWidgets('uscendo con modifiche dice che la valigia AI resta salvata', (
-      tester,
-    ) async {
-      arrange(trip: _viaggioAi(), items: _houseItems);
-      await pumpPack(tester);
-
-      await tapKey(tester, const Key('pack_remove_i-calzino'));
-      await tester.tap(find.byType(BackButton));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Uscire senza salvare?'), findsOneWidget);
-      expect(
-        find.text(
-          "Le modifiche fatte dopo andranno perse. La valigia preparata "
-          "dall'AI resta salvata.",
-        ),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets('"Cerca nell armadio" chiude il foglio e scrive la ricerca', (
-      tester,
-    ) async {
-      arrange(
-        trip: _viaggioAi(warnings: [_avvisoBoxer]),
-        items: _houseItems,
-      );
-      await pumpPack(tester);
-
-      await tapKey(tester, const Key('pack_row_missing'));
-      await tapKey(tester, const Key('ai_warning_search_w1'));
-
-      expect(find.byType(DsFormSheet), findsNothing);
-      expect(
-        tester.widget<TextField>(find.byType(TextField)).controller!.text,
-        'felp',
-      );
-      expect(find.byKey(const Key('pack_ai_result_i-felpa')), findsOneWidget);
-    });
-
-    testWidgets('senza ricerca il bottone "Cerca nell armadio" non c è', (
-      tester,
-    ) async {
-      arrange(
-        trip: _viaggioAi(warnings: [_avvisoSenzaCerca]),
-        items: _houseItems,
-      );
-      await pumpPack(tester);
-
-      await tapKey(tester, const Key('pack_row_missing'));
-
-      expect(find.byKey(const Key('ai_warning_search_w2')), findsNothing);
-      expect(find.byKey(const Key('ai_warning_dismiss_w2')), findsOneWidget);
-    });
-
-    testWidgets('"Importante" è in arancio scuro, "Utile" in grigio', (
-      tester,
-    ) async {
-      arrange(
-        trip: _viaggioAi(warnings: [_avvisoBoxer, _avvisoSenzaCerca]),
-        items: _houseItems,
-      );
-      await pumpPack(tester);
-
-      await tapKey(tester, const Key('pack_row_missing'));
-
-      final context = tester.element(find.text('Utile'));
-      Color? colorOf(String text) =>
-          tester.widget<Text>(find.text(text)).style?.color;
-      expect(
-        colorOf('Importante'),
-        Theme.of(context).colorScheme.onPrimaryContainer,
-      );
-      expect(colorOf('Utile'), Theme.of(context).colorScheme.onSurfaceVariant);
-    });
-
-    testWidgets('la riga dei motivi apre il foglio con un punto per motivo', (
-      tester,
-    ) async {
-      arrange(
-        trip: _viaggioAi(
-          reasons: const [
-            AiReasonPoint(
-              code: 'tutti_i_giorni',
-              title: 'Tutti i giorni',
-              sentences: ['Da usare tutti i giorni'],
-              items: ['Maglietta', 'Boxer'],
-            ),
-          ],
-        ),
-        items: _houseItems,
-      );
-      await pumpPack(tester);
-
-      await tapKey(tester, const Key('pack_row_reasons'));
-
-      expect(find.byType(DsFormSheet), findsOneWidget);
-      expect(
-        find.descendant(
-          of: find.byType(DsFormSheet),
-          matching: find.text('Perché queste scelte'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: find.byType(DsFormSheet),
-          matching: find.text('Da usare tutti i giorni'),
-        ),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets('senza motivi la riga "Perché queste scelte" non c\'è', (
-      tester,
-    ) async {
-      arrange(trip: _viaggioAi(), items: _houseItems);
-      await pumpPack(tester);
-
-      expect(find.byKey(const Key('pack_row_missing')), findsOneWidget);
-      expect(find.byKey(const Key('pack_row_reasons')), findsNothing);
-      expect(find.text('Perché queste scelte'), findsNothing);
-    });
-
-    testWidgets('senza avvisi la riga dice "Non manca niente"', (tester) async {
-      arrange(trip: _viaggioAi(), items: _houseItems);
-      await pumpPack(tester);
-
-      expect(find.text('Non manca niente'), findsOneWidget);
-    });
   });
 
-  /// Apre il foglio dal tocco sull'icona, lo chiude con "Prepara la valigia" e
+  /// Con il foglio aperto, lo chiude con "Prepara la valigia" e
   /// torna dalla pagina finta con [aiOutcome].
   Future<void> generate(WidgetTester tester) async {
-    await tapKey(tester, const Key('pack_ai_suitcase'));
     await prepareInSheet(tester);
-    await tapText(tester, 'Risultato');
+    await tester.pumpAndSettle();
   }
 
   group('valigia AI: esito e casi del risultato', () {
@@ -879,12 +625,10 @@ void main() {
           proposal: _suitcaseProposal,
         );
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester);
+        await pumpAiHost(tester);
         final container = ProviderScope.containerOf(
-          tester.element(find.byType(PackSuitcaseScreen)),
+          tester.element(find.byType(_AiHost)),
         );
-        await tapKey(tester, const Key('pack_ai_suitcase'));
-        await prepareInSheet(tester);
 
         // Da qui in poi leggere gli oggetti della casa fallisce.
         when(
@@ -892,7 +636,8 @@ void main() {
         ).thenThrow(Exception('offline'));
         container.invalidate(itemNotifierProvider('h1'));
         await tester.pump();
-        await tapText(tester, 'Risultato');
+        await prepareInSheet(tester);
+        await tester.pumpAndSettle();
 
         expect(tester.takeException(), isNull);
         expect(jobs, hasLength(1));
@@ -901,21 +646,13 @@ void main() {
         expect(saves.last.aiSetup?.houseId, 'h1');
         // Capi e bagagli com'erano: la valigia non è cambiata.
         expect(saves.last.items, isEmpty);
-        expect(
-          find.text(
-            'Non è stato possibile leggere gli oggetti della casa: la proposta è salvata, ma la valigia non è cambiata.',
-          ),
-          findsOneWidget,
-        );
-
-        // "Fatto" resta utilizzabile e salva la valigia AI.
-        await tapText(tester, 'Fatto');
-        expect(savedTrip().aiResult, isNotNull);
+        // L'avviso `items_error` lo mostra l'ascoltatore globale (non nel test).
+        expect(find.text('Dettaglio viaggio'), findsOneWidget);
       },
     );
 
     testWidgets(
-      'se il salvataggio della proposta fallisce non dice che la proposta è salva',
+      'se il salvataggio della proposta fallisce il lavoro resta in errore, senza dettaglio',
       (tester) async {
         aiOutcome = AiPackingResult(
           generatedAt: DateTime(2026, 10, 24),
@@ -923,24 +660,19 @@ void main() {
           proposal: _suitcaseProposal,
         );
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester);
-        await tapKey(tester, const Key('pack_ai_suitcase'));
-        await prepareInSheet(tester);
+        await pumpAiHost(tester);
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(_AiHost)),
+        );
 
         // Gli oggetti si leggono, ma la scrittura della valigia fallisce.
         when(() => tripRepo.updateTrip(any())).thenThrow(Exception('offline'));
-        await tapText(tester, 'Risultato');
-        // La finestra d'errore del salvataggio: si annulla.
-        await tapText(tester, 'Annulla');
+        await prepareInSheet(tester);
+        await tester.pumpAndSettle();
 
         expect(tester.takeException(), isNull);
-        expect(
-          find.text(
-            'Non è stato possibile leggere gli oggetti della casa: la proposta è salvata, ma la valigia non è cambiata.',
-          ),
-          findsNothing,
-        );
-        expect(find.text('Errore di salvataggio'), findsOneWidget);
+        expect(container.read(aiPackingRunProvider), isA<AiRunFailed>());
+        expect(find.text('Dettaglio viaggio'), findsNothing);
       },
     );
 
@@ -953,15 +685,10 @@ void main() {
           proposal: [..._suitcaseProposal, _packed('i-fantasma')],
         );
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester);
+        await pumpAiHost(tester);
         await generate(tester);
 
         expect(tester.takeException(), isNull);
-        expect(find.text('Maglietta'), findsOneWidget);
-        expect(find.text('Scarponi'), findsOneWidget);
-        expect(find.byKey(const Key('pack_remove_i-fantasma')), findsNothing);
-        expect(find.text('Fatto · 4 oggetti'), findsOneWidget);
-
         final saved = savedTrips().last;
         expect(
           saved.items.map((i) => i.id),
@@ -990,7 +717,7 @@ void main() {
           ],
         );
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester);
+        await pumpAiHost(tester);
         await generate(tester);
 
         final saved = {
@@ -1033,13 +760,13 @@ void main() {
       (tester) async {
         aiOutcome = withSlots([slot('s1', 'giacca')]);
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester, fromNew: true);
+        await pumpAiHost(tester);
 
         await prepareInSheet(tester);
-        await tapText(tester, 'Risultato');
+        await tester.pumpAndSettle();
 
         expect(find.text('Dettaglio viaggio'), findsOneWidget);
-        expect(find.byType(PackSuitcaseScreen), findsNothing);
+        expect(find.byType(_AiHost), findsNothing);
         expect(find.text('Uscire senza salvare?'), findsNothing);
         final slots = savedTrip().aiResult?.slots;
         expect(slots, hasLength(1));
@@ -1048,7 +775,7 @@ void main() {
     );
 
     testWidgets(
-      'rigenerando da "Modifica valigia" si torna al dettaglio e il "da comprare" resta',
+      'rigenerando una valigia con posti si torna al dettaglio e il "da comprare" resta',
       (tester) async {
         aiOutcome = withSlots([slot('n1', 'giacca'), slot('n2', 'sciarpa')]);
         arrange(
@@ -1058,16 +785,15 @@ void main() {
           ),
           items: _houseItems,
         );
-        await pumpPack(tester, fromDetail: true);
+        await pumpAiHost(tester, fromDetail: true);
         expect(find.text('Dettaglio viaggio'), findsNothing);
 
-        await tapKey(tester, const Key('pack_ai_suitcase'));
         await tapText(tester, 'Sostituisci');
         await prepareInSheet(tester);
-        await tapText(tester, 'Risultato');
+        await tester.pumpAndSettle();
 
         expect(find.text('Dettaglio viaggio'), findsOneWidget);
-        expect(find.byType(PackSuitcaseScreen), findsNothing);
+        expect(find.byType(_AiHost), findsNothing);
         final slots = savedTrip().aiResult!.slots!;
         expect(slots.firstWhere((s) => s.type == 'giacca').toBuy, isTrue);
         expect(slots.firstWhere((s) => s.type == 'sciarpa').toBuy, isFalse);
@@ -1085,10 +811,10 @@ void main() {
         onboardingRepo.step = step;
         aiOutcome = withSlots([slot('s1', 'giacca')]);
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester, fromNew: true);
+        await pumpAiHost(tester);
 
         await prepareInSheet(tester);
-        await tapText(tester, 'Risultato');
+        await tester.pumpAndSettle();
 
         expect(find.text('Dettaglio viaggio'), findsOneWidget);
         expect(onboardingRepo.step, step);
@@ -1100,11 +826,11 @@ void main() {
     ) async {
       aiOutcome = withSlots([slot('s1', 'giacca')]);
       arrange(trip: _viaggio(), items: _houseItems);
-      await pumpPack(tester, fromNew: true, firstRun: true);
+      await pumpAiHost(tester);
       expect(onboardingRepo.step, OnboardingStep.firstTrip);
 
       await prepareInSheet(tester);
-      await tapText(tester, 'Risultato');
+      await tester.pumpAndSettle();
 
       expect(find.text('Dettaglio viaggio'), findsOneWidget);
       expect(onboardingRepo.step, OnboardingStep.done);
@@ -1129,10 +855,10 @@ void main() {
           slot('s3', 'magliette', level: AiSlotLevel.useful),
         ]);
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester, fromNew: true, firstRun: true);
+        await pumpAiHost(tester);
 
         await prepareInSheet(tester);
-        await tapText(tester, 'Risultato');
+        await tester.pumpAndSettle();
 
         verifyFirstSuitcase({
           'slots_important': 2,
@@ -1152,12 +878,14 @@ void main() {
       testWidgets('fuori dal primo avvio from_first_run è falso', (
         tester,
       ) async {
+        // Il primo avvio lo dice il passo dell'onboarding, non la pagina.
+        onboardingRepo.step = OnboardingStep.done;
         aiOutcome = withSlots([slot('s1', 'giacca')]);
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester, fromNew: true);
+        await pumpAiHost(tester);
 
         await prepareInSheet(tester);
-        await tapText(tester, 'Risultato');
+        await tester.pumpAndSettle();
 
         verify(
           () => appAnalytics.logEvent(
@@ -1176,10 +904,10 @@ void main() {
         SharedPreferences.setMockInitialValues({'first_suitcase_logged': true});
         aiOutcome = withSlots([slot('s1', 'giacca')]);
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester, fromNew: true, firstRun: true);
+        await pumpAiHost(tester);
 
         await prepareInSheet(tester);
-        await tapText(tester, 'Risultato');
+        await tester.pumpAndSettle();
 
         verifyNever(
           () => appAnalytics.logEvent(
@@ -1198,13 +926,12 @@ void main() {
           ),
           items: _houseItems,
         );
-        await pumpPack(tester, fromDetail: true);
+        await pumpAiHost(tester, fromDetail: true);
 
         for (var i = 0; i < 2; i++) {
-          await tapKey(tester, const Key('pack_ai_suitcase'));
           await tapText(tester, 'Sostituisci');
           await prepareInSheet(tester);
-          await tapText(tester, 'Risultato');
+          await tester.pumpAndSettle();
           if (i == 0) {
             await tester.tap(find.text('apri'));
             await tester.pumpAndSettle();
@@ -1222,12 +949,11 @@ void main() {
       testWidgets('un salvataggio fallito non lo emette', (tester) async {
         aiOutcome = withSlots([slot('s1', 'giacca')]);
         arrange(trip: _viaggio(), items: _houseItems);
-        await pumpPack(tester, fromNew: true, firstRun: true);
-        await prepareInSheet(tester);
+        await pumpAiHost(tester);
 
         when(() => tripRepo.updateTrip(any())).thenThrow(Exception('offline'));
-        await tapText(tester, 'Risultato');
-        await tapText(tester, 'Annulla');
+        await prepareInSheet(tester);
+        await tester.pumpAndSettle();
 
         verifyNever(
           () => appAnalytics.logEvent(
@@ -1238,58 +964,36 @@ void main() {
       });
     });
 
-    testWidgets('se il salvataggio fallisce la pagina resta', (tester) async {
+    testWidgets('se il salvataggio fallisce non si va al dettaglio', (
+      tester,
+    ) async {
       aiOutcome = withSlots([slot('s1', 'giacca')]);
       arrange(trip: _viaggio(), items: _houseItems);
-      await pumpPack(tester, fromNew: true);
-      await prepareInSheet(tester);
+      await pumpAiHost(tester);
 
       when(() => tripRepo.updateTrip(any())).thenThrow(Exception('offline'));
-      await tapText(tester, 'Risultato');
-      await tapText(tester, 'Annulla');
+      await prepareInSheet(tester);
+      await tester.pumpAndSettle();
 
       expect(find.text('Dettaglio viaggio'), findsNothing);
-      expect(find.byType(PackSuitcaseScreen), findsOneWidget);
     });
 
-    testWidgets('senza posti la pagina resta, come prima', (tester) async {
+    testWidgets('senza posti si va comunque al dettaglio in revisione', (
+      tester,
+    ) async {
       aiOutcome = AiPackingResult(
         generatedAt: DateTime(2026, 10, 24),
         houseId: 'h1',
         proposal: _suitcaseProposal,
       );
       arrange(trip: _viaggio(), items: _houseItems);
-      await pumpPack(tester, fromNew: true);
+      await pumpAiHost(tester);
       await prepareInSheet(tester);
-      await tapText(tester, 'Risultato');
+      await tester.pumpAndSettle();
 
-      expect(find.text('Dettaglio viaggio'), findsNothing);
-      expect(find.byType(PackSuitcaseScreen), findsOneWidget);
-      expect(find.text('Fatto · 4 oggetti'), findsOneWidget);
+      expect(find.text('Dettaglio viaggio'), findsOneWidget);
+      expect(savedTrip().aiResult?.proposal, hasLength(4));
     });
-
-    testWidgets(
-      'con i posti "Modifica valigia" non mostra "Cosa manca a questo viaggio"',
-      (tester) async {
-        arrange(
-          trip: _viaggio(
-            items: _suitcaseItems,
-            aiResult: withSlots([slot('s1', 'giacca')]).copyWith(
-              warnings: [_avvisoBoxer],
-              reasons: const [
-                AiReasonPoint(code: 'freddo', title: 'Fa freddo'),
-              ],
-            ),
-          ),
-          items: _houseItems,
-        );
-        await pumpPack(tester);
-
-        expect(find.text('Cosa manca a questo viaggio'), findsNothing);
-        expect(find.text('Ti servono più pezzi di boxer'), findsNothing);
-        expect(find.text('Perché queste scelte'), findsOneWidget);
-      },
-    );
   });
 
   group('valigia AI: kit', () {
@@ -1325,9 +1029,9 @@ void main() {
     );
 
     Future<void> generate(WidgetTester tester) async {
-      await pumpPack(tester, direct: true);
+      await pumpAiHost(tester);
       await prepareInSheet(tester);
-      await tapText(tester, 'Risultato');
+      await tester.pumpAndSettle();
     }
 
     testWidgets('risposta senza kit: valigia identica', (tester) async {

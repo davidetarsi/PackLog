@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../helpers/mock_suitcase_edits.dart';
 import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
@@ -37,8 +38,6 @@ class MockTripRepository extends Mock implements TripRepository {}
 class MockHouseRepository extends Mock implements HouseRepository {}
 
 class MockTripLifecycleService extends Mock implements TripLifecycleService {}
-
-class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
 
 class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 
@@ -125,7 +124,6 @@ void main() {
   late MockTripRepository tripRepo;
   late MockHouseRepository houseRepo;
   late MockTripLifecycleService lifecycle;
-  late MockCoreAnalyticsService analytics;
   late MockRawAnalytics rawAnalytics;
   late MockSyncOrchestrator sync;
   late _RecordingItemNotifier itemNotifier;
@@ -141,7 +139,6 @@ void main() {
     tripRepo = MockTripRepository();
     houseRepo = MockHouseRepository();
     lifecycle = MockTripLifecycleService();
-    analytics = MockCoreAnalyticsService();
     rawAnalytics = MockRawAnalytics();
     when(
       () => rawAnalytics.logEvent(any(), properties: any(named: 'properties')),
@@ -206,9 +203,12 @@ void main() {
       ProviderScope(
         overrides: [
           tripRepositoryProvider.overrideWithValue(tripRepo),
+          ...noopSuitcaseEditsOverrides(),
           houseRepositoryProvider.overrideWithValue(houseRepo),
           tripLifecycleServiceProvider.overrideWithValue(lifecycle),
-          coreAnalyticsServiceProvider.overrideWithValue(analytics),
+          coreAnalyticsServiceProvider.overrideWithValue(
+            CoreAnalyticsService(rawAnalytics),
+          ),
           analyticsServiceProvider.overrideWithValue(rawAnalytics),
           syncOrchestratorProvider.overrideWithValue(sync),
           luggageNotifierProvider.overrideWith(() => _EmptyLuggageNotifier()),

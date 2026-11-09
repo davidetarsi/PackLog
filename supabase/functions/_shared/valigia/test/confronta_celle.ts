@@ -36,6 +36,12 @@ function normalizzaNumeri(x: unknown): unknown {
   return JSON.parse(JSON.stringify(x), (_k, v) => typeof v === "string" ? v.replace(/(\d)\.0\b/g, "$1") : v);
 }
 
+// Unica differenza ammessa: `leggero` sui record dei pantaloni. Lo usano solo i
+// suggerimenti dell'app, il bench non lo conosce e non influisce su scelta o quantita'.
+function senzaLeggero(x: unknown): unknown {
+  return JSON.parse(JSON.stringify(x), (k, v) => (k === "leggero" ? undefined : v));
+}
+
 let ok = 0, ko = 0;
 const perTipo: Record<string, [number, number]> = { singola: [0, 0], tappe: [0, 0] };
 const perCampo: Record<string, number> = {};
@@ -58,7 +64,7 @@ for (const c of casi) {
   // I numeri interi del meteo: Python scrive 2 o 2.0 secondo da dove viene il
   // dato (previsione o clima storico), il JSON letto non lo distingue piu'.
   // Nei testi interni (reason) "2.0" e "2" valgono uguale.
-  const d = prima(normalizzaNumeri(out), normalizzaNumeri(c.atteso));
+  const d = prima(senzaLeggero(normalizzaNumeri(out)), senzaLeggero(normalizzaNumeri(c.atteso)));
   if (d == null) { ok++; perTipo[c.tipo][0]++; continue; }
   ko++;
   const campo = d.split(/[.:[]/)[1] ?? d;

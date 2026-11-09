@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/analytics/analytics_service.dart';
+import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/consent/consent_provider.dart';
 import '../../../core/auth/auth_exceptions.dart';
 import '../../../core/auth/auth_provider.dart';
@@ -313,8 +314,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     onTap: () async {
                       ref
-                          .read(analyticsServiceProvider)
-                          .logEvent('tour_relaunched');
+                          .read(coreAnalyticsServiceProvider)
+                          .trackTourRelaunched();
                       final houses =
                           ref.read(houseNotifierProvider).valueOrNull ?? [];
                       await ref
@@ -452,19 +453,20 @@ class _AnalyticsToggleTileState extends ConsumerState<_AnalyticsToggleTile> {
   Future<void> _toggle(bool value) async {
     final consent = ref.read(consentServiceProvider);
     final analytics = ref.read(analyticsServiceProvider);
+    final events = ref.read(coreAnalyticsServiceProvider);
 
     // Disattivando: prima si emette l'evento che documenta la scelta,
     // poi si chiude il gate. Nell'ordine inverso l'evento verrebbe
     // scartato dal gate stesso, e non resterebbe traccia dell'opt-out.
     if (!value) {
-      analytics.logEvent('analytics_opt_out', properties: {'enabled': false});
+      events.trackAnalyticsOptOut();
     }
 
     await consent.setAnalyticsEnabled(value);
 
     if (value) {
       // Riattivando, l'evento va emesso DOPO: prima il gate era chiuso.
-      analytics.logEvent('analytics_opt_in', properties: {'enabled': true});
+      events.trackAnalyticsOptIn();
     } else {
       // Dissocia l'identità già inviata ai backend. `clearUser` è
       // deliberatamente fuori dal gate proprio per questo caso: riduce i

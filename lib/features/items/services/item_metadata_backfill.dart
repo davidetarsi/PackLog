@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/monitoring/monitoring_service.dart';
+import '../../../core/once_per_day.dart';
 import '../model/item_metadata_merge.dart';
 import '../model/item_model.dart';
 import '../repositories/item_repository.dart';
@@ -29,7 +31,9 @@ class ItemMetadataBackfill {
     required ItemMetadataService service,
     Future<SharedPreferences>? prefs,
     DateTime Function()? now,
+    AppMonitoringService? monitoring,
   }) : _repo = repository,
+       _monitoring = monitoring,
        _service = service,
        _prefs = prefs,
        _now = now ?? DateTime.now;
@@ -42,6 +46,7 @@ class ItemMetadataBackfill {
   final ItemMetadataService _service;
   final Future<SharedPreferences>? _prefs;
   final DateTime Function() _now;
+  final AppMonitoringService? _monitoring;
   bool _running = false;
 
   /// Un giro di recupero. Restituisce le case con oggetti aggiornati, da
@@ -51,8 +56,9 @@ class ItemMetadataBackfill {
     _running = true;
     try {
       return await _run();
-    } catch (e) {
+    } catch (e, st) {
       debugPrint('[Backfill] giro interrotto: $e');
+      _report(e, st);
       return const {};
     } finally {
       _running = false;
@@ -86,7 +92,10 @@ class ItemMetadataBackfill {
     final houses = <String>{};
     for (final item in pending) {
       if (done >= kItemMetadataBackfillDailyLimit) break;
-      final scheda = await _service.fromName(item.name);
+      final scheda = await _service.fromName(
+        item.name,
+        source: ItemMetadataService.sourceBackfill,
+      );
       if (scheda == null) break;
       done++;
       await prefs.setString(_dayKey, today);
@@ -116,9 +125,20 @@ class ItemMetadataBackfill {
         );
       }, updatedAt: _now());
       return written != null;
-    } catch (e) {
+    } catch (e, st) {
       debugPrint('[Backfill] ${item.id} non aggiornato: $e');
+      _report(e, st);
       return false;
     }
+  }
+
+  /// Un guasto in Sentry; la rete assente no (si riprova al giro dopo).
+  void _report(Object e, StackTrace st) {
+    if (isNetworkFailure(e)) return;
+    _monitoring?.captureException(
+      e,
+      stackTrace: st,
+      tags: {'operation': 'item_metadata_backfill'},
+    );
   }
 }

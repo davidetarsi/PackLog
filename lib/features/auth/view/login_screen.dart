@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../bootstrap.dart' show initConsentedAnalytics;
-import '../../../core/analytics/analytics_service.dart';
+import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/auth/auth_exceptions.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/consent/consent_provider.dart';
@@ -33,7 +33,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        ref.read(analyticsServiceProvider).logEvent('login_screen_viewed');
+        ref.read(coreAnalyticsServiceProvider).trackLoginScreenViewed();
       }
     });
   }
@@ -61,11 +61,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     if (!mounted) return;
     ref
-        .read(analyticsServiceProvider)
-        .logEvent(
-          'consent_given',
-          properties: {'policy_version': AppConfig.policyVersion},
-        );
+        .read(coreAnalyticsServiceProvider)
+        .trackConsentGiven(policyVersion: AppConfig.policyVersion);
   }
 
   Future<void> _signInWithGoogle() async {
@@ -73,28 +70,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     await _recordConsent();
     if (!mounted) return;
     ref
-        .read(analyticsServiceProvider)
-        .logEvent('login_attempted', properties: {'method': 'google'});
+        .read(coreAnalyticsServiceProvider)
+        .trackLoginAttempted(method: 'google');
 
     try {
       await ref.read(authRepositoryProvider).signInWithGoogle();
       ref
-          .read(analyticsServiceProvider)
-          .logEvent('login_completed', properties: {'method': 'google'});
+          .read(coreAnalyticsServiceProvider)
+          .trackLoginCompleted(method: 'google');
     } on SignInFailedException catch (e) {
       ref
-          .read(analyticsServiceProvider)
-          .logEvent(
-            'login_failed',
-            properties: {
-              'method': 'google',
-              'reason': e.reason.name,
-              // Niente `e.toString()`: il messaggio Supabase può contenere
-              // l'email (es. "Invalid login credentials for <email>") che
-              // finirebbe in Amplitude. `runtimeType` ci dà la classe
-              // dell'eccezione senza serializzare PII.
-              'error_type': e.runtimeType.toString(),
-            },
+          .read(coreAnalyticsServiceProvider)
+          .trackLoginFailed(
+            method: 'google',
+            reason: e.reason.name,
+            // Niente `e.toString()`: il messaggio Supabase può contenere
+            // l'email (es. "Invalid login credentials for <email>") che
+            // finirebbe in Amplitude. `runtimeType` ci dà la classe
+            // dell'eccezione senza serializzare PII.
+            errorType: e.runtimeType.toString(),
           );
       // Mostra il messaggio specifico al reason solo se non è stato
       // l'utente a cancellare (in quel caso nessuna snackbar — pseudo-noop UX).
@@ -104,14 +98,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     } catch (e) {
       ref
-          .read(analyticsServiceProvider)
-          .logEvent(
-            'login_failed',
-            properties: {
-              'method': 'google',
-              // Vedi sopra: solo il tipo, mai il messaggio dell'eccezione.
-              'error_type': e.runtimeType.toString(),
-            },
+          .read(coreAnalyticsServiceProvider)
+          .trackLoginFailed(
+            method: 'google',
+            // Vedi sopra: solo il tipo, mai il messaggio dell'eccezione.
+            errorType: e.runtimeType.toString(),
           );
       if (mounted) {
         AppSnackBar.showError(context, exceptionMessage(e));

@@ -10,10 +10,11 @@ import '../providers/item_provider.dart';
 import '../services/category_infer_service.dart';
 import '../../../shared/helpers/first_letter_formatter.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
-import '../../../shared/theme/app_opacity.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/theme/app_motion.dart';
 import 'category_pill.dart';
+import 'rapid_fire_copies_pill.dart';
+import 'rapid_fire_submit_button.dart';
 
 /// Gruppo dei tocchi "dentro" il rapid fire. Chi mostra contenuti legati al
 /// campo (la pagina "aggiungi" della casa) li avvolge in un [TapRegion] con
@@ -435,14 +436,14 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
                     if (copies != null)
                       Padding(
                         padding: EdgeInsets.only(right: context.spacingXs),
-                        child: _CopiesPill(
+                        child: RapidFireCopiesPill(
                           copies: copies.copies,
                           onTap: _dismissCopies,
                         ),
                       ),
 
                     // Bottone Invia
-                    _SubmitButton(
+                    RapidFireSubmitButton(
                       enabled: widget.enabled && hasText && !_isSubmitting,
                       onPressed: _handleSubmit,
                       isSubmitting: _isSubmitting,
@@ -469,88 +470,6 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
               ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// "×N" accanto al bottone invia: fondo tenue dell'arancio, mai pieno (l'arancio
-/// pieno è del bottone).
-class _CopiesPill extends StatelessWidget {
-  final int copies;
-  final VoidCallback onTap;
-
-  const _CopiesPill({required this.copies, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Semantics(
-      button: true,
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          constraints: BoxConstraints(minHeight: context.iconSizeLg),
-          padding: EdgeInsets.symmetric(horizontal: context.spacingSm),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: colorScheme.primary.withValues(alpha: AppOpacity.selected),
-            borderRadius: BorderRadius.circular(context.iconSizeLg / 2),
-          ),
-          child: Text(
-            '×$copies',
-            style: Theme.of(
-              context,
-            ).textTheme.labelLarge?.copyWith(color: colorScheme.primary),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SubmitButton extends StatelessWidget {
-  final bool enabled;
-  final VoidCallback onPressed;
-  final bool isSubmitting;
-
-  const _SubmitButton({
-    required this.enabled,
-    required this.onPressed,
-    required this.isSubmitting,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final bgColor = enabled
-        ? colorScheme.primary
-        : colorScheme.surfaceContainerHigh;
-    final iconColor = enabled
-        ? colorScheme.onPrimary
-        : colorScheme.onSurfaceVariant;
-
-    return GestureDetector(
-      onTap: enabled ? onPressed : null,
-      child: AnimatedContainer(
-        duration: AppMotion.fast,
-        width: context.iconSizeLg,
-        height: context.iconSizeLg,
-        decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
-        child: isSubmitting
-            ? Padding(
-                padding: EdgeInsets.all(context.spacingXs),
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: iconColor,
-                ),
-              )
-            : Icon(
-                Icons.arrow_upward,
-                size: context.iconSizeSm,
-                color: iconColor,
-              ),
       ),
     );
   }

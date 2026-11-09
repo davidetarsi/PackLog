@@ -18,6 +18,7 @@ import 'tables/luggages_table.dart';
 import 'tables/kits_table.dart';
 import 'tables/kit_items_table.dart';
 import 'tables/trip_luggage_entries_table.dart';
+import 'tables/suitcase_edits_table.dart';
 import 'daos/houses_dao.dart';
 import 'daos/items_dao.dart';
 import 'daos/trips_dao.dart';
@@ -25,6 +26,7 @@ import 'daos/spaces_dao.dart';
 import 'daos/luggages_dao.dart';
 import 'daos/kits_dao.dart';
 import 'daos/kit_items_dao.dart';
+import 'daos/suitcase_edits_dao.dart';
 // Tipi e converter referenziati dal codice Drift generato (database.g.dart).
 // I part file non ereditano gli import transitivi, quindi questi devono
 // essere dichiarati esplicitamente nel file principale del database.
@@ -49,6 +51,7 @@ part 'database.g.dart';
 /// - [Trips]: i viaggi
 /// - [TripItemEntries]: gli oggetti associati a ogni viaggio (snapshot pattern)
 /// - [TripLuggageEntries]: junction table per la relazione M:N trips-luggages
+/// - [SuitcaseEdits]: coda locale delle modifiche alla valigia proposta
 @DriftDatabase(
   tables: [
     Houses,
@@ -60,6 +63,7 @@ part 'database.g.dart';
     Trips,
     TripItemEntries,
     TripLuggageEntries,
+    SuitcaseEdits,
   ],
   daos: [
     HousesDao,
@@ -69,6 +73,7 @@ part 'database.g.dart';
     KitsDao,
     KitItemsDao,
     TripsDao,
+    SuitcaseEditsDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -91,7 +96,7 @@ class AppDatabase extends _$AppDatabase {
   /// Versione dello schema del database.
   /// Incrementa quando modifichi la struttura delle tabelle.
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   /// Gestione delle migrazioni del database.
   @override
@@ -383,6 +388,10 @@ class AppDatabase extends _$AppDatabase {
           await m.createIndex(idxKitItemsKitId);
           await m.createIndex(idxKitItemsItemId);
           await m.addColumn(trips, trips.transports);
+        }
+        if (from < 14) {
+          // Coda locale delle modifiche alla valigia proposta: tabella nuova.
+          await m.createTable(suitcaseEdits);
         }
       },
       beforeOpen: (details) async {

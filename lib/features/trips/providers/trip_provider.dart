@@ -1,18 +1,31 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:sentry_flutter/sentry_flutter.dart' show SentryLevel;
 
-import '../../../core/analytics/analytics_service.dart';
 import '../../../core/analytics/core_analytics_service.dart';
+import '../../../core/auth/auth_provider.dart';
+import '../../../core/consent/consent_provider.dart';
+import '../../../core/monitoring/monitoring_service.dart';
 import '../../../core/sync/sync_provider.dart';
 import '../../../shared/notifier/synced_crud_notifier.dart';
+import '../../items/model/item_model.dart';
+import '../../items/providers/item_provider.dart';
+import '../../items/repositories/item_repository.dart';
 import '../model/ai_packing.dart';
+import '../model/suitcase_edit.dart';
 import '../model/trip_model.dart';
+import '../model/trip_weather.dart';
 import '../repositories/trip_repository.dart';
 import '../services/packing_progress_tracker.dart';
+import '../services/suitcase_analytics.dart';
+import '../services/suitcase_edits.dart';
 import '../services/trip_lifecycle_service.dart';
+import '../services/trip_weather_service.dart';
+import 'suitcase_edits_provider.dart';
 
 part 'trip_provider.g.dart';
 
@@ -22,6 +35,17 @@ const _kRefreshBuffer = Duration(seconds: 2);
 @Riverpod(keepAlive: true)
 class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
   final Map<String, Future<void>> _editQueues = {};
+
+  /// Per viaggio: gli avvisi scartati e i posti tolti già registrati per la
+  /// proposta di `generatedAt`. Due salvataggi sovrapposti partono dallo
+  /// stesso viaggio di prima e vedrebbero tutti e due lo stesso scarto: così
+  /// ogni avviso e ogni posto si conta una volta per proposta. Vive solo in
+  /// memoria: dopo un riavvio l'app riparte dal viaggio salvato.
+  final Map<
+    String,
+    ({DateTime generatedAt, Set<String> warnings, Set<String> slots})
+  >
+  _aiSent = {};
 
   TripRepository get _repo => ref.read(tripRepositoryProvider);
   CoreAnalyticsService get _analytics => ref.read(coreAnalyticsServiceProvider);
@@ -85,28 +109,49 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
   // CRUD
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Future<void> addTrip(TripModel model) => mutate(
+  /// [source] dice da dove nasce il viaggio (`'new'` | `'reuse'`) e va solo
+  /// nell'evento `trip_created`.
+  Future<void> addTrip(TripModel model, {String? source}) => mutate(
     operation: () => _repo.addTrip(model),
     reload: _repo.getAllTrips,
     rethrowOnly: true,
-    onSuccess: (trips) =>
-        _analytics.trackTripCreated(tripId: model.id, totalTrips: trips.length),
+    onSuccess: (trips) => _analytics.trackTripCreated(
+      tripId: model.id,
+      totalTrips: trips.length,
+      daysToDeparture: daysToDeparture(model.departureDateTime, DateTime.now()),
+      source: source,
+    ),
   );
 
-  Future<void> updateTrip(TripModel model) => mutate(
-    operation: () => _repo.updateTrip(model),
-    reload: _repo.getAllTrips,
-    rethrowOnly: true,
-    onSuccess: (_) => _analytics.trackTripUpdated(),
-  );
+  Future<void> updateTrip(TripModel model) async {
+    final TripModel? before = _tripInState(model.id);
+    await mutate(
+      operation: () => _repo.updateTrip(model),
+      reload: _repo.getAllTrips,
+      rethrowOnly: true,
+      onSuccess: (_) {
+        _analytics.trackTripUpdated();
+        _emitSuitcaseEvents(before, model);
+      },
+    );
+    // Stato già aggiornato: la registrazione non blocca né cambia l'esito.
+    _recordEditsInBackground(before, _tripInState(model.id));
+  }
 
-  Future<void> addItemsToTrip(String tripId, List<TripItem> items) => mutate(
-    operation: () => _repo.addItemsToTrip(tripId, items),
-    reload: _repo.getAllTrips,
-    rethrowOnly: true,
-    onSuccess: (_) =>
-        _analytics.trackItemsAddedToTrip(tripId: tripId, count: items.length),
-  );
+  Future<void> addItemsToTrip(String tripId, List<TripItem> items) async {
+    final TripModel? before = _tripInState(tripId);
+    await mutate(
+      operation: () => _repo.addItemsToTrip(tripId, items),
+      reload: _repo.getAllTrips,
+      rethrowOnly: true,
+      onSuccess: (trips) {
+        _analytics.trackItemsAddedToTrip(tripId: tripId, count: items.length);
+        final TripModel? after = trips.where((t) => t.id == tripId).firstOrNull;
+        if (after != null) _emitSuitcaseEvents(before, after);
+      },
+    );
+    _recordEditsInBackground(before, _tripInState(tripId));
+  }
 
   Future<void> deleteTrip(String id) => mutate(
     operation: () => _repo.deleteTrip(id),
@@ -150,11 +195,8 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
 
       // Funnel della preparazione valigia. Emesso **dopo** la persistenza:
       // se il salvataggio fallisce l'evento non deve partire, altrimenti si
-      // misurerebbero intenzioni invece di fatti.
-      //
-      // `logEvent` grezzo e non `CoreAnalyticsService`: le proprietà sono
-      // calcolate dal tracker, e far conoscere al livello tipato in `core/`
-      // un tipo che vive in `features/trips/` invertirebbe la dipendenza.
+      // misurerebbero intenzioni invece di fatti. Niente
+      // `_emitSuitcaseEvents`: una spunta non cambia la valigia.
       _emitPackingEvents(
         tripId: tripId,
         trip: trip,
@@ -212,6 +254,8 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
       rethrow;
     }
     ref.read(syncOrchestratorProvider).requestSync();
+    _emitSuitcaseEvents(trip, updatedTrip);
+    _recordEditsInBackground(trip, updatedTrip);
   }
 
   /// Riempie il posto [slotId] con [item]: l'oggetto entra fra gli `items`
@@ -269,16 +313,215 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
       ]);
     }
     ref.read(syncOrchestratorProvider).requestSync();
+    _recordEditsInBackground(trip, updatedTrip);
 
     // Dopo il salvataggio: si misurano i fatti, non le intenzioni.
-    unawaited(
-      ref
-          .read(analyticsServiceProvider)
-          .logEvent(
-            'slot_filled',
-            properties: {'level': level.name, 'copies': item.quantity},
-          ),
+    _analytics.trackSlotFilled(level: level.name, copies: item.quantity);
+    _emitSuitcaseEvents(trip, updatedTrip);
+  }
+
+  /// Gli eventi della valigia AI dopo una scrittura riuscita, confrontando il
+  /// viaggio [before] e [after]:
+  /// - `ai_suitcase_changed` se la distanza dalla proposta è cambiata. Con
+  ///   una proposta nuova (altro `generatedAt`, o nessun viaggio prima) non
+  ///   parte: è la proposta appena salvata, non una modifica dell'utente;
+  /// - `ai_warning_dismissed` per ogni avviso appena scartato;
+  /// - `ai_slot_removed` per ogni posto appena tolto.
+  ///
+  /// Armadio e meteo si leggono solo se già caricati: qui non si avviano
+  /// richieste.
+  void _emitSuitcaseEvents(TripModel? before, TripModel after) {
+    // Un errore dell'analytics non deve far fallire una scrittura riuscita.
+    try {
+      _emitSuitcaseEventsOrThrow(before, after);
+    } catch (e) {
+      debugPrint('[TripNotifier] eventi della valigia non emessi: $e');
+    }
+  }
+
+  void _emitSuitcaseEventsOrThrow(TripModel? before, TripModel after) {
+    final AiPackingResult? result = after.aiResult;
+    final AiPackingResult? previous = before?.aiResult;
+    if (result == null ||
+        previous == null ||
+        previous.generatedAt != result.generatedAt) {
+      return;
+    }
+
+    final List<ItemModel> houseItems = _loadedItems(result.houseId);
+    final types = subCategoryByIdOf(houseItems);
+    // Senza armadio caricato la proposta non si confronta con i pezzi in casa.
+    final available = houseItems.isEmpty
+        ? null
+        : {for (final item in houseItems) item.id: item.quantity};
+    final SuitcaseDiff? now = suitcaseDiff(after, types, available: available);
+    final SuitcaseDiff? then = suitcaseDiff(
+      before!,
+      types,
+      available: available,
     );
+    if (now != null && then != null && !sameSuitcaseDiff(now, then)) {
+      unawaited(_trackSuitcaseChanged(after, now));
+    }
+
+    var sent = _aiSent[after.id];
+    if (sent == null || sent.generatedAt != result.generatedAt) {
+      sent = (generatedAt: result.generatedAt, warnings: {}, slots: {});
+      _aiSent[after.id] = sent;
+    }
+
+    for (final id in result.dismissedWarnings) {
+      if (previous.dismissedWarnings.contains(id)) continue;
+      if (!sent.warnings.add(id)) continue;
+      final warning = result.warnings.where((w) => w.id == id).firstOrNull;
+      if (warning == null) continue;
+      _analytics.trackAiWarningDismissed(
+        code: warning.code,
+        level: warning.level.name,
+      );
+    }
+
+    final wasRemoved = {
+      for (final s in previous.slots ?? const <AiSlot>[]) s.id: s.removed,
+    };
+    for (final slot in result.slots ?? const <AiSlot>[]) {
+      if (slot.removed &&
+          wasRemoved[slot.id] == false &&
+          sent.slots.add(slot.id)) {
+        _analytics.trackAiSlotRemoved(type: slot.type, level: slot.level.name);
+      }
+    }
+  }
+
+  List<ItemModel> _loadedItems(String houseId) {
+    final provider = itemNotifierProvider(houseId);
+    if (!ref.exists(provider)) return const [];
+    return ref.read(provider).valueOrNull ?? const [];
+  }
+
+  /// Il meteo viene dalla copia sul telefono: il provider del meteo dipende
+  /// da questo notifier e leggerlo da qui sarebbe un ciclo. La copia non
+  /// avvia richieste e, se manca, l'evento parte senza clima.
+  /// Dopo l'attesa `ref` non si usa: il notifier potrebbe non esserci più.
+  Future<void> _trackSuitcaseChanged(TripModel trip, SuitcaseDiff diff) async {
+    final analytics = _analytics;
+    final TripWeather? weather = await ref
+        .read(tripWeatherCacheProvider)
+        .read(trip.id);
+    analytics.trackAiSuitcaseChanged(
+      tripId: trip.id,
+      counts: suitcaseDiffProperties(diff),
+      context: tripContext(
+        trip,
+        luggage: trip.luggages
+            .where((l) => l.id == trip.aiSetup?.luggageId)
+            .firstOrNull,
+        weather: weather,
+      ),
+    );
+  }
+
+  TripModel? _tripInState(String id) =>
+      state.valueOrNull?.where((t) => t.id == id).firstOrNull;
+
+  /// Lancia [_recordEdits] senza aspettarla: il salvataggio è finito, la coda
+  /// non deve né rallentarlo né cambiarne l'esito.
+  void _recordEditsInBackground(TripModel? before, TripModel? after) {
+    if (before == null || after == null) return;
+    try {
+      // Ora e consenso si fissano subito, non quando la scrittura gira.
+      final DateTime now = DateTime.now();
+      final bool allowed = ref.read(consentServiceProvider).analyticsEnabled;
+      unawaited(_recordEdits(before, after, now, allowed));
+    } catch (error) {
+      // Anche la parte sincrona è protetta: il salvataggio è già riuscito.
+      try {
+        debugPrint('[TripNotifier] modifiche valigia non registrate: $error');
+      } catch (_) {}
+    }
+  }
+
+  /// Mette in coda le modifiche alla valigia proposta fra [before] e [after].
+  /// Non lancia mai: se la registrazione fallisce il viaggio resta salvato e
+  /// si perde solo l'evento.
+  Future<void> _recordEdits(
+    TripModel before,
+    TripModel after,
+    DateTime now,
+    bool analysisAllowed,
+  ) async {
+    try {
+      final Map<String, Map<String, Object?>?> cards = await _cardsOfChanged(
+        before,
+        after,
+      );
+      // Meteo: non si legge. Lo stato del provider potrebbe far partire una
+      // richiesta nuova; senza garanzia di non farla, si omette.
+      final List<SuitcaseEdit> edits = suitcaseEdits(
+        before: before,
+        after: after,
+        now: now,
+        analysisAllowed: analysisAllowed,
+        cardOf: (id) => cards[id],
+      );
+      if (edits.isEmpty) return;
+      // Senza utente non si mette in coda: l'invio non saprebbe di chi sono.
+      final String? userId = ref.read(currentUserIdProvider);
+      if (userId == null) return;
+      await ref.read(suitcaseEditsDaoProvider).enqueue([
+        for (final e in edits) e.copyWith(userId: userId),
+      ]);
+    } catch (error, stackTrace) {
+      // Anche la segnalazione è protetta: un errore qui non deve salire.
+      try {
+        debugPrint('[TripNotifier] modifiche valigia non registrate: $error');
+        ref
+            .read(monitoringServiceProvider)
+            .captureException(
+              error,
+              stackTrace: stackTrace,
+              level: SentryLevel.warning,
+              tags: {'operation': 'recordSuitcaseEdits', 'trip_id': after.id},
+            );
+      } catch (_) {}
+    }
+  }
+
+  /// Le schede degli oggetti che differiscono fra [before] e [after], lette
+  /// dal database locale in un solo accesso (nessuna rete). Un oggetto senza
+  /// scheda o non più in casa vale null.
+  Future<Map<String, Map<String, Object?>?>> _cardsOfChanged(
+    TripModel before,
+    TripModel after,
+  ) async {
+    if (before.aiResult == null || after.aiResult == null) return const {};
+    final Map<String, int> was = {
+      for (final i in before.items) i.id: i.quantity,
+    };
+    final Set<String> ids = {
+      for (final i in after.items)
+        if (was.remove(i.id) != i.quantity) i.id,
+      ...was.keys,
+    };
+    if (ids.isEmpty) return const {};
+    final Map<String, Map<String, Object?>?> cards = {
+      for (final id in ids) id: null,
+    };
+    final List<ItemModel> found = await ref
+        .read(itemRepositoryProvider)
+        .getItemsByIds(ids.toList());
+    for (final item in found) {
+      try {
+        final String? raw = item.aiMetadata;
+        final Object? decoded = raw == null || raw.isEmpty
+            ? null
+            : jsonDecode(raw);
+        cards[item.id] = decoded is Map
+            ? Map<String, Object?>.from(decoded)
+            : null;
+      } catch (_) {}
+    }
+    return cards;
   }
 
   void _emitPackingEvents({
@@ -296,9 +539,8 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
     );
     if (events.isEmpty) return;
 
-    final analytics = ref.read(analyticsServiceProvider);
     for (final event in events) {
-      analytics.logEvent(event.name, properties: event.properties);
+      sendPackingEvent(_analytics, event);
     }
   }
 
@@ -313,23 +555,6 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
           tripId,
           nameSuffix: nameSuffix ?? ' (Copia)',
         );
-      },
-      reload: _repo.getAllTrips,
-      rethrowOnly: true,
-      onSuccess: (_) => _analytics.trackTripDuplicated(),
-    );
-    return newTripId;
-  }
-
-  /// Riusa un viaggio: crea una copia senza date, con tappe, oggetti
-  /// (non spuntati) e bagagli.
-  ///
-  /// Returns: ID del nuovo viaggio creato.
-  Future<String> reuseTrip(String tripId) async {
-    late String newTripId;
-    await mutate(
-      operation: () async {
-        newTripId = await _repo.reuseTrip(tripId);
       },
       reload: _repo.getAllTrips,
       rethrowOnly: true,

@@ -12,10 +12,9 @@ import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/surface_colors.dart';
 import 'ds_form_sheet.dart';
-import 'ds_group_header.dart';
 import 'ds_picker_sheet.dart';
 
-enum CreateAction { aiScan, manualItems, newHouse, newTrip, aiSuitcase }
+enum CreateAction { aiScan, manualItems, newHouse, newTrip }
 
 /// Scelta fatta nel foglio Crea. [houseId] c'è per le azioni sugli oggetti.
 class CreateChoice {
@@ -96,59 +95,23 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Le due strade con l'AI, alla pari e sopra le loro corrispondenti
-          // a mano. L'ordine è lo stesso da ogni tab.
+          // L'unica card in evidenza è il viaggio (con la valigia fatta
+          // dall'AI): sempre attiva, dal primo passo si può fare anche a mano.
+          // L'ordine è lo stesso da ogni tab.
           Padding(
             padding: EdgeInsets.fromLTRB(
               context.spacingMd,
               context.spacingSm,
               context.spacingMd,
-              0,
+              context.spacingSm,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _AiCard(
-                  key: const Key('create_ai_scan'),
-                  icon: Icons.photo_camera_outlined,
-                  title: 'create_sheet.ai_scan'.tr(),
-                  hint: house == null
-                      ? 'create_sheet.need_house'.tr()
-                      : aiExhausted
-                      ? 'create_sheet.ai_exhausted'.tr()
-                      : 'create_sheet.ai_scan_hint'.tr(),
-                  onTap: house == null || aiExhausted
-                      ? null
-                      : () => _choose(CreateAction.aiScan, house.id),
-                  footer: house == null
-                      ? null
-                      : _HouseChooser(
-                          key: const Key('create_destination'),
-                          house: house,
-                          onTap: () async {
-                            final id = await _chooseHouse(houses, house);
-                            if (id != null) setState(() => _scanHouseId = id);
-                          },
-                        ),
-                ),
-                SizedBox(height: context.spacingSm),
-                _AiCard(
-                  key: const Key('create_ai_suitcase'),
-                  icon: Icons.auto_awesome_outlined,
-                  title: 'create_sheet.ai_suitcase'.tr(),
-                  hint: aiExhausted
-                      ? 'create_sheet.ai_exhausted'.tr()
-                      : 'create_sheet.ai_suitcase_hint'.tr(),
-                  onTap: aiExhausted
-                      ? null
-                      : () => _choose(CreateAction.aiSuitcase),
-                ),
-              ],
+            child: _AiCard(
+              key: const Key('create_new_trip'),
+              icon: Icons.auto_awesome_outlined,
+              title: 'create_sheet.new_trip'.tr(),
+              hint: 'create_sheet.new_trip_hint'.tr(),
+              onTap: () => _choose(CreateAction.newTrip),
             ),
-          ),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
-            child: DsGroupHeader(label: 'create_sheet.without_ai'.tr()),
           ),
           _CreateRow(
             key: const Key('create_manual_items'),
@@ -173,11 +136,27 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
                 : () => _choose(CreateAction.manualItems, manualHouse.id),
           ),
           _CreateRow(
-            key: const Key('create_new_trip'),
-            icon: Icons.luggage_outlined,
-            title: 'create_sheet.new_trip'.tr(),
-            subtitle: 'create_sheet.new_trip_hint'.tr(),
-            onTap: () => _choose(CreateAction.newTrip),
+            key: const Key('create_ai_scan'),
+            icon: Icons.auto_awesome_outlined,
+            title: 'create_sheet.ai_scan'.tr(),
+            subtitle: house == null
+                ? 'create_sheet.need_house'.tr()
+                : aiExhausted
+                ? 'create_sheet.ai_exhausted'.tr()
+                : 'create_sheet.ai_scan_hint'.tr(),
+            footer: house == null
+                ? null
+                : _HouseChooser(
+                    key: const Key('create_destination'),
+                    house: house,
+                    onTap: () async {
+                      final id = await _chooseHouse(houses, house);
+                      if (id != null) setState(() => _scanHouseId = id);
+                    },
+                  ),
+            onTap: house == null || aiExhausted
+                ? null
+                : () => _choose(CreateAction.aiScan, house.id),
           ),
           _CreateRow(
             key: const Key('create_new_house'),
@@ -194,16 +173,13 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
   }
 }
 
-/// Card di una funzione AI: velo arancio con il bordo, icona a sinistra in un
-/// riquadro. Le due card hanno lo stesso peso; spente perdono velo e bordo.
+/// Card in evidenza del foglio (Nuovo viaggio): velo arancio con il bordo, icona a sinistra in un
+/// riquadro. Spenta perde velo e bordo.
 class _AiCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String hint;
   final VoidCallback? onTap;
-
-  /// Sotto il testo, allineato a lui: la scelta della casa.
-  final Widget? footer;
 
   const _AiCard({
     super.key,
@@ -211,7 +187,6 @@ class _AiCard extends StatelessWidget {
     required this.title,
     required this.hint,
     required this.onTap,
-    this.footer,
   });
 
   @override
@@ -250,14 +225,7 @@ class _AiCard extends StatelessWidget {
         borderRadius: radius,
         onTap: onTap,
         child: Padding(
-          // La scelta della casa ha già il suo spazio di tocco: sotto basta
-          // poco margine.
-          padding: EdgeInsets.fromLTRB(
-            context.spacingMd,
-            context.spacingMd,
-            context.spacingMd,
-            footer == null ? context.spacingMd : context.spacingXs,
-          ),
+          padding: EdgeInsets.all(context.spacingMd),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -289,7 +257,6 @@ class _AiCard extends StatelessWidget {
                       hint,
                       style: textTheme.bodyMedium?.copyWith(color: hintColor),
                     ),
-                    if (footer != null) footer!,
                   ],
                 ),
               ),

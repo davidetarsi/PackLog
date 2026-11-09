@@ -35,10 +35,6 @@ abstract class TripRepository {
 
   Future<String> duplicateTrip(String tripId, {String nameSuffix = ' (Copia)'});
 
-  /// Crea un nuovo viaggio da riusare: copia tappe, oggetti e bagagli, ma
-  /// senza date e non salvato. Vedi [TripsDao.reuseTrip].
-  Future<String> reuseTrip(String tripId);
-
   /// Fast-path per il toggle della singola voce di checklist nel packing.
   /// Vedi [TripsDao.setTripItemChecked].
   Future<void> setTripItemChecked(String tripId, String itemId, bool isChecked);
