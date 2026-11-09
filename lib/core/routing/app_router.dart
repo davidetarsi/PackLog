@@ -3,11 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:sentry_flutter/sentry_flutter.dart'
-    show SentryNavigatorObserver;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
+import '../monitoring/monitoring_service.dart';
 import '../../bootstrap.dart';
 import '../../features/onboarding/providers/onboarding_status_provider.dart';
 import '../analytics/core_analytics_service.dart';
@@ -89,7 +88,7 @@ GoRouter appRouter(Ref ref) {
     initialLocation: '/',
     observers: [
       AnalyticsNavigatorObserver(analytics),
-      SentryNavigatorObserver(),
+      appSentryNavigatorObserver(),
     ],
     refreshListenable: authChangeNotifier,
     redirect: (context, state) {

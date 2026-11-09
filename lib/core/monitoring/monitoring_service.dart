@@ -70,5 +70,12 @@ class AppMonitoringService {
   String generateTraceId() => const Uuid().v4().replaceAll('-', '');
 }
 
+/// L'observer di Sentry per il router: le ultime schermate aperte entrano
+/// come breadcrumb in ogni errore. Niente transazioni automatiche: a ogni
+/// cambio di schermata consumerebbero quota di performance, e servono solo
+/// le schermate negli errori.
+SentryNavigatorObserver appSentryNavigatorObserver({Hub? hub}) =>
+    SentryNavigatorObserver(hub: hub, enableAutoTransactions: false);
+
 @Riverpod(keepAlive: true)
 AppMonitoringService monitoringService(Ref ref) => AppMonitoringService();
