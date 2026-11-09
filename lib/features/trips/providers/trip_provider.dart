@@ -403,27 +403,7 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
     if (events.isEmpty) return;
 
     for (final event in events) {
-      final p = event.properties;
-      switch (event.name) {
-        case 'packing_started':
-          _analytics.trackPackingStarted(
-            tripId: tripId,
-            totalItems: p['total_items'] as int,
-            daysToDeparture: p['days_to_departure'] as int?,
-          );
-        case 'packing_progress':
-          _analytics.trackPackingProgress(
-            tripId: tripId,
-            threshold: p['threshold'] as int,
-            daysToDeparture: p['days_to_departure'] as int?,
-          );
-        case 'packing_completed':
-          _analytics.trackPackingCompleted(
-            tripId: tripId,
-            totalItems: p['total_items'] as int,
-            daysToDeparture: p['days_to_departure'] as int?,
-          );
-      }
+      sendPackingEvent(_analytics, event);
     }
   }
 
