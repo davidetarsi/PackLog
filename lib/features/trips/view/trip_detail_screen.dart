@@ -40,19 +40,17 @@ import 'widgets/slots/trip_items_card.dart';
 
 enum _TripMenu { edit, regenerate, duplicate, save, delete }
 
-/// La valigia del viaggio mentre la si fa: cosa c'è da portare e cosa è già
-/// dentro. È la pagina valigia (lo step 2 del nuovo viaggio) vista nel momento
-/// dopo: stessi pezzi (riepilogo, meteo, bagagli, oggetti per categoria), ma
-/// qui si spunta invece di scegliere.
+/// La valigia del viaggio: riepilogo, meteo, bagagli e oggetti per categoria,
+/// per ogni viaggio (a mano o con la proposta AI). Qui si spunta, si tolgono
+/// oggetti, si cambiano le copie e si apre la scheda dell'oggetto.
 ///
-/// Un solo bottone, "Aggiungi oggetti", che apre la pagina valigia (dopo la
-/// prima revisione AI c'è "Fatto" al suo posto); modifica
-/// del viaggio, copia, salvati ed eliminazione stanno nel menu ⋮, come nel
-/// dettaglio casa.
+/// Un solo bottone, "Aggiungi oggetti", che apre la pagina di aggiunta (dopo
+/// la prima revisione AI c'è "Fatto" al suo posto); modifica del viaggio,
+/// copia, salvati ed eliminazione stanno nel menu ⋮, come nel dettaglio casa.
 ///
 /// Con una valigia AI fatta di posti ([AiPackingResult.hasSlots]) "Cosa
 /// porti" mostra anche gli importanti, i "da comprare" e i proposti di
-/// PackLog; senza posti resta com'era.
+/// PackLog.
 class TripDetailScreen extends ConsumerStatefulWidget {
   final String tripId;
   final bool showNeeds;
@@ -225,14 +223,23 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
         ?.where((entry) => entry.id == tripId)
         .firstOrNull;
     if (trip == null) return;
-    final houseId = trip.aiResult?.houseId;
-    final inventoryItem = houseId == null
-        ? null
-        : _container
-              .read(itemNotifierProvider(houseId))
-              .valueOrNull
-              ?.where((entry) => entry.id == item.id)
-              .firstOrNull;
+    // La casa dell'oggetto, non quella della proposta AI: la valigia a mano non
+    // ha `aiResult` e gli oggetti possono venire da case diverse.
+    final houseId = item.originHouseId.isNotEmpty
+        ? item.originHouseId
+        : trip.aiResult?.houseId;
+    ItemModel? inventoryItem;
+    if (houseId != null) {
+      try {
+        final items = await _container.read(
+          itemNotifierProvider(houseId).future,
+        );
+        inventoryItem = items.where((entry) => entry.id == item.id).firstOrNull;
+      } catch (_) {
+        inventoryItem = null;
+      }
+    }
+    if (!mounted) return;
     final proposed = trip.aiResult?.proposal
         .where((entry) => entry.itemId == item.id)
         .firstOrNull;

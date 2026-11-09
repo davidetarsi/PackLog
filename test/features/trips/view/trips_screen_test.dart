@@ -497,6 +497,16 @@ void main() {
       expect(find.byKey(const Key('album_postcard_active')), findsNothing);
     });
 
+    testWidgets('postcard_cta_always_opens_detail', (tester) async {
+      await pumpScreen(tester, trips: [_soon]);
+
+      await tester.tap(find.byKey(const Key('postcard_cta')).first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('trip-detail future-1'), findsOneWidget);
+      expect(find.text('edit-items future-1'), findsNothing);
+    });
+
     testWidgets('Riusa apre il passo 1 con reuseFrom e non salva niente', (
       tester,
     ) async {

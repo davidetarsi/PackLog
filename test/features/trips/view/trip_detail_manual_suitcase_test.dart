@@ -24,6 +24,7 @@ import 'package:pack_log/features/trips/view/widgets/pack/pack_luggage_selector.
 import 'package:pack_log/features/trips/view/widgets/slots/trip_items_card.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_checkbox.dart';
+import 'package:pack_log/shared/widgets/quantity_stepper.dart';
 
 import '../../../helpers/memory_asset_loader.dart';
 
@@ -271,6 +272,82 @@ void main() {
       expect(find.byType(PackInventorySearch), findsNothing);
       expect(find.byType(PackLuggageSelector), findsOneWidget);
       expect(find.text('0 di 2 in valigia'), findsOneWidget);
+    });
+  });
+
+  ItemModel _inv(String id, String name, int quantity) => ItemModel(
+    id: id,
+    houseId: 'h1',
+    name: name,
+    category: ItemCategory.varie,
+    quantity: quantity,
+    createdAt: DateTime(2026),
+    updatedAt: DateTime(2026),
+  );
+
+  group('scheda dell oggetto', () {
+    testWidgets('manual_item_sheet_shows_copies_and_stepper', (tester) async {
+      when(
+        () => itemRepo.getItemsByHouseId('h1'),
+      ).thenAnswer((_) async => [_inv('i-cuscino', 'Cuscino aereo', 3)]);
+      final trip = _trip(
+        items: [
+          TripItem(
+            id: 'i-cuscino',
+            name: 'Cuscino aereo',
+            category: ItemCategory.varie,
+            quantity: 2,
+            originHouseId: 'h1',
+          ),
+        ],
+      );
+      await pumpDetail(tester, trip);
+
+      await tester.tap(find.text('Cuscino aereo'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(QuantityStepper), findsOneWidget);
+      expect(find.textContaining('Ne hai 3'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.add_circle_outline).last);
+      await tester.pumpAndSettle();
+      final saved =
+          verify(() => tripRepo.updateTrip(captureAny())).captured.last
+              as TripModel;
+      expect(saved.items.single.quantity, 3);
+    });
+
+    testWidgets('old_ai_without_slots_item_sheet_waits_house_items', (
+      tester,
+    ) async {
+      // Nessuna ricerca osserva la casa: la scheda deve aspettarne gli oggetti.
+      when(
+        () => itemRepo.getItemsByHouseId('h1'),
+      ).thenAnswer((_) async => [_inv('i-cuscino', 'Cuscino aereo', 3)]);
+      await pumpDetail(
+        tester,
+        _trip(
+          items: [
+            TripItem(
+              id: 'i-cuscino',
+              name: 'Cuscino aereo',
+              category: ItemCategory.varie,
+              quantity: 1,
+              originHouseId: 'h1',
+            ),
+          ],
+          aiResult: AiPackingResult(
+            generatedAt: DateTime(2026, 11),
+            houseId: 'h1',
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Cuscino aereo'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(QuantityStepper), findsOneWidget);
+      expect(find.textContaining('Ne hai 3'), findsOneWidget);
     });
   });
 

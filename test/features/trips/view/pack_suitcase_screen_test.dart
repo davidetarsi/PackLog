@@ -19,7 +19,9 @@ import 'package:pack_log/features/items/services/category_infer_service.dart';
 import 'package:pack_log/features/spaces/repositories/space_repository.dart';
 import 'package:pack_log/features/luggages/model/luggage_model.dart';
 import 'package:pack_log/features/luggages/repositories/luggage_repository.dart';
+import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
+import 'package:pack_log/features/trips/providers/trip_provider.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/services/trip_lifecycle_service.dart';
 import 'package:pack_log/features/trips/view/pack_suitcase_screen.dart';
@@ -388,15 +390,6 @@ void main() {
       );
     });
 
-    testWidgets('con fromNewTrip mostra l indicatore dei passi', (
-      tester,
-    ) async {
-      arrange();
-      await pumpPack(tester, fromNewTrip: true);
-
-      expect(find.byType(DsSteps), findsOneWidget);
-    });
-
     testWidgets('senza fromNewTrip non mostra l indicatore dei passi', (
       tester,
     ) async {
@@ -632,8 +625,9 @@ void main() {
         await tester.pumpAndSettle();
         expect(checkboxOf(tester, 'Maglietta').value, isTrue);
 
+        // Nessuna modifica: "Fatto" non scrive e la quantità resta 2.
         await tapText(tester, 'Fatto · 1 oggetto');
-        expect(savedTrip().items.single.quantity, 2);
+        verifyNever(() => tripRepo.updateTrip(any()));
       },
     );
 
@@ -729,6 +723,63 @@ void main() {
   });
 
   group('PackSuitcaseScreen — salvataggio e uscita', () {
+    testWidgets('done_applies_only_diff_on_current_trip', (tester) async {
+      final proposal = _trip(items: [_tripItem(_maglietta)]).copyWith(
+        aiResult: AiPackingResult(
+          generatedAt: DateTime(2026, 11, 1),
+          houseId: 'h1',
+        ),
+      );
+      arrange(
+        trip: proposal,
+        items: {
+          'h1': [_maglietta, _spazzolino],
+        },
+      );
+      await pumpPack(tester);
+
+      // Nella pagina si aggiunge lo spazzolino...
+      await tapText(tester, 'Spazzolino');
+
+      // ...e intanto arriva una Rigenera: valigia e proposta nuove.
+      final regenerated = proposal.copyWith(
+        items: [_tripItem(_calzini)],
+        aiResult: AiPackingResult(
+          generatedAt: DateTime(2026, 11, 2),
+          houseId: 'h1',
+        ),
+      );
+      when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [regenerated]);
+      ProviderScope.containerOf(
+        tester.element(find.byType(PackSuitcaseScreen)),
+      ).invalidate(tripNotifierProvider);
+      await tester.pumpAndSettle();
+
+      await tapText(tester, 'Fatto · 2 oggetti');
+
+      final saved = savedTrip();
+      expect(saved.items.map((i) => i.id).toSet(), {
+        'i-calzini',
+        'i-spazzolino',
+      });
+      expect(saved.aiResult?.generatedAt, DateTime(2026, 11, 2));
+    });
+
+    testWidgets('done_without_changes_writes_nothing', (tester) async {
+      arrange(
+        trip: _trip(items: [_tripItem(_maglietta)]),
+        items: {
+          'h1': [_maglietta, _spazzolino],
+        },
+      );
+      await pumpPack(tester);
+
+      await tapText(tester, 'Fatto · 1 oggetto');
+
+      verifyNever(() => tripRepo.updateTrip(any()));
+      expect(find.byType(PackSuitcaseScreen), findsNothing);
+    });
+
     testWidgets('done_from_new_trip_replaces_with_detail', (tester) async {
       arrange(
         items: {

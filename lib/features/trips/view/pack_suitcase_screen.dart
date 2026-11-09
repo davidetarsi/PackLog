@@ -218,17 +218,52 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     }
   }
 
+  /// Applica al viaggio [current] solo ciò che la pagina ha cambiato rispetto
+  /// all'apertura: oggetti aggiunti, tolti, copie cambiate. Il resto (proposta
+  /// AI, oggetti arrivati da una Rigenera, spunte) resta com'è adesso.
+  List<TripItem> _applyDiff(TripModel current, List<TripItem> added) {
+    final byId = {for (final item in current.items) item.id: item};
+    for (final id in _initialItems.keys) {
+      if (!_items.containsKey(id)) byId.remove(id);
+    }
+    for (final entry in _items.entries) {
+      final before = _initialItems[entry.key];
+      if (before == null) continue;
+      if (before == entry.value) continue;
+      final now = byId[entry.key];
+      if (now == null) continue;
+      final quantity = entry.value.quantity;
+      byId[entry.key] = now.copyWith(
+        quantity: quantity,
+        isChecked: quantity > now.quantity ? false : now.isChecked,
+      );
+    }
+    for (final item in added) {
+      byId[item.id] = item;
+    }
+    return byId.values.toList();
+  }
+
   Future<void> _save() async {
     final trip = _trip;
     if (trip == null || _saving) return;
+    if (!_isDirty) {
+      _leave();
+      return;
+    }
     setState(() => _saving = true);
 
-    // Normalizza gli oggetti legacy senza casa d'origine prima del salvataggio.
-    final normalized = await _normalizeItemOrigins(_items.values.toList());
+    // Normalizza gli oggetti nuovi senza casa d'origine prima del salvataggio.
+    final addedRaw = [
+      for (final entry in _items.entries)
+        if (!_initialItems.containsKey(entry.key)) entry.value,
+    ];
+    final added = await _normalizeItemOrigins(addedRaw);
     if (!mounted) return;
 
-    final updated = (_currentTrip() ?? trip).copyWith(
-      items: normalized,
+    final current = _currentTrip() ?? trip;
+    final updated = current.copyWith(
+      items: _applyDiff(current, added),
       updatedAt: DateTime.now(),
     );
 
@@ -244,8 +279,12 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
       setState(() => _saving = false);
       return;
     }
-    // Dal nuovo viaggio il passo 2 lascia il posto al dettaglio; altrimenti si
-    // torna alla pagina che ha aperto l'aggiunta.
+    _leave();
+  }
+
+  /// Dal nuovo viaggio il passo 2 lascia il posto al dettaglio; altrimenti si
+  /// torna alla pagina che ha aperto l'aggiunta.
+  void _leave() {
     if (widget.fromNewTrip) {
       context.pushReplacement('/trips/${widget.tripId}');
     } else {
@@ -386,7 +425,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     );
   }
 
-  /// Campo della ricerca, uguale nelle due modalità.
+  /// Campo della ricerca.
   Widget _searchField(BuildContext context, {required String hint}) {
     // La x svuota e chiama onChanged(''): la lista torna intera.
     return DsSearchField(
