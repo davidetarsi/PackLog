@@ -216,6 +216,59 @@ void main() {
     expect(find.text('create_sheet.ai_suitcase'), findsNothing);
   });
 
+  testWidgets('le icone e i testi condividono le colonne della card viaggio', (
+    tester,
+  ) async {
+    await openSheet(tester, houses: [_house('a')]);
+
+    Finder iconBox(String key) => find
+        .descendant(of: find.byKey(Key(key)), matching: find.byType(Container))
+        .first;
+    const titleKeys = {
+      'create_new_trip': 'create_sheet.new_trip',
+      'create_manual_items': 'create_sheet.manual',
+      'create_ai_scan': 'create_sheet.ai_scan_title',
+      'create_new_house': 'create_sheet.new_house',
+    };
+    Finder title(String key) => find.descendant(
+      of: find.byKey(Key(key)),
+      matching: find.text(titleKeys[key]!),
+    );
+
+    final tripIcon = tester.getRect(iconBox('create_new_trip'));
+    final tripTitle = tester.getTopLeft(title('create_new_trip'));
+    for (final key in [
+      'create_manual_items',
+      'create_ai_scan',
+      'create_new_house',
+    ]) {
+      final icon = tester.getRect(iconBox(key));
+      expect(icon.left, tripIcon.left, reason: '$key icon X');
+      expect(
+        icon.width,
+        closeTo(tripIcon.width, 0.01),
+        reason: '$key icon width',
+      );
+      expect(
+        icon.height,
+        closeTo(tripIcon.height, 0.01),
+        reason: '$key icon height',
+      );
+      final rowTitle = tester.getTopLeft(title(key));
+      expect(rowTitle.dx, tripTitle.dx, reason: '$key text X');
+      expect(
+        icon.top,
+        lessThanOrEqualTo(rowTitle.dy + 8),
+        reason: '$key icon deve restare allineata in alto al testo',
+      );
+    }
+    expect(
+      tester.getTopLeft(find.byKey(const Key('create_destination'))).dx,
+      tripTitle.dx,
+      reason: 'il selettore casa deve seguire la colonna del testo',
+    );
+  });
+
   testWidgets('la casa sta sotto il testo della scansione, in colore neutro', (
     tester,
   ) async {

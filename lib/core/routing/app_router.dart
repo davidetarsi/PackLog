@@ -38,6 +38,7 @@ import '../../features/tour/widgets/tour_trigger_wrapper.dart';
 import '../../shared/dev/ds_theme_showcase_screen.dart';
 import '../../shared/widgets/main_shell.dart';
 import '../../shared/widgets/ds_not_found_state.dart';
+import '../../shared/widgets/ds_form_sheet.dart';
 
 part 'app_router.g.dart';
 
@@ -244,15 +245,22 @@ GoRouter appRouter(Ref ref) {
         path: '/houses/:id/kits/new',
         name: 'kit-new',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final id = state.pathParameters['id'];
           if (id == null || id.isEmpty) {
-            return _ErrorScreen(message: 'common.content_unavailable'.tr());
+            return MaterialPage<void>(
+              key: state.pageKey,
+              child: _ErrorScreen(message: 'common.content_unavailable'.tr()),
+            );
           }
           final extra = state.extra;
-          return KitEditorScreen(
-            houseId: id,
-            initialItemIds: extra is List<String> ? extra : const [],
+          return DsFormSheetPage<bool>(
+            key: state.pageKey,
+            name: state.name,
+            builder: (_) => KitEditorScreen(
+              houseId: id,
+              initialItemIds: extra is List<String> ? extra : const [],
+            ),
           );
         },
       ),
@@ -273,17 +281,24 @@ GoRouter appRouter(Ref ref) {
         path: '/houses/:id/kits/:kitId/edit',
         name: 'kit-edit',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final id = state.pathParameters['id'];
           final kitId = state.pathParameters['kitId'];
           if (id == null || id.isEmpty || kitId == null || kitId.isEmpty) {
-            return _ErrorScreen(message: 'common.content_unavailable'.tr());
+            return MaterialPage<void>(
+              key: state.pageKey,
+              child: _ErrorScreen(message: 'common.content_unavailable'.tr()),
+            );
           }
-          return KitEditorScreen(
-            houseId: id,
-            kitId: kitId,
-            // `?add=1` arriva da "Aggiungi oggetti": tastiera già su.
-            focusAdd: state.uri.queryParameters['add'] == '1',
+          return DsFormSheetPage<bool>(
+            key: state.pageKey,
+            name: state.name,
+            builder: (_) => KitEditorScreen(
+              houseId: id,
+              kitId: kitId,
+              // `?add=1` arriva da "Aggiungi oggetti": tastiera già su.
+              focusAdd: state.uri.queryParameters['add'] == '1',
+            ),
           );
         },
       ),

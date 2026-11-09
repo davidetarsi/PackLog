@@ -759,19 +759,20 @@
   "create_sheet": {
     "title": "Crea",
     "ai_scan": "Scansiona i vestiti",
-    "ai_scan_hint": "Una foto, l'AI li riconosce",
+    "ai_scan_title": "Vestiti",
+    "ai_scan_hint": "Scatta o carica una foto: l'AI riconosce i capi",
     "need_house": "Crea prima una casa: gli oggetti scansionati finiscono lì",
     "ai_exhausted": "Hai esaurito gli usi AI di questo mese",
     "in_house": "in {}",
     "choose_house": "Scegli la casa",
     "manual_link": "Oppure scrivili a mano",
-    "manual": "Aggiungi oggetti",
-    "manual_hint": "Scrivili uno dopo l'altro",
+    "manual": "Oggetti",
+    "manual_hint": "Scrivi i nomi per aggiungerli all'inventario",
     "manual_need_house": "Prima crea una casa dove metterli",
-    "new_house": "Nuova casa",
+    "new_house": "Casa",
     "new_house_hint": "Un altro posto dove tieni le tue cose",
-    "new_trip": "Nuovo viaggio",
-    "new_trip_hint": "Crea il viaggio e la valigia con l'AI, in base a meta, meteo e date"
+    "new_trip": "Viaggio",
+    "new_trip_hint": "Viaggio e valigia con l'AI, in base a meta, date, meteo e attività"
   },
   "promo": {
     "code_label": "Codice promo",
@@ -793,7 +794,7 @@
     "error_generic": "Non siamo riusciti ad attivare il codice. Riprova."
   },
   "kits": {
-    "strip_title": "Kit · cose che partono insieme",
+    "strip_title": "Kit",
     "strip_add": "Kit",
     "more_uses": "+{}",
     "name_count": "{} · {}",
@@ -802,7 +803,7 @@
     "edit_title": "Modifica kit",
     "name_label": "Nome",
     "name_hint": "Es. Kit aereo",
-    "uses_title": "Lo aggiungo da solo ai viaggi con…",
+    "uses_title": "Lo aggiungo solo ai viaggi con…",
     "to_kit": "In un kit",
     "sheet_title": {
       "one": "Metti {} oggetto in un kit",
@@ -815,7 +816,7 @@
     },
     "more_pills": "Altre",
     "optional": "(facoltativo)",
-    "uses_guessed": "«{}» l'ho scelto io dal nome: toccalo per toglierlo.",
+    "uses_guessed": "«{}» è suggerito dal nome. Tocca le pillole per modificarle.",
     "in_kit": "Nel kit · {}",
     "remove_item": "Togli dal kit",
     "auto_title": "Entra da solo nei viaggi con",

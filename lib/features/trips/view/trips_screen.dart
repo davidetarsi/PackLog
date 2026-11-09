@@ -233,7 +233,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
             DsEmptyState(
               icon: Icons.calendar_today_outlined,
               title: 'trips.no_upcoming'.tr(),
-              ctaLabel: 'create_sheet.new_trip'.tr(),
+              ctaLabel: 'trips.new.title'.tr(),
               ctaIcon: Icons.add,
               onCta: () => context.push('/new-trip'),
             ),

@@ -360,14 +360,14 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                         loading: () => const SizedBox.shrink(),
                         error: (_, _) => const SizedBox.shrink(),
                       ),
-                      // ── Riga 2: kit (non durante selezione e ricerca) ──────
-                      if (!isSelectionMode && _search == null)
-                        KitStrip(houseId: widget.houseId),
                       // ── Contenuto ───────────────────────────────────────────
                       Expanded(
                         child: ItemsScreen(
                           houseId: widget.houseId,
                           houseName: house.displayName,
+                          leading: !isSelectionMode && _search == null
+                              ? KitStrip(houseId: widget.houseId)
+                              : null,
                           selectedSpaceId: _spaceFilter,
                           searchQuery: _search,
                           onSearchResultOpened: (position) =>

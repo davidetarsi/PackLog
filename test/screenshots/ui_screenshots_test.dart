@@ -31,6 +31,9 @@ import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/ai_packing_request.dart';
 import 'package:pack_log/features/trips/providers/ai_packing_run_provider.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/items/repositories/item_repository.dart';
+import 'package:pack_log/features/kits/repositories/kit_repository.dart';
+import 'package:pack_log/features/kits/view/widgets/kit_chip_card.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/services/pack_trip_service.dart';
 import 'package:pack_log/features/trips/services/trip_weather_service.dart';
@@ -614,7 +617,7 @@ final flows = <Flow>[
       route: '/',
       source: 'lib/shared/widgets/create_sheet.dart',
       description:
-          'Crea dalla tab Case: la card Nuovo viaggio, poi Aggiungi oggetti, Scansiona i vestiti (con la casa) e Nuova casa.',
+          'Crea dalla tab Case: Viaggio, Oggetti, Vestiti e Casa; icone e testi sulla stessa colonna, con selettore della casa.',
       steps: _openCreateSheet,
     ),
     Scenario(
@@ -2784,7 +2787,180 @@ final flows = <Flow>[
       },
     ),
   ]),
+
+  Flow('13-kit', 'Kit: creazione e modifica nel foglio', [
+    Scenario(
+      1,
+      'kit',
+      'creazione',
+      route: '/houses/:id/kits/new',
+      source: 'lib/features/kits/view/kit_editor_screen.dart',
+      description:
+          'Nuovo kit nel foglio standard: Salva in testata, facoltativo sotto il titolo e pillole modificabili.',
+      setup: AppSetup(seedWith: _seedKitSheetPreview),
+      steps: (app) async {
+        await _openKitSheetPreview(app);
+        expect(app.issues, isEmpty);
+      },
+    ),
+    Scenario(
+      2,
+      'kit',
+      'ultimo-oggetto',
+      route: '/houses/:id/kits/new',
+      source: 'lib/features/kits/view/kit_editor_screen.dart',
+      description:
+          'Tutti e tre gli oggetti raggiungibili sopra il Rapid Fire; ultima riga e X toccabili.',
+      setup: AppSetup(seedWith: _seedKitSheetPreview),
+      steps: (app) async {
+        await _openKitSheetPreview(app);
+        final last = find.byKey(const Key('kit_item_row_kit-preview-2'));
+        await app.tester.ensureVisible(last);
+        await app.settle();
+        expect(
+          find.byKey(const Key('kit_item_remove_kit-preview-2')).hitTestable(),
+          findsOneWidget,
+        );
+        expect(app.issues, isEmpty);
+      },
+    ),
+    Scenario(
+      3,
+      'kit',
+      'stretto-tastiera',
+      route: '/houses/:id/kits/new',
+      source: 'lib/features/kits/view/kit_editor_screen.dart',
+      description:
+          'Foglio a320×640dp, testo160% e inset tastiera280dp simulato; controlli raggiungibili nello scroll.',
+      setup: AppSetup(
+        seedWith: _seedKitSheetPreview,
+        viewport: const Size(320, 640),
+        initialViewport: const Size(412, 915),
+        textScale: 1.6,
+      ),
+      steps: (app) async {
+        await _openKitSheetPreview(app);
+        app.tester.view.physicalSize = const Size(320, 640) * kPixelRatio;
+        app.tester.view.viewInsets = const FakeViewPadding(
+          bottom: 280 * kPixelRatio,
+        );
+        await app.settle();
+        await app.tester.ensureVisible(
+          find.byKey(const Key('kit_item_row_kit-preview-2')),
+        );
+        await app.settle();
+        expect(
+          find.byKey(const Key('kit_item_remove_kit-preview-2')).hitTestable(),
+          findsOneWidget,
+        );
+        expect(find.byKey(const Key('kit_save')).hitTestable(), findsOneWidget);
+        expect(app.issues, isEmpty);
+      },
+    ),
+    Scenario(
+      4,
+      'casa-kit',
+      'card',
+      route: '/houses/:id',
+      source: 'lib/features/kits/view/widgets/kit_chip_card.dart',
+      description:
+          'Card kit approvata: icona grande, nome e tag, senza quantità, bordo o freccia.',
+      setup: AppSetup(seedWith: _seedHouseKitPreview),
+      steps: (app) async {
+        await _openHouseKitPreview(app);
+        expect(find.byType(KitChipCard), findsOneWidget);
+        expect(app.issues, isEmpty);
+      },
+    ),
+    Scenario(
+      5,
+      'casa-kit',
+      'scorso',
+      route: '/houses/:id',
+      source: 'lib/features/houses/view/house_detail_screen.dart',
+      description:
+          'La striscia dei kit è uscita dallo schermo; resta la categoria degli oggetti visibili.',
+      setup: AppSetup(seedWith: _seedHouseKitPreview),
+      steps: (app) async {
+        await _openHouseKitPreview(app);
+        await app.tester.drag(
+          find.byType(CustomScrollView).last,
+          const Offset(0, -420),
+        );
+        await app.settle();
+        expect(find.byType(KitChipCard).hitTestable(), findsNothing);
+        expect(app.issues, isEmpty);
+      },
+    ),
+    Scenario(
+      6,
+      'casa-kit',
+      'stretto',
+      route: '/houses/:id',
+      source: 'lib/features/kits/view/widgets/kit_chip_card.dart',
+      description:
+          'Card kit nel rendering Flutter a320×640dp e testo160%, senza overflow.',
+      setup: AppSetup(
+        seedWith: _seedHouseKitPreview,
+        viewport: const Size(320, 640),
+        textScale: 1.6,
+      ),
+      steps: (app) async {
+        await _openHouseKitPreview(app);
+        expect(find.byType(KitChipCard), findsOneWidget);
+        expect(app.issues, isEmpty);
+      },
+    ),
+  ]),
 ];
+
+const _kitPreviewIds = ['kit-preview-0', 'kit-preview-1', 'kit-preview-2'];
+
+Future<void> _seedKitSheetPreview(ProviderContainer container) async {
+  await seed(container, SeedLevel.full);
+  final names = ['Cuscino', 'Mascherina', 'Tappi per le orecchie'];
+  await container.read(itemRepositoryProvider).insertMultipleItems([
+    for (var i = 0; i < names.length; i++)
+      ItemModel(
+        id: _kitPreviewIds[i],
+        houseId: kHomeId,
+        name: names[i],
+        category: ItemCategory.varie,
+        quantity: 1,
+        createdAt: DateTime(2026, 11, 9),
+        updatedAt: DateTime(2026, 11, 9),
+      ),
+  ]);
+}
+
+Future<void> _seedHouseKitPreview(ProviderContainer container) async {
+  await _seedKitSheetPreview(container);
+  final repo = container.read(kitRepositoryProvider);
+  final kit = await repo.createKit(
+    houseId: kHomeId,
+    name: 'Kit aereo',
+    transports: ['plane'],
+  );
+  await repo.addItems(kit.id, {for (final id in _kitPreviewIds) id: 1});
+}
+
+Future<void> _openHouseKitPreview(ScreenshotApp app) async {
+  await app.go('/');
+  await app.push('/houses/$kHomeId');
+}
+
+Future<void> _openKitSheetPreview(ScreenshotApp app) async {
+  await app.go('/');
+  await app.push('/houses/$kHomeId');
+  unawaited(
+    app.router.push<bool>('/houses/$kHomeId/kits/new', extra: _kitPreviewIds),
+  );
+  await app.settle();
+  await app.enterText(find.byKey(const Key('kit_name_field')), 'Kit aereo');
+  await app.tap(find.byKey(const Key('kit_uses_more')));
+  app.tester.testTextInput.hide();
+  await app.settle();
+}
 
 void main() {
   setUpAll(() async {

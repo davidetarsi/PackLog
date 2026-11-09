@@ -1576,7 +1576,10 @@ void main() {
       expect(pending, hasLength(2));
       expect(byAction['aggiunto']?.origin.dbValue, 'utente');
       expect(byAction['tolto']?.origin.dbValue, 'proposta');
-      expect(pending.any((e) => e.toString().contains('Nome privato')), isFalse);
+      expect(
+        pending.any((e) => e.toString().contains('Nome privato')),
+        isFalse,
+      );
     });
 
     test('trip_info_change_records_no_edits', () async {

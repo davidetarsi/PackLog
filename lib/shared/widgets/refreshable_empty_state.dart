@@ -28,6 +28,7 @@ class RefreshableEmptyState extends StatelessWidget {
   /// Contenuto libero, non insieme a CTA e link. Vedi [DsEmptyState.action].
   final Widget? action;
   final Color? iconColor;
+  final Widget? leading;
 
   final String? ctaLabel;
   final IconData? ctaIcon;
@@ -47,6 +48,7 @@ class RefreshableEmptyState extends StatelessWidget {
     this.subtitle,
     this.action,
     this.iconColor,
+    this.leading,
     this.ctaLabel,
     this.ctaIcon,
     this.onCta,
@@ -65,6 +67,7 @@ class RefreshableEmptyState extends StatelessWidget {
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
+          if (leading != null) SliverToBoxAdapter(child: leading!),
           SliverFillRemaining(
             hasScrollBody: false,
             child: DsEmptyState(

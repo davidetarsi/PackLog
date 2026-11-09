@@ -7,15 +7,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/analytics/core_analytics_service.dart';
 import '../../../shared/helpers/search_match.dart';
-import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
-import '../../../shared/theme/cta_reserved_space.dart';
 import '../../../shared/widgets/ds_field.dart';
 import '../../../shared/widgets/ds_field_label.dart';
+import '../../../shared/widgets/ds_form_sheet.dart';
+import '../../../shared/widgets/ds_inline_error.dart';
 import '../../../shared/widgets/ds_not_found_state.dart';
 import '../../../shared/widgets/ds_settings.dart';
 import '../../../shared/widgets/ds_text_button.dart';
-import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../items/model/item_model.dart';
 import '../../items/providers/item_provider.dart';
 import '../../items/widgets/rapid_fire_input.dart';
@@ -67,6 +66,9 @@ class _KitEditorScreenState extends ConsumerState<KitEditorScreen> {
   KitModel? _existing;
   bool _hydrated = false;
   bool _busy = false;
+  String? _errorMessage;
+  bool _errorCanRetry = false;
+  final _errorKey = GlobalKey();
 
   bool get _isNew => widget.kitId == null;
   bool get _canSave => _name.text.trim().isNotEmpty && !_busy;
@@ -94,18 +96,38 @@ class _KitEditorScreenState extends ConsumerState<KitEditorScreen> {
 
   void _addItem(String itemId, int copies) {
     if (!_items.containsKey(itemId) && _items.length >= kMaxItemsPerKit) {
-      AppSnackBar.showError(
-        context,
-        'kits.limit_items'.tr(args: ['$kMaxItemsPerKit']),
-      );
+      _showError('kits.limit_items'.tr(args: ['$kMaxItemsPerKit']));
       return;
     }
-    setState(() => _items[itemId] = copies);
+    setState(() {
+      _errorMessage = null;
+      _items[itemId] = copies;
+    });
+  }
+
+  void _showError(String message, {bool canRetry = false}) {
+    setState(() {
+      _errorMessage = message;
+      _errorCanRetry = canRetry;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final errorContext = _errorKey.currentContext;
+      if (mounted && errorContext != null) {
+        Scrollable.ensureVisible(
+          errorContext,
+          alignment: 1,
+          duration: const Duration(milliseconds: 180),
+        );
+      }
+    });
   }
 
   Future<void> _save() async {
     if (!_canSave) return;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _errorMessage = null;
+    });
     final notifier = ref.read(kitNotifierProvider(widget.houseId).notifier);
     final analytics = ref.read(coreAnalyticsServiceProvider);
     try {
@@ -129,15 +151,14 @@ class _KitEditorScreenState extends ConsumerState<KitEditorScreen> {
     } on KitLimitException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      AppSnackBar.showError(
-        context,
+      _showError(
         (e.limit == kMaxKitsPerHouse ? 'kits.limit_kits' : 'kits.limit_items')
             .tr(args: ['${e.limit}']),
       );
     } catch (_) {
       if (!mounted) return;
       setState(() => _busy = false);
-      AppSnackBar.showError(context, 'errors.save_error'.tr());
+      _showError('errors.save_error'.tr(), canRetry: true);
     }
   }
 
@@ -145,7 +166,9 @@ class _KitEditorScreenState extends ConsumerState<KitEditorScreen> {
   Widget build(BuildContext context) {
     if (!_isNew) {
       final kits = ref.watch(kitNotifierProvider(widget.houseId)).valueOrNull;
-      if (kits == null) return _scaffold(const SizedBox.shrink());
+      if (kits == null) {
+        return _scaffold(const SizedBox.shrink(), hasFooter: false);
+      }
       final kit = kits.where((k) => k.id == widget.kitId).firstOrNull;
       if (kit == null && !_hydrated) {
         return _scaffold(
@@ -155,6 +178,8 @@ class _KitEditorScreenState extends ConsumerState<KitEditorScreen> {
             actionLabel: 'common.close'.tr(),
             onAction: () => context.pop(),
           ),
+          hasFooter: false,
+          expand: true,
         );
       }
       if (kit != null) _hydrate(kit);
@@ -162,9 +187,9 @@ class _KitEditorScreenState extends ConsumerState<KitEditorScreen> {
     return _scaffold(_form());
   }
 
-  Widget _scaffold(Widget body) => StickyCtaScaffold(
-    appBar: AppBar(
-      title: Text((_isNew ? 'kits.new_title' : 'kits.edit_title').tr()),
+  Widget _scaffold(Widget body, {bool hasFooter = true, bool expand = false}) {
+    final sheet = DsFormSheet(
+      title: (_isNew ? 'kits.new_title' : 'kits.edit_title').tr(),
       actions: [
         DsTextButton(
           key: const Key('kit_save'),
@@ -173,18 +198,48 @@ class _KitEditorScreenState extends ConsumerState<KitEditorScreen> {
           onPressed: _canSave ? _save : null,
         ),
       ],
-    ),
-    body: body,
-    bottomContent: Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: RapidFireInput(
-        houseId: widget.houseId,
-        autofocus: widget.focusAdd,
-        onTextChanged: (q) => setState(() => _query = q),
-        onItemCreated: (item) => _addItem(item.id, item.quantity ?? 1),
-      ),
-    ),
-  );
+      isBusy: _busy,
+      expand: expand,
+      padding: EdgeInsets.all(context.spacingMd),
+      footer: hasFooter
+          ? Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: context.spacingMd,
+                vertical: context.spacingSm,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_errorMessage case final message?)
+                    DsInlineError(
+                      key: _errorKey,
+                      message: message,
+                      onRetry: _errorCanRetry ? _retrySave : null,
+                    ),
+                  AbsorbPointer(
+                    absorbing: _busy,
+                    child: RapidFireInput(
+                      houseId: widget.houseId,
+                      autofocus: widget.focusAdd,
+                      enabled: !_busy,
+                      onTextChanged: (q) => setState(() => _query = q),
+                      onItemCreated: (item) =>
+                          _addItem(item.id, item.quantity ?? 1),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : null,
+      child: body,
+    );
+    return ExcludeFocus(excluding: _busy, child: sheet);
+  }
+
+  void _retrySave() {
+    setState(() => _errorMessage = null);
+    _save();
+  }
 
   Widget _form() {
     final houseItems =
@@ -204,56 +259,48 @@ class _KitEditorScreenState extends ConsumerState<KitEditorScreen> {
                 item,
           ];
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(
-        context.spacingMd,
-        0,
-        context.spacingMd,
-        context.spacingMd + context.ctaReservedHeight,
-      ),
-      // Toccare i contenuti legati al campo non lo chiude.
-      child: TapRegion(
-        groupId: rapidFireTapRegionGroup,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DsFieldLabel('kits.name_label'.tr()),
-            DsTextField(
-              key: const Key('kit_name_field'),
-              controller: _name,
-              autofocus: _isNew && !widget.focusAdd,
-              textCapitalization: TextCapitalization.sentences,
-              textInputAction: TextInputAction.done,
-              hintText: 'kits.name_hint'.tr(),
-              maxLength: kMaxKitNameLength,
-              onChanged: _onNameChanged,
+    // Toccare i contenuti legati al campo non lo chiude.
+    return TapRegion(
+      groupId: rapidFireTapRegionGroup,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DsFieldLabel('kits.name_label'.tr()),
+          DsTextField(
+            key: const Key('kit_name_field'),
+            controller: _name,
+            autofocus: _isNew && !widget.focusAdd,
+            textCapitalization: TextCapitalization.sentences,
+            textInputAction: TextInputAction.done,
+            hintText: 'kits.name_hint'.tr(),
+            maxLength: kMaxKitNameLength,
+            onChanged: _onNameChanged,
+            enabled: !_busy,
+          ),
+          KitUsesPicker(
+            choice: _uses,
+            onToggle: (id) => setState(() => _uses = _uses.toggle(id)),
+          ),
+          DsFieldLabel.prominent('kits.in_kit'.tr(args: ['${inKit.length}'])),
+          if (inKit.isNotEmpty)
+            DsSettingsGroup(
+              children: [
+                for (final (item, copies) in inKit)
+                  KitItemRow(
+                    key: Key('kit_item_row_${item.id}'),
+                    name: item.name,
+                    copies: copies,
+                    onCopiesChanged: (n) => setState(() => _items[item.id] = n),
+                    removeKey: Key('kit_item_remove_${item.id}'),
+                    onRemove: () => setState(() => _items.remove(item.id)),
+                  ),
+              ],
             ),
-            KitUsesPicker(
-              choice: _uses,
-              onToggle: (id) => setState(() => _uses = _uses.toggle(id)),
-            ),
-            DsFieldLabel.prominent('kits.in_kit'.tr(args: ['${inKit.length}'])),
-            if (inKit.isNotEmpty)
-              DsSettingsGroup(
-                children: [
-                  for (final (item, copies) in inKit)
-                    KitItemRow(
-                      key: Key('kit_item_row_${item.id}'),
-                      name: item.name,
-                      copies: copies,
-                      onCopiesChanged: (n) =>
-                          setState(() => _items[item.id] = n),
-                      removeKey: Key('kit_item_remove_${item.id}'),
-                      onRemove: () => setState(() => _items.remove(item.id)),
-                    ),
-                ],
-              ),
-            KitHouseMatches(
-              matches: matches,
-              onPick: (item) => _addItem(item.id, 1),
-            ),
-          ],
-        ),
+          KitHouseMatches(
+            matches: matches,
+            onPick: (item) => _addItem(item.id, 1),
+          ),
+        ],
       ),
     );
   }

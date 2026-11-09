@@ -138,7 +138,7 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
           _CreateRow(
             key: const Key('create_ai_scan'),
             icon: Icons.auto_awesome_outlined,
-            title: 'create_sheet.ai_scan'.tr(),
+            title: 'create_sheet.ai_scan_title'.tr(),
             subtitle: house == null
                 ? 'create_sheet.need_house'.tr()
                 : aiExhausted
@@ -348,13 +348,19 @@ class _CreateRow extends StatelessWidget {
     return ListTile(
       enabled: enabled,
       onTap: onTap,
+      contentPadding: EdgeInsets.only(
+        left: context.spacingLg + context.spacingSm,
+        right: context.spacingMd,
+      ),
+      horizontalTitleGap: context.spacingMd,
+      titleAlignment: ListTileTitleAlignment.top,
       leading: Container(
         padding: EdgeInsets.all(context.spacingSm),
         decoration: BoxDecoration(
           color: colorScheme.surfaceContainerHigh,
           borderRadius: BorderRadius.circular(AppConstants.badgeBorderRadius),
         ),
-        child: Icon(icon, color: accent),
+        child: Icon(icon, size: context.iconSizeMd, color: accent),
       ),
       title: Text(
         title,

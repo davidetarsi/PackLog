@@ -20,6 +20,7 @@ void main() {
     bool required = true,
     String? note,
     bool doubt = false,
+    bool noteBelow = false,
     Widget? trailing,
   }) => DsChoiceGroup<String>(
     title: 'Colore',
@@ -31,6 +32,7 @@ void main() {
     required: required,
     note: note,
     doubt: doubt,
+    noteBelow: noteBelow,
     trailing: trailing,
   );
 
@@ -60,6 +62,25 @@ void main() {
     final titleY = tester.getCenter(find.text('Colore')).dy;
     final noteY = tester.getCenter(find.text('anche più di uno')).dy;
     expect((titleY - noteY).abs(), lessThanOrEqualTo(4));
+  });
+
+  testWidgets('noteBelow puts the note after a full-width title', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      choiceGroup(
+        selected: const {'Blu'},
+        onChanged: (_) {},
+        note: '(facoltativo)',
+        noteBelow: true,
+      ),
+    );
+    expect(
+      tester.getTopLeft(find.text('(facoltativo)').first).dy,
+      greaterThan(tester.getBottomLeft(find.text('Colore')).dy),
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('senza dubbio la nota non ha icona', (tester) async {

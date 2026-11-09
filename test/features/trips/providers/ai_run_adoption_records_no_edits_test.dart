@@ -1,4 +1,3 @@
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -151,7 +150,9 @@ void main() {
       stored = [for (final s in stored) s.id == t.id ? t : s];
     });
     final items = _Items();
-    when(() => items.getItemsByIds(any())).thenAnswer((_) async => [_house('a')]);
+    when(
+      () => items.getItemsByIds(any()),
+    ).thenAnswer((_) async => [_house('a')]);
     final sync = _Sync();
     when(() => sync.requestSync()).thenReturn(null);
     container = ProviderContainer(
@@ -238,18 +239,21 @@ void main() {
     expect(await db.suitcaseEditsDao.pending(), isEmpty);
   });
 
-  test('controllo: dopo l adozione una modifica dell utente si registra', () async {
-    await runAndWait(_request(_trip(), isNew: true));
-    final adopted = container.read(tripNotifierProvider).requireValue.single;
+  test(
+    'controllo: dopo l adozione una modifica dell utente si registra',
+    () async {
+      await runAndWait(_request(_trip(), isNew: true));
+      final adopted = container.read(tripNotifierProvider).requireValue.single;
 
-    await container
-        .read(tripNotifierProvider.notifier)
-        .updateTrip(adopted.copyWith(items: const []));
+      await container
+          .read(tripNotifierProvider.notifier)
+          .updateTrip(adopted.copyWith(items: const []));
 
-    for (var i = 0; i < 100; i++) {
-      if ((await db.suitcaseEditsDao.pending()).isNotEmpty) break;
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-    }
-    expect(await db.suitcaseEditsDao.pending(), hasLength(1));
-  });
+      for (var i = 0; i < 100; i++) {
+        if ((await db.suitcaseEditsDao.pending()).isNotEmpty) break;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(await db.suitcaseEditsDao.pending(), hasLength(1));
+    },
+  );
 }
