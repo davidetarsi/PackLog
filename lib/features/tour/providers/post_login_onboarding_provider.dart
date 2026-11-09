@@ -108,13 +108,21 @@ class PostLoginOnboarding extends _$PostLoginOnboarding {
     state = AsyncData(current.copyWith(step: OnboardingStep.done));
   }
 
+  /// "Ripeti il tour": si riparte come al primo avvio, da "Dove vai?" (il
+  /// router ci porta da solo con il passo [OnboardingStep.firstTrip]). Niente
+  /// prova con la foto: per chi ha già delle case creerebbe una casa nuova.
   Future<void> reset({required bool hasExistingHouses}) async {
     final repo = ref.read(onboardingRepositoryProvider);
-    await repo.saveStep(OnboardingStep.aiIntro);
+    await repo.saveStep(OnboardingStep.firstTrip);
     await repo.saveSkippedAi(false);
     await repo.saveHasExistingHouses(hasExistingHouses);
     await repo.saveDefaultHouseId(null);
-    state = AsyncData(OnboardingState(hasExistingHouses: hasExistingHouses));
+    state = AsyncData(
+      OnboardingState(
+        step: OnboardingStep.firstTrip,
+        hasExistingHouses: hasExistingHouses,
+      ),
+    );
   }
 
   static OnboardingStep _nextStep(OnboardingState s) {

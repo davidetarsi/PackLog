@@ -21,8 +21,9 @@ class SharedPrefsOnboardingRepository implements IOnboardingRepository {
   @override
   Future<OnboardingStep> loadStep() async {
     final prefs = await SharedPreferences.getInstance();
-    // Senza un passo salvato è un account nuovo: parte da "Dove vai?". Chi ha
-    // `aiIntro` salvato (anche da "Ripeti il tour") resta sul tour delle foto.
+    // Senza un passo salvato è un account nuovo: parte da "Dove vai?", come
+    // chi tocca "Ripeti il tour". Chi ha `aiIntro` salvato da una versione
+    // vecchia resta sul tour delle foto.
     final index = prefs.getInt(_stepKey) ?? OnboardingStep.firstTrip.index;
     return OnboardingStep.values[index.clamp(
       0,
