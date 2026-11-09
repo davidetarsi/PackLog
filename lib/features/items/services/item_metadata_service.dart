@@ -21,15 +21,37 @@ class ItemMetadataResult {
   final ItemCategory? category;
 }
 
-/// Risposta non 200 (e non 429) di `item-metadata`, per Sentry. Il corpo
-/// non entra: potrebbe ripetere il nome scritto dall'utente.
+/// Risposta non 200 (e non 429) di `item-metadata`, per Sentry: lo stato e
+/// il messaggio d'errore della funzione (`{error: "..."}`, testi fissi
+/// scritti da noi). Il resto del corpo non entra: non è nostro e potrebbe
+/// contenere testo dell'utente, che la privacy policy non prevede in Sentry.
 class ItemMetadataHttpException implements Exception {
-  const ItemMetadataHttpException(this.statusCode);
+  const ItemMetadataHttpException(this.statusCode, [this.serverError]);
+
+  /// Il messaggio `error` della risposta da [body], al massimo 200
+  /// caratteri; null se il corpo non è un JSON con quel campo.
+  factory ItemMetadataHttpException.from(int statusCode, String body) {
+    String? message;
+    try {
+      final json = jsonDecode(body);
+      final error = json is Map ? json['error'] : null;
+      if (error is String && error.trim().isNotEmpty) {
+        final text = error.trim();
+        message = text.length > 200 ? text.substring(0, 200) : text;
+      }
+    } on FormatException {
+      message = null;
+    }
+    return ItemMetadataHttpException(statusCode, message);
+  }
 
   final int statusCode;
+  final String? serverError;
 
   @override
-  String toString() => 'ItemMetadataHttpException: HTTP $statusCode';
+  String toString() =>
+      'ItemMetadataHttpException: HTTP $statusCode'
+      '${serverError == null ? '' : ' — $serverError'}';
 }
 
 /// Risposta 200 che non si legge come JSON, per Sentry. Prende il posto della
@@ -79,7 +101,16 @@ class ItemMetadataService {
   /// La lingua dell'app ('it' o 'en'), per i testi che scrive il server.
   final String Function() _language;
 
-  Future<ItemMetadataResult?> fromName(String name) async {
+  /// Chi chiede la scheda, per `ai_limit_reached`: un'aggiunta dell'utente.
+  static const sourceManual = 'manual';
+
+  /// Il recupero in background delle schede mancanti.
+  static const sourceBackfill = 'backfill';
+
+  Future<ItemMetadataResult?> fromName(
+    String name, {
+    String source = sourceManual,
+  }) async {
     try {
       final jwt = _jwtProvider();
       if (jwt == null || jwt.isEmpty || name.trim().isEmpty) return null;
@@ -97,13 +128,13 @@ class ItemMetadataService {
           )
           .timeout(const Duration(seconds: 60));
       if (response.statusCode == 429) {
-        _analytics?.trackAiLimitReached(feature: 'item_name');
+        _analytics?.trackAiLimitReached(feature: 'item_name', source: source);
         return null;
       }
       if (response.statusCode != 200) {
         debugPrint('[ItemMetadata] ${response.statusCode}: ${response.body}');
         _monitoring?.captureException(
-          ItemMetadataHttpException(response.statusCode),
+          ItemMetadataHttpException.from(response.statusCode, response.body),
           tags: {
             'operation': 'item_metadata',
             'status': '${response.statusCode}',

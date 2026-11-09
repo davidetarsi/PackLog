@@ -45,9 +45,26 @@ void main() {
       final service = serviceAnswering(() async => http.Response('{}', 429));
       expect(await service.fromName('felpa'), isNull);
       verify(
-        () => analytics.trackAiLimitReached(feature: 'item_name'),
+        () => analytics.trackAiLimitReached(
+          feature: 'item_name',
+          source: 'manual',
+        ),
       ).called(1);
       verifyNoSentry();
+    });
+
+    test('429 dal recupero in background: source backfill', () async {
+      final service = serviceAnswering(() async => http.Response('{}', 429));
+      await service.fromName(
+        'felpa',
+        source: ItemMetadataService.sourceBackfill,
+      );
+      verify(
+        () => analytics.trackAiLimitReached(
+          feature: 'item_name',
+          source: 'backfill',
+        ),
+      ).called(1);
     });
 
     test('500: in Sentry con lo stato', () async {
@@ -63,6 +80,40 @@ void main() {
       verifyNever(
         () => analytics.trackAiLimitReached(feature: any(named: 'feature')),
       );
+    });
+
+    Future<Object> sentFor(http.Response response) async {
+      final service = serviceAnswering(() async => response);
+      await service.fromName('felpa');
+      return verify(
+            () => monitoring.captureException(
+              captureAny(),
+              stackTrace: any(named: 'stackTrace'),
+              tags: any(named: 'tags'),
+            ),
+          ).captured.single
+          as Object;
+    }
+
+    test('errore del server: in Sentry il suo messaggio', () async {
+      final sent = await sentFor(
+        http.Response(jsonEncode({'error': 'AI upstream error'}), 502),
+      );
+      expect('$sent', contains('HTTP 502'));
+      expect('$sent', contains('AI upstream error'));
+    });
+
+    test('corpo senza messaggio d errore: solo lo stato', () async {
+      final sent = await sentFor(http.Response('felpa grigia di Marta', 500));
+      expect('$sent', contains('HTTP 500'));
+      expect('$sent', isNot(contains('Marta')));
+    });
+
+    test('messaggio troppo lungo: tagliato a 200 caratteri', () async {
+      final sent = await sentFor(
+        http.Response(jsonEncode({'error': 'x' * 500}), 500),
+      );
+      expect('$sent'.length, lessThan(260));
     });
 
     test('rete assente: né evento né Sentry', () async {
