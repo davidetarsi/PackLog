@@ -124,6 +124,25 @@ class FakeTripWeather extends TripWeatherService {
     );
   }
 
+  /// Ogni giorno della tappa come media di 5 anni: massima e minima che
+  /// oscillano un poco, pioggia da 0 a 3 anni su 5, un giorno senza dato.
+  List<HistoricalDayWeather> _history(
+    WeatherStopRequest stop,
+    double min,
+    double max,
+    double wind,
+  ) => [
+    for (var i = 0; i < stop.days; i++)
+      HistoricalDayWeather(
+        date: stop.from.add(Duration(days: i)),
+        tempMax: max + (i % 3) - 1,
+        tempMin: min + (i % 2),
+        windMaxKmh: wind + (i % 4) * 2,
+        rainYears: (i * 2) % 4,
+        dataYears: i == 3 ? 4 : 5,
+      ),
+  ];
+
   StopWeather _stop(
     WeatherStopRequest stop, {
     required bool forecast,
@@ -144,6 +163,7 @@ class FakeTripWeather extends TripWeatherService {
       windMaxKmh: wind,
       uvMax: 6,
       forecastDays: _days(stop, min, max, today: today),
+      historicalDays: forecast ? const [] : _history(stop, min, max, wind),
     );
   }
 }

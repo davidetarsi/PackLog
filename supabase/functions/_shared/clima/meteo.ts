@@ -88,6 +88,58 @@ export function fonteMeteo(_inizio: string, fine: string, oggi: string): "previs
   return giorno(fine) - giorno(oggi) <= FORECAST_HORIZON_DAYS ? "previsione" : "clima";
 }
 
+// ── Il giorno per giorno delle normali climatiche ──────────────────────────
+
+/** Un giorno del viaggio visto dagli anni passati: medie dello stesso giorno
+ *  di calendario e quanti anni su quelli con dato hanno avuto pioggia. */
+export interface GiornoStorico {
+  data: string;
+  temp_max: number | null;
+  temp_min: number | null;
+  vento_max_kmh: number | null;
+  /** Anni con piu' di 1.0 mm (la soglia di giorni_di_pioggia). */
+  anni_pioggia: number;
+  /** Anni con il dato della pioggia per quel giorno. */
+  anni_con_dato: number;
+}
+
+/** Dalle risposte annuali dell'archivio ai giorni di [inizio, fine]. Il giorno
+ *  si cerca per mese e giorno nelle serie di ogni anno, non per posizione: il
+ *  29 febbraio conta solo negli anni bisestili, un valore nullo non conta. */
+export function giorniStorici(inizio: string, fine: string, risposte: Record_[]): GiornoStorico[] {
+  const serie = risposte.map((j) => {
+    const d = j.daily ?? {};
+    const perGiorno = new Map<string, number>();
+    ((d.time ?? []) as string[]).forEach((t, i) => perGiorno.set(t.slice(5), i));
+    return { d, perGiorno };
+  });
+  const out: GiornoStorico[] = [];
+  for (let g = giorno(inizio); g <= giorno(fine); g++) {
+    const data = iso(g), md = data.slice(5);
+    const valori = (campo: string) => serie.flatMap(({ d, perGiorno }) => {
+      const i = perGiorno.get(md);
+      const v = i == null ? null : (d[campo] as (number | null)[] | undefined)?.[i];
+      return v == null ? [] : [v];
+    });
+    const media = (xs: number[]) => (xs.length ? r1(pySum(xs) / xs.length) : null);
+    const piogge = valori("precipitation_sum");
+    out.push({
+      data,
+      temp_max: media(valori("temperature_2m_max")),
+      temp_min: media(valori("temperature_2m_min")),
+      vento_max_kmh: media(valori("wind_speed_10m_max")),
+      anni_pioggia: piogge.filter((v) => v > 1.0).length,
+      anni_con_dato: piogge.length,
+    });
+  }
+  return out;
+}
+
+/** I giorni in cache (senza data) rimessi sulle date di questo viaggio. */
+function conDate(inizio: string, giorni: Omit<GiornoStorico, "data">[]): GiornoStorico[] {
+  return giorni.map((g, i) => ({ data: iso(giorno(inizio) + i), ...g }));
+}
+
 // ── Il meteo di un luogo e di un periodo ────────────────────────────────────
 
 export interface Risposta { status: number; json(): Promise<any> }
@@ -114,13 +166,19 @@ const CAMPI_STORICO = ["temperature_2m_max", "temperature_2m_min", "precipitatio
 
 /** Previsione entro l'orizzonte utile, normali climatiche oltre. */
 export async function meteo(lat: number, lon: number, inizio: string, fine: string,
-  quotaReale: number | null, s: Servizi): Promise<Record_> {
+  quotaReale: number | null, s: Servizi, giorniStoriciOut?: (g: GiornoStorico[]) => void): Promise<Record_> {
   const fonte = fonteMeteo(inizio, fine, s.oggiUtc());
   // Le normali climatiche non cambiano mai; le previsioni valgono un giorno.
   const chiave = chiaveCache(lat, lon, inizio, fine, fonte);
   const hit = await s.leggiCache(chiave);
-  if (hit && (fonte === "clima" || hit._giorno === s.oggi())) {
+  // Il giorno per giorno sta in una voce a parte: le voci "clima" nate prima
+  // non l'hanno, e chi lo chiede le ricalcola una volta (meteo() non cambia).
+  const chiaveGiorni = `${chiave}|giorni`;
+  const hitGiorni = giorniStoriciOut && fonte === "clima" && hit ? await s.leggiCache(chiaveGiorni) : null;
+  if (hit && (fonte === "clima" || hit._giorno === s.oggi())
+    && (!giorniStoriciOut || fonte !== "clima" || Array.isArray(hitGiorni?.giorni))) {
     const { _giorno, ...resto } = hit;
+    if (giorniStoriciOut && fonte === "clima") giorniStoriciOut(conDate(inizio, hitGiorni!.giorni));
     return { ...resto, da_cache: true };
   }
 
@@ -187,6 +245,12 @@ export async function meteo(lat: number, lon: number, inizio: string, fine: stri
   out.pioggia_totale_mm = r1(out.pioggia_totale_mm / n);
   out.anni_mediati = n;
   await s.scriviCache(chiave, out);
+  if (giorniStoriciOut) {
+    const giorniAnno = giorniStorici(inizio, fine, risposte.filter((j) => j && j.daily?.time?.length));
+    // La chiave non ha l'anno: in cache vanno i giorni senza data, in fila dalla partenza.
+    await s.scriviCache(chiaveGiorni, { giorni: giorniAnno.map(({ data: _, ...resto }) => resto) });
+    giorniStoriciOut(giorniAnno);
+  }
   return out;
 }
 
@@ -211,6 +275,8 @@ export interface TappaRisolta {
   attivita: string[];
   geo: Record_;
   meteo: Record_;
+  /** Le normali climatiche giorno per giorno, se richieste (vedi climaViaggio). */
+  giorni_storici?: GiornoStorico[];
 }
 
 /** Un solo bagaglio per piu' tappe: le condizioni si UNISCONO, non si mediano
@@ -269,13 +335,14 @@ export interface Tappa extends Luogo { giorni: number; attivita?: string[] | nul
 /** Geo e meteo di un viaggio: una destinazione, o piu' tappe in fila dalla data
  *  di partenza. Se manca la quota del luogo vale quella della cella meteo. */
 export async function climaViaggio(inizio: string, giorni: number, luogo: Luogo | null, tappe: Tappa[] | null,
-  s: Servizi): Promise<{ geo: Record_; meteo: Record_ }> {
+  s: Servizi, conGiorniStorici = false): Promise<{ geo: Record_; meteo: Record_ }> {
   const risolvi = async (l: Luogo, da: string, a: string) => {
     const q = await quota(l.lat, l.lon, s);
-    const w = await meteo(l.lat, l.lon, da, a, q, s);
+    let gs: GiornoStorico[] | undefined;
+    const w = await meteo(l.lat, l.lon, da, a, q, s, conGiorniStorici ? (g) => { gs = g; } : undefined);
     const geo: Record_ = { nome: l.nome, paese: l.paese ?? null, lat: l.lat, lon: l.lon,
       altitudine_m: q ?? w.quota_griglia_m ?? null, timezone: l.timezone ?? null };
-    return { geo, w };
+    return { geo, w, gs };
   };
   if (tappe && tappe.length) {
     let g = giorno(inizio);
@@ -287,8 +354,10 @@ export async function climaViaggio(inizio: string, giorni: number, luogo: Luogo 
     });
     const risolte = await Promise.all(piano.map(async ({ t, gg, da, a }) => {
       try {
-        const { geo, w } = await risolvi(t, da, a);
-        return { destinazione: t.nome, giorni: gg, attivita: [...(t.attivita ?? [])], geo, meteo: w };
+        const { geo, w, gs } = await risolvi(t, da, a);
+        const r: TappaRisolta = { destinazione: t.nome, giorni: gg, attivita: [...(t.attivita ?? [])], geo, meteo: w };
+        if (gs) r.giorni_storici = gs;
+        return r;
       } catch (e) {
         throw new Error(`tappa ${t.nome}: ${(e as Error).message}`);
       }
