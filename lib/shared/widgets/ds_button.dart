@@ -76,6 +76,10 @@ class DsButton extends StatelessWidget {
   /// Occupa tutta la larghezza disponibile.
   final bool expand;
 
+  /// Consente all'etichetta di andare a capo, mantenendo la CTA leggibile
+  /// quando il dialogo impila le azioni per testo grande o larghezza ridotta.
+  final bool wrapLabel;
+
   const DsButton({
     super.key,
     required this.label,
@@ -85,6 +89,7 @@ class DsButton extends StatelessWidget {
     this.variant = DsButtonVariant.primary,
     this.isLoading = false,
     this.expand = false,
+    this.wrapLabel = false,
   });
 
   @override
@@ -154,8 +159,16 @@ class DsButton extends StatelessWidget {
         onTap: canTap ? onPressed : (isLoading ? null : onDisabledTap),
         child: Container(
           width: expand ? double.infinity : null,
-          height: context.responsive(AppConstants.ctaHeight),
-          padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
+          height: wrapLabel ? null : context.responsive(AppConstants.ctaHeight),
+          constraints: wrapLabel
+              ? BoxConstraints(
+                  minHeight: context.responsive(AppConstants.ctaHeight),
+                )
+              : null,
+          padding: EdgeInsets.symmetric(
+            horizontal: context.spacingMd,
+            vertical: wrapLabel ? context.spacingSm : 0,
+          ),
           decoration: BoxDecoration(
             // Nessun colore qui: lo sfondo è già gestito da Material.
             // Aggiungere color in BoxDecoration causerebbe un layer di pittura
@@ -195,11 +208,10 @@ class DsButton extends StatelessWidget {
                         label,
                         style: Theme.of(context).textTheme.bodyMedium?.strong
                             .copyWith(color: contentColor),
-                        // Altezza fissa: una riga sola, il resto si tronca.
-                        // Senza maxLines a scala 2.0 l'etichetta va a capo e
-                        // sborda dalla pill.
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        // I pulsanti standard restano su una riga. Nelle azioni
+                        // impilate il testo può andare a capo senza tagli.
+                        maxLines: wrapLabel ? null : 1,
+                        overflow: wrapLabel ? null : TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
                       ),
                     ),

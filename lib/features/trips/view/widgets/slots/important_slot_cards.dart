@@ -11,8 +11,7 @@ import 'slot_copies_label.dart';
 // Gli importanti nel dettaglio del viaggio: la card di un importante
 // (la riga "da comprare" sta in `to_buy_slot_row.dart`).
 //
-// Regola dei colori: l'arancione (`primary`) è "da fare", quindi bordo ed
-// etichetta degli importanti e l'azione di aggiunta.
+// Il bordo arancione segnala la priorità; contenuto e azioni restano neutri.
 
 /// Il contorno arancione di un importante.
 ShapeBorder _importantShape(ColorScheme cs) => RoundedRectangleBorder(
@@ -71,7 +70,7 @@ class ImportantSlotCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ImportantLabel(color: cs.primary),
+                      ImportantLabel(color: cs.onSurfaceVariant),
                       SizedBox(height: context.spacingXs),
                       Row(
                         children: [
@@ -80,7 +79,7 @@ class ImportantSlotCard extends StatelessWidget {
                               slot.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: tt.titleMedium,
+                              style: tt.titleMedium?.medium,
                             ),
                           ),
                           if (copies != null) ...[
@@ -116,11 +115,12 @@ class ImportantSlotCard extends StatelessWidget {
                         key: Key('slot_add_${slot.id}'),
                         label: slot.addLabel,
                         onPressed: onAdd,
-                        accent: true,
+                        emphasized: false,
                       ),
                       DsTextButton(
                         key: Key('slot_to_buy_${slot.id}'),
                         label: 'trips.slots.to_buy'.tr(),
+                        emphasized: false,
                         onPressed: onToBuy,
                       ),
                     ],

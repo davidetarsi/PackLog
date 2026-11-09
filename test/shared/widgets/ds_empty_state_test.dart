@@ -71,6 +71,26 @@ void main() {
     expect(find.byType(DsLinkButton), findsOneWidget);
   });
 
+  testWidgets('la versione vuota colloca il leading nello stesso scroll', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      RefreshableEmptyState(
+        onRefresh: () async {},
+        icon: Icons.search_off,
+        title: 'Nessun oggetto',
+        leading: const Text('Kit', key: Key('empty_leading')),
+      ),
+    );
+
+    expect(find.byKey(const Key('empty_leading')), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.byKey(const Key('empty_leading'))).dy,
+      lessThan(tester.getCenter(find.text('Nessun oggetto')).dy),
+    );
+  });
+
   testWidgets('l icona resta neutra', (tester) async {
     await pump(
       tester,

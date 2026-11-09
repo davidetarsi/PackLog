@@ -11,9 +11,7 @@ import 'kit_use_pill.dart';
 /// Quante pillole d'uso stanno nella card; le altre diventano "+N".
 const int _kVisibleUses = 2;
 
-/// Card piccola di un kit nella riga della casa: icona della scatola, nome e
-/// numero di oggetti, pillole d'uso. Rettangolare, per non somigliare alle
-/// pillole degli spazi.
+/// Card di un kit: icona, nome e pillole d'uso.
 class KitChipCard extends StatelessWidget {
   const KitChipCard({
     super.key,
@@ -32,7 +30,7 @@ class KitChipCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final radius = context.responsiveBorderRadius(
-      AppConstants.inputBorderRadius,
+      AppConstants.cardBorderRadius,
     );
     final labels = kitUseLabels(kit);
     final hidden = labels.length - _kVisibleUses;
@@ -45,57 +43,64 @@ class KitChipCard extends StatelessWidget {
       ),
       child: Material(
         color: context.groupSurface,
-        shape: RoundedRectangleBorder(
-          borderRadius: radius,
-          side: BorderSide(color: theme.colorScheme.outlineVariant),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: radius),
         child: InkWell(
           borderRadius: radius,
           onTap: onTap,
           child: Padding(
             padding: context.cardPaddingDense,
-            child: Column(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.inventory_2_outlined,
-                      size: context.iconSizeSm,
-                      color: theme.colorScheme.onSurfaceVariant,
+                Container(
+                  width: context.iconSizeLg + context.spacingMd,
+                  height: context.iconSizeLg + context.spacingMd,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(
+                      AppConstants.badgeBorderRadius,
                     ),
-                    SizedBox(width: context.spacingXs),
-                    Flexible(
-                      child: Text(
-                        'kits.name_count'.tr(
-                          args: [kit.name, '${kit.items.length}'],
-                        ),
-                        maxLines: 1,
+                  ),
+                  child: Icon(
+                    Icons.inventory_2_outlined,
+                    size: context.iconSizeLg,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                SizedBox(width: context.spacingSm),
+                Flexible(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        kit.name,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.labelLarge,
                       ),
-                    ),
-                  ],
-                ),
-                if (labels.isNotEmpty) ...[
-                  SizedBox(height: context.spacingXs),
-                  Wrap(
-                    spacing: context.spacingXs,
-                    children: [
-                      for (final label in labels.take(_kVisibleUses))
-                        KitUsePill(label: label),
-                      if (hidden > 0)
-                        KitUsePill(
-                          label: moreLabel(hidden),
-                          semanticsLabel: 'kits.more_uses_semantics'.tr(
-                            args: ['$hidden'],
-                          ),
+                      if (labels.isNotEmpty) ...[
+                        SizedBox(height: context.spacingXs),
+                        Wrap(
+                          spacing: context.spacingXs,
+                          runSpacing: context.spacingXs,
+                          children: [
+                            for (final label in labels.take(_kVisibleUses))
+                              KitUsePill(label: label),
+                            if (hidden > 0)
+                              KitUsePill(
+                                label: moreLabel(hidden),
+                                semanticsLabel: 'kits.more_uses_semantics'.tr(
+                                  args: ['$hidden'],
+                                ),
+                              ),
+                          ],
                         ),
+                      ],
                     ],
                   ),
-                ],
+                ),
               ],
             ),
           ),

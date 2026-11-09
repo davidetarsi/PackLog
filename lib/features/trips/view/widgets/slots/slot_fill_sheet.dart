@@ -180,6 +180,19 @@ class _SlotFillSheetState extends ConsumerState<SlotFillSheet> {
     final liveSlot = trip?.aiResult?.slots
         ?.where((candidate) => candidate.id == slot.id)
         .firstOrNull;
+    final currentSlot = liveSlot ?? slot;
+    final addedItems = currentSlot.addedItems;
+    final written = addedItems.isEmpty
+        ? _written
+        : [
+            for (final item in trip?.items ?? <TripItem>[])
+              if ((addedItems[item.id] ?? 0) > 0)
+                item.copyWith(
+                  quantity: addedItems[item.id]! < item.quantity
+                      ? addedItems[item.id]!
+                      : item.quantity,
+                ),
+          ];
     final remaining = liveSlot?.remaining ?? _remaining;
     final done = remaining == 0 && _pendingFills == 0;
     final copies = slotCopiesLabel(
@@ -231,7 +244,7 @@ class _SlotFillSheetState extends ConsumerState<SlotFillSheet> {
           : Padding(
               padding: EdgeInsets.fromLTRB(
                 context.spacingMd,
-                context.spacingXs,
+                context.spacingLg,
                 context.spacingMd,
                 context.spacingMd,
               ),
@@ -240,10 +253,15 @@ class _SlotFillSheetState extends ConsumerState<SlotFillSheet> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'trips.slots.new_item_hint'.tr(),
+                    'trips.slots.new_item_title'.tr(),
                     style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
                   ),
-                  SizedBox(height: context.spacingSm),
+                  SizedBox(height: context.spacingXs),
+                  Text(
+                    'trips.slots.new_item_hint'.tr(),
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  SizedBox(height: context.spacingMd),
                   RapidFireInput(
                     key: ValueKey('slot_sheet_input_${slot.id}'),
                     houseId: widget.houseId,
@@ -273,20 +291,28 @@ class _SlotFillSheetState extends ConsumerState<SlotFillSheet> {
                 style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
             ),
-          if (_written.isNotEmpty) ...[
+          if (written.isNotEmpty) ...[
             SizedBox(height: context.spacingMd),
             Text('trips.slots.added_title'.tr(), style: tt.titleSmall),
-            for (final item in _written)
+            for (final item in written)
               SlotWrittenRow(key: ValueKey(item.id), item: item),
           ],
-          if (!done && !_searchOpen)
+          if (!done)
             Align(
               alignment: Alignment.centerLeft,
               child: DsTextButton(
                 key: const Key('slot_open_inventory_search'),
-                onPressed: _openSearch,
+                onPressed: () {
+                  if (_searchOpen) {
+                    setState(() => _searchOpen = false);
+                  } else {
+                    _openSearch();
+                  }
+                },
                 label: 'trips.slots.search_inventory'.tr(),
                 flushStart: true,
+                icon: _searchOpen ? Icons.expand_less : Icons.expand_more,
+                iconAtEnd: true,
               ),
             ),
           if (!done && _searchOpen) ...[
@@ -374,6 +400,10 @@ class _SlotFillSheetState extends ConsumerState<SlotFillSheet> {
                               },
                         label: 'trips.slots.add'.tr(),
                         flushStart: true,
+                        icon: _searchOpen
+                            ? Icons.expand_less
+                            : Icons.expand_more,
+                        iconAtEnd: true,
                       ),
                     ],
                   ),

@@ -65,6 +65,7 @@ class _KitUsesPickerState extends ConsumerState<KitUsesPicker> {
         DsChoiceGroup<String>(
           title: 'kits.uses_title'.tr(),
           note: 'kits.optional'.tr(),
+          noteBelow: true,
           options: shown,
           labelOf: labelOf,
           selected: selected,

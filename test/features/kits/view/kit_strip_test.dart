@@ -45,7 +45,7 @@ void main() {
   String location(ScreenshotApp app) =>
       app.router.routerDelegate.currentConfiguration.last.matchedLocation;
 
-  testWidgets('mostra i kit della casa col numero di oggetti', (tester) async {
+  testWidgets('mostra nome e usi senza quantità o chevron', (tester) async {
     final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
     await createKit(
       app,
@@ -56,9 +56,10 @@ void main() {
     await app.go('/');
     await app.push('/houses/$kHomeId');
 
-    expect(find.text('Kit · cose che partono insieme'), findsOneWidget);
-    expect(find.text('Sci · 2'), findsOneWidget);
+    expect(find.text('Sci'), findsOneWidget);
+    expect(find.text('Sci · 2'), findsNothing);
     expect(find.text('Sci e neve'), findsOneWidget);
+    expect(find.byIcon(Icons.chevron_right), findsNothing);
     expect(find.byIcon(Icons.inventory_2_outlined), findsOneWidget);
     await app.finish();
   });
@@ -77,7 +78,7 @@ void main() {
     await app.go('/');
     await app.push('/houses/$kHomeId');
 
-    final card = find.textContaining('Sci ·');
+    final card = find.text('Sci');
     await app.tap(card);
 
     expect(location(app), startsWith('/houses/$kHomeId/kits/'));
@@ -91,6 +92,81 @@ void main() {
     expect(find.byKey(const Key('kit_strip_add')), findsOneWidget);
     expect(find.textContaining(' · 0'), findsNothing);
     expect(find.byIcon(Icons.inventory_2_outlined), findsNothing);
+    await app.finish();
+  });
+
+  testWidgets('kit scorre via mentre la categoria resta sticky', (
+    tester,
+  ) async {
+    final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+    await createKit(app, 'Sci', items: ['item-0']);
+    await app.go('/');
+    await app.push('/houses/$kHomeId');
+
+    expect(find.text('Sci'), findsOneWidget);
+    await tester.drag(
+      find.byType(CustomScrollView).last,
+      const Offset(0, -450),
+    );
+    await app.settle();
+
+    expect(find.text('Sci'), findsNothing);
+    final groupHeaders = find.byKey(const Key('group_header_text'));
+    final screenHeight =
+        tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    expect(
+      groupHeaders.evaluate().any((element) {
+        final rect = tester.getRect(find.byWidget(element.widget));
+        return rect.overlaps(Rect.fromLTWH(0, 0, 1000, screenHeight));
+      }),
+      isTrue,
+    );
+    await app.finish();
+  });
+
+  testWidgets('card compatta non va in overflow a testo grande e 320 px', (
+    tester,
+  ) async {
+    final app = await ScreenshotApp.start(
+      tester,
+      theme: ShotTheme.light,
+      setup: const AppSetup(initialViewport: Size(320, 640), textScale: 1.6),
+    );
+    await createKit(
+      app,
+      'Kit per una spedizione lunga in montagna',
+      activities: ['ski'],
+    );
+    await app.go('/');
+    await app.push('/houses/$kHomeId');
+
+    expect(find.textContaining('Kit per una spedizione'), findsOneWidget);
+    expect(app.issues, isEmpty);
+    await app.finish();
+  });
+
+  testWidgets('strip nascosto durante ricerca e selezione', (tester) async {
+    final app = await openHouse(tester);
+
+    await app.tap(find.byKey(const Key('house_search')));
+    expect(find.byKey(const Key('kit_strip_add')), findsNothing);
+    await app.tap(find.byKey(const Key('house_search_close')));
+    await app.longPress(find.text('Calzini'));
+    expect(find.byKey(const Key('kit_strip_add')), findsNothing);
+
+    await app.finish();
+  });
+
+  testWidgets('casa senza oggetti conserva accesso alla creazione kit', (
+    tester,
+  ) async {
+    final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+    await app.go('/');
+    await app.push('/houses/$kEmptyHouseId');
+
+    expect(find.byKey(const Key('kit_strip_add')), findsOneWidget);
+    await app.tap(find.byKey(const Key('kit_strip_add')));
+    expect(location(app), '/houses/$kEmptyHouseId/kits/new');
     await app.finish();
   });
 }

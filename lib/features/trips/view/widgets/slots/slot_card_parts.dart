@@ -27,7 +27,7 @@ class ImportantLabel extends StatelessWidget {
             'trips.slots.important'.tr(),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: tt.labelLarge?.strong.copyWith(color: color),
+            style: tt.labelLarge?.regular.copyWith(color: color),
           ),
         ),
       ],

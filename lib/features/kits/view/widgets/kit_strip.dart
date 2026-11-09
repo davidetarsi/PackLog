@@ -9,8 +9,7 @@ import '../../../../shared/widgets/ds_text_button.dart';
 import '../../providers/kit_provider.dart';
 import 'kit_chip_card.dart';
 
-/// La riga dei kit nella casa, sotto le pillole degli spazi: titolo, una card
-/// per kit e in fondo "+ Kit". Senza kit resta solo il tasto.
+/// Sezione dei kit della casa, con card scorrevoli in orizzontale.
 class KitStrip extends ConsumerWidget {
   const KitStrip({super.key, required this.houseId});
 
@@ -31,30 +30,17 @@ class KitStrip extends ConsumerWidget {
           padding: EdgeInsets.only(
             left: context.spacingMd,
             top: context.spacingSm,
-            bottom: context.spacingXs,
+            right: context.spacingMd,
+            bottom: context.spacingSm,
           ),
-          child: Text(
-            'kits.strip_title'.tr(),
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-        SingleChildScrollView(
-          key: const Key('kit_strip_row'),
-          scrollDirection: Axis.horizontal,
-          padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
           child: Row(
             children: [
-              for (final kit in kits) ...[
-                KitChipCard(
-                  key: Key('kit_card_${kit.id}'),
-                  kit: kit,
-                  moreLabel: (n) => 'kits.more_uses'.tr(args: ['$n']),
-                  onTap: () => context.push('/houses/$houseId/kits/${kit.id}'),
+              Expanded(
+                child: Text(
+                  'kits.strip_title'.tr(),
+                  style: theme.textTheme.titleSmall,
                 ),
-                SizedBox(width: context.spacingSm),
-              ],
+              ),
               DsTextButton(
                 key: const Key('kit_strip_add'),
                 icon: Icons.add,
@@ -65,6 +51,26 @@ class KitStrip extends ConsumerWidget {
             ],
           ),
         ),
+        if (kits.isNotEmpty)
+          SingleChildScrollView(
+            key: const Key('kit_strip_row'),
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
+            child: Row(
+              children: [
+                for (final (index, kit) in kits.indexed) ...[
+                  if (index > 0) SizedBox(width: context.spacingSm),
+                  KitChipCard(
+                    key: Key('kit_card_${kit.id}'),
+                    kit: kit,
+                    moreLabel: (n) => 'kits.more_uses'.tr(args: ['$n']),
+                    onTap: () =>
+                        context.push('/houses/$houseId/kits/${kit.id}'),
+                  ),
+                ],
+              ],
+            ),
+          ),
       ],
     );
   }

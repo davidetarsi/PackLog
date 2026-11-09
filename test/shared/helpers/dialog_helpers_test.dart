@@ -4,6 +4,7 @@ import 'package:pack_log/shared/helpers/dialog_helpers.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_dialog.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
+import 'package:pack_log/shared/widgets/ds_text_button.dart';
 
 /// I dialog di conferma sono l'ultimo posto dove ci si può permettere un
 /// layout che va in overflow o un bottone che non risponde: sono la schermata
@@ -63,18 +64,23 @@ void main() {
       expect(cancel.right, lessThanOrEqualTo(confirm.left));
     });
 
-    testWidgets('la conferma distruttiva è rossa, non arancione', (
+    testWidgets('la conferma distruttiva evidenzia Annulla e riduce Elimina', (
       tester,
     ) async {
-      // Un "Elimina" arancione accanto a un "Annulla" grigio farebbe sembrare
-      // la cancellazione la strada consigliata.
       await openConfirmation(tester, isDestructive: true);
 
-      final confirm = tester.widget<DsButton>(find.byType(DsButton).at(1));
-      expect(confirm.variant, DsButtonVariant.destructive);
-
-      final cancel = tester.widget<DsButton>(find.byType(DsButton).at(0));
-      expect(cancel.variant, DsButtonVariant.secondary);
+      expect(find.byType(DsButton), findsOneWidget);
+      expect(find.byType(DsTextButton), findsOneWidget);
+      final cancel = tester.widget<DsButton>(find.byType(DsButton));
+      expect(cancel.label, 'Annulla');
+      expect(cancel.variant, DsButtonVariant.primary);
+      final confirm = tester.widget<DsTextButton>(find.byType(DsTextButton));
+      expect(confirm.label, 'Conferma');
+      expect(confirm.destructive, isTrue);
+      expect(
+        tester.getRect(find.byType(DsButton)).left,
+        lessThan(tester.getRect(find.byType(DsTextButton)).left),
+      );
     });
 
     testWidgets('confermare restituisce true, annullare false', (tester) async {
@@ -122,7 +128,43 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      expect(find.byType(DsButton), findsNWidgets(2));
+      expect(find.byType(DsButton), findsOneWidget);
+      expect(find.byType(DsTextButton), findsOneWidget);
+    });
+
+    testWidgets('conferma testuale neutra lascia Annulla in evidenza', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => DialogHelpers.showConfirmation(
+                  context: context,
+                  title: 'Titolo',
+                  message: 'Messaggio',
+                  confirmLabel: 'Esci',
+                  cancelLabel: 'Annulla',
+                  confirmAsText: true,
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.widget<DsButton>(find.byType(DsButton)).variant,
+        DsButtonVariant.primary,
+      );
+      final exit = tester.widget<DsTextButton>(find.byType(DsTextButton));
+      expect(exit.label, 'Esci');
+      expect(exit.destructive, isFalse);
     });
   });
 }

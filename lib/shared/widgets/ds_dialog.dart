@@ -4,6 +4,7 @@ import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 import 'ds_button.dart';
+import 'ds_text_button.dart';
 
 /// Apre un dialogo del design system. È l'unico punto del codice che chiama
 /// `showDialog`: ogni dialogo passa da qui e da [DsDialog].
@@ -55,8 +56,8 @@ class DsDialog extends StatelessWidget {
     this.actions = const [],
   });
 
-  /// Due pill affiancate di pari larghezza: annulla (secondaria) e conferma
-  /// (primaria, o destructive se [isDestructive]).
+  /// Due azioni affiancate. Le conferme normali usano due pill; quelle
+  /// distruttive danno rilievo ad Annulla e lasciano la conferma in rosso.
   ///
   /// La prima scelta chiude il dialogo: i tocchi successivi, dati prima che
   /// l'uscita finisca, vengono ignorati. Altrimenti il secondo tocco
@@ -67,6 +68,7 @@ class DsDialog extends StatelessWidget {
     required String confirmLabel,
     required VoidCallback? onConfirm,
     bool isDestructive = false,
+    bool confirmAsText = false,
   }) {
     return _TwoActions(
       cancelLabel: cancelLabel,
@@ -74,6 +76,7 @@ class DsDialog extends StatelessWidget {
       confirmLabel: confirmLabel,
       onConfirm: onConfirm,
       isDestructive: isDestructive,
+      confirmAsText: confirmAsText,
     );
   }
 
@@ -135,12 +138,12 @@ class DsDialog extends StatelessWidget {
         context.spacingLg,
         context.spacingLg,
       ),
-      actions: [?actionArea],
+      actions: actionArea == null ? null : [actionArea],
     );
   }
 }
 
-/// Le due pill di [DsDialog.twoActions]. Tiene un flag: la prima scelta
+/// Le due azioni di [DsDialog.twoActions]. Tiene un flag: la prima scelta
 /// vince, le altre no.
 class _TwoActions extends StatefulWidget {
   final String cancelLabel;
@@ -148,6 +151,7 @@ class _TwoActions extends StatefulWidget {
   final String confirmLabel;
   final VoidCallback? onConfirm;
   final bool isDestructive;
+  final bool confirmAsText;
 
   const _TwoActions({
     required this.cancelLabel,
@@ -155,6 +159,7 @@ class _TwoActions extends StatefulWidget {
     required this.confirmLabel,
     required this.onConfirm,
     required this.isDestructive,
+    required this.confirmAsText,
   });
 
   @override
@@ -173,6 +178,77 @@ class _TwoActionsState extends State<_TwoActions> {
   @override
   Widget build(BuildContext context) {
     final onConfirm = widget.onConfirm;
+    if (widget.isDestructive || widget.confirmAsText) {
+      final theme = Theme.of(context);
+      final textScaler = MediaQuery.textScalerOf(context);
+      final cancelWidth = _singleLineTextWidth(
+        widget.cancelLabel,
+        theme.textTheme.bodyMedium?.strong,
+        textScaler,
+        Directionality.of(context),
+      );
+      final confirmWidth = _singleLineTextWidth(
+        widget.confirmLabel,
+        theme.textTheme.labelLarge?.strong,
+        textScaler,
+        Directionality.of(context),
+      );
+      // AlertDialog ha inset orizzontale di 40 dp e larghezza massima 560 dp;
+      // sottraiamo anche il padding laterale usato per le azioni.
+      final viewportWidth = MediaQuery.sizeOf(context).width;
+      final dialogWidth = viewportWidth > 600 ? 560.0 : viewportWidth - 80;
+      final actionWidth = dialogWidth - context.spacingLg * 2;
+      final availableLabelWidth =
+          (actionWidth - context.spacingSm) / 2 - context.spacingMd * 2;
+      final shouldStack =
+          cancelWidth > availableLabelWidth ||
+          confirmWidth > availableLabelWidth;
+
+      if (shouldStack) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DsButton(
+              label: widget.cancelLabel,
+              variant: DsButtonVariant.primary,
+              expand: true,
+              wrapLabel: true,
+              onPressed: () => _choose(widget.onCancel),
+            ),
+            SizedBox(height: context.spacingXs),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: DsTextButton(
+                label: widget.confirmLabel,
+                destructive: widget.isDestructive,
+                onPressed: onConfirm == null ? null : () => _choose(onConfirm),
+              ),
+            ),
+          ],
+        );
+      }
+
+      return Row(
+        children: [
+          Expanded(
+            child: DsButton(
+              label: widget.cancelLabel,
+              variant: DsButtonVariant.primary,
+              onPressed: () => _choose(widget.onCancel),
+            ),
+          ),
+          SizedBox(width: context.spacingSm),
+          Expanded(
+            child: DsTextButton(
+              label: widget.confirmLabel,
+              destructive: widget.isDestructive,
+              onPressed: onConfirm == null ? null : () => _choose(onConfirm),
+            ),
+          ),
+        ],
+      );
+    }
     return Row(
       children: [
         Expanded(
@@ -195,4 +271,21 @@ class _TwoActionsState extends State<_TwoActions> {
       ],
     );
   }
+}
+
+double _singleLineTextWidth(
+  String text,
+  TextStyle? style,
+  TextScaler textScaler,
+  TextDirection textDirection,
+) {
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: style),
+    textDirection: textDirection,
+    textScaler: textScaler,
+    maxLines: 1,
+  )..layout();
+  final width = painter.width;
+  painter.dispose();
+  return width;
 }

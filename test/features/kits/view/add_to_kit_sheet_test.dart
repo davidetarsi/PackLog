@@ -133,8 +133,20 @@ void main() {
 
     expect(find.text('Nuovo kit'), findsWidgets);
     expect(find.text('Nel kit · 2'), findsOneWidget);
-    expect(find.text('Calzini'), findsOneWidget);
-    expect(find.text('Jeans blu'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('kit_item_row_item-4')),
+        matching: find.text('Calzini'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('kit_item_row_item-1')),
+        matching: find.text('Jeans blu'),
+      ),
+      findsOneWidget,
+    );
 
     await app.enterText(find.byKey(const Key('kit_name_field')), 'Mare');
     await app.tap(find.text('Salva'));

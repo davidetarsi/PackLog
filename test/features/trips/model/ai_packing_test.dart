@@ -202,6 +202,11 @@ void main() {
       );
     });
 
+    test('vecchi posti senza collegamenti restano leggibili', () {
+      final json = slot('a', 'Pantaloni').toJson()..remove('addedItems');
+      expect(AiSlot.fromJson(json).addedItems, isEmpty);
+    });
+
     test('senza posti: slots null, hasSlots falso, notes vuote', () {
       final r = result(null);
       expect(r.slots, isNull);

@@ -300,7 +300,8 @@
       "no_house": "The departure home no longer exists",
       "rapid_fire_hint": "e.g. 2 black t-shirts",
       "open_hint": "The quantity you add is subtracted from the amount needed. You can mark anything missing as to buy.",
-      "new_item_hint": "Add a new item. It will be saved to your inventory and added to your suitcase.",
+      "new_item_title": "Add a new item",
+      "new_item_hint": "It will be saved to your inventory and added to your suitcase.",
       "search_inventory": "Search your inventory",
       "search_suitability": "Make sure the item is suitable for this trip.",
       "items_found": "Items found",
@@ -759,19 +760,20 @@
   "create_sheet": {
     "title": "Create",
     "ai_scan": "Scan your clothes",
-    "ai_scan_hint": "One photo, AI recognizes them",
+    "ai_scan_title": "Clothes",
+    "ai_scan_hint": "Take or upload a photo: AI will recognize the clothes",
     "need_house": "Create a house first: scanned items go there",
     "ai_exhausted": "You've used all your AI for this month",
     "in_house": "in {}",
     "choose_house": "Choose house",
     "manual_link": "Or type them in",
-    "manual": "Add items",
-    "manual_hint": "Type them one after another",
+    "manual": "Items",
+    "manual_hint": "Type item names to add them to your inventory",
     "manual_need_house": "Create a house to put them in first",
-    "new_house": "New house",
+    "new_house": "House",
     "new_house_hint": "Another place where you keep your things",
-    "new_trip": "New trip",
-    "new_trip_hint": "Create the trip and your suitcase with AI, based on destination, weather and dates"
+    "new_trip": "Trip",
+    "new_trip_hint": "Plan a trip and suitcase with AI based on destination, dates, weather, and activities"
   },
   "promo": {
     "code_label": "Promo code",
@@ -793,7 +795,7 @@
     "error_generic": "We couldn't activate the code. Please try again."
   },
   "kits": {
-    "strip_title": "Kits · things that go together",
+    "strip_title": "Kit",
     "strip_add": "Kit",
     "more_uses": "+{}",
     "name_count": "{} · {}",
@@ -802,7 +804,7 @@
     "edit_title": "Edit kit",
     "name_label": "Name",
     "name_hint": "E.g. Flight kit",
-    "uses_title": "I add it myself to trips with…",
+    "uses_title": "I only add it to trips with…",
     "to_kit": "To a kit",
     "sheet_title": {
       "one": "Put {} item in a kit",
@@ -815,7 +817,7 @@
     },
     "more_pills": "More",
     "optional": "(optional)",
-    "uses_guessed": "I picked «{}» from the name: tap it to remove it.",
+    "uses_guessed": "«{}» is suggested by the name. Tap the pills to change them.",
     "in_kit": "In the kit · {}",
     "remove_item": "Remove from kit",
     "auto_title": "Goes in on its own on trips with",

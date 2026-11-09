@@ -100,6 +100,7 @@ class AppSnackBar {
   /// annullata durante il cambio di pagina) non mostra nulla e non lancia.
   ///
   /// Con [queue] non toglie lo SnackBar già visibile: questo compare dopo.
+  /// [persist] omesso mantiene il comportamento Flutter; gli undo scadono.
   static ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? showAction(
     BuildContext context,
     String message, {
@@ -107,6 +108,8 @@ class AppSnackBar {
     required VoidCallback onAction,
     Key? key,
     bool queue = false,
+    bool? persist,
+    Duration duration = const Duration(seconds: 4),
   }) {
     final colorScheme = Theme.of(context).colorScheme;
     return _show(
@@ -121,6 +124,8 @@ class AppSnackBar {
         onPressed: onAction,
       ),
       queue: queue,
+      persist: persist,
+      duration: duration,
     );
   }
 
@@ -136,6 +141,8 @@ class AppSnackBar {
       message,
       actionLabel: 'common.undo'.tr(),
       onAction: onUndo,
+      persist: false,
+      duration: const Duration(seconds: 6),
     );
   }
 
@@ -149,6 +156,8 @@ class AppSnackBar {
     SnackBarAction? action,
     Key? key,
     bool queue = false,
+    bool? persist,
+    Duration duration = const Duration(seconds: 4),
   }) {
     // Senza ScaffoldMessenger non c'è dove mostrare lo SnackBar: si esce senza
     // errore, come per un'azione chiesta da una pagina già smontata.
@@ -163,6 +172,8 @@ class AppSnackBar {
       action: action,
       key: key,
       queue: queue,
+      persist: persist,
+      duration: duration,
     );
   }
 
@@ -175,6 +186,8 @@ class AppSnackBar {
     SnackBarAction? action,
     Key? key,
     bool queue = false,
+    bool? persist,
+    Duration duration = const Duration(seconds: 4),
   }) {
     if (!queue) messenger.hideCurrentSnackBar();
     return messenger.showSnackBar(
@@ -193,6 +206,8 @@ class AppSnackBar {
         ),
         margin: EdgeInsets.all(context.spacingMd),
         action: action,
+        persist: persist,
+        duration: duration,
       ),
     );
   }

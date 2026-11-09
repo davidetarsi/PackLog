@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -1253,6 +1254,20 @@ void main() {
       verify(() => mockRepository.getAllTrips()).called(1);
     });
 
+    test('salva il collegamento alla richiesta e somma le copie', () async {
+      await load(tripWith());
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+      final notifier = container.read(tripNotifierProvider.notifier);
+      await notifier.fillAiSlot('t1', 's-magliette', item('i1', 1));
+      await notifier.fillAiSlot('t1', 's-magliette', item('i1', 1));
+      final saved = current();
+      expect(saved.aiResult!.slots!.single.addedItems, {'i1': 2});
+      final restored = TripModel.fromJson(
+        jsonDecode(jsonEncode(saved.toJson())) as Map<String, dynamic>,
+      );
+      expect(restored.aiResult!.slots!.single.addedItems, {'i1': 2});
+    });
+
     test('aggiungere copie riapre solo la riga già spuntata', () async {
       final checked = item('i1', 1).copyWith(isChecked: true);
       final other = item('i2', 1).copyWith(isChecked: true);
@@ -1576,7 +1591,10 @@ void main() {
       expect(pending, hasLength(2));
       expect(byAction['aggiunto']?.origin.dbValue, 'utente');
       expect(byAction['tolto']?.origin.dbValue, 'proposta');
-      expect(pending.any((e) => e.toString().contains('Nome privato')), isFalse);
+      expect(
+        pending.any((e) => e.toString().contains('Nome privato')),
+        isFalse,
+      );
     });
 
     test('trip_info_change_records_no_edits', () async {

@@ -32,6 +32,35 @@ Future<T?> showDsFormSheet<T>(
   required WidgetBuilder builder,
 }) => showDsSheet<T>(context, builder: builder, enableDrag: false);
 
+/// Pagina GoRouter che presenta un form nello stesso modal usato dai fogli DS.
+class DsFormSheetPage<T> extends Page<T> {
+  const DsFormSheetPage({required this.builder, super.key, super.name});
+
+  final WidgetBuilder builder;
+
+  @override
+  Route<T> createRoute(BuildContext context) {
+    final localizations = MaterialLocalizations.of(context);
+    return ModalBottomSheetRoute<T>(
+      builder: builder,
+      capturedThemes: InheritedTheme.capture(
+        from: context,
+        to: Navigator.of(context).context,
+      ),
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      barrierLabel: localizations.scrimLabel,
+      barrierOnTapHint: localizations.scrimOnTapHint(
+        localizations.bottomSheetLabel,
+      ),
+      modalBarrierColor: Theme.of(context).bottomSheetTheme.modalBarrierColor,
+      settings: this,
+    );
+  }
+}
+
 /// Cornice dei moduli: chiusura in testata, contenuto scorrevole e una CTA.
 /// Durante una scrittura impedisce chiusura e modifiche ai campi.
 class DsFormSheet extends StatelessWidget {
