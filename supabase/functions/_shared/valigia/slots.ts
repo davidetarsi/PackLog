@@ -13,7 +13,7 @@ import {
   capoLeggero, capoRiservato, capospallaInTracolla, fixes, injectFabbisogno, injectMandatory,
   injectParteInferioreFormale, injectStratoFormale, insieme, interseca, normList, penalitaCulto, rejects,
   type Record_, segnaCapiDaNeve, type Slot, slotCapiNuovi, sottoinsieme, viaggioDiLavoro, warmthCeiling,
-  warmthFloor, eTrekking, ePasseggiataLeggera,
+  warmthFloor, eTrekking,
 } from "./inject.ts";
 import {
   limitaPantaloniDaSera, applicaBudgetRotazione, applicaTettoVolume, applicaVestiti, berrettoColFreddo, caloreEfficace, canonicalizeGaps,
@@ -253,13 +253,6 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
   }
   const prima = slots.length;
   const attViaggio = a.attivita_viaggio != null ? a.attivita_viaggio : (attivita || []);
-  if (ePasseggiataLeggera(attivita) && !eTrekking(attViaggio)) {
-    for (const s of slots) {
-      if (Array.isArray(s.activityTags) && s.activityTags.includes("Hiking")) {
-        s.activityTags = [...new Set(s.activityTags!.map((t) => t === "Hiking" ? "Everyday" : t))];
-      }
-    }
-  }
   segnaCapiDaNeve(items, [...attViaggio, ...(attivita || [])]);
   if (K.NIENTE_FORMALE_SENZA_OCCASIONE && vero(attViaggio) && !viaggioDiLavoro(attViaggio, classiViaggio) &&
     !rc.occasioneFormale(attViaggio)) {
