@@ -91,11 +91,12 @@ Brand names are a hint: use what you know about the brand.`;
 
 /** Scan: il prompt di openai-proxy con la tassonomia nuova e i due campi. */
 export let PROMPT_SCAN = "";
-const promptScanDa = (CATEGORIE_PROMPT: string, COLORI_PROMPT: string, RIGHE_CAMPI: string) => `You are a precise wardrobe item parser. Analyze the image and identify ALL distinct clothing items currently WORN by the PRIMARY person in the foreground.
-CRITICAL RULES:
-- IGNORE any clothing items in the background (e.g., clothes on beds, chairs, hangers).
-- Focus ONLY on the main subject's outfit.
-- If the image shows a single item with no person (laid flat, on a hanger), describe that item.
+/** Nome (minuscolo, senza accenti) in italiano e inglese -> tipo attivo e categoria. */
+const TIPI_PER_NOME = new Map<string, { sub: string; cat: string }>();
+const semplifica = (t: string) => t.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+const promptScanDa = (CATEGORIE_PROMPT: string, COLORI_PROMPT: string, RIGHE_CAMPI: string) => `You are a precise wardrobe item parser. Analyze the image and list the clothing items and accessories in it. Two cases:
+- A person is the main subject (selfie, outfit photo): list ONLY what the person is wearing; ignore clothes in the background (chairs, beds, hangers). Do not list prescription glasses, headphones, phones or other objects that are not clothes or accessories to wear.
+- No person as the main subject (clothes laid on a bed, a pile, an open wardrobe, a suitcase, shoes on the floor): list EVERY distinct garment, shoe or accessory that is visible, one entry per item, even if only partly visible or at the edge of the image (e.g. flip-flops on the floor, socks, underwear). Do not merge different items; with many similar items (e.g. shirts on hangers) list each one that can be told apart.
 Respond ONLY with a raw JSON array of objects — no markdown, no code fences.
 Each object must have EXACTLY these keys:
 - "name": string (Short descriptive name in Italian, e.g. "Giacca in pelle", "Jeans slim")
@@ -132,6 +133,11 @@ export function impostaScheda(c: Catalogo): void {
     .filter((v) => v.id !== tassonomia.ALTRO && tassonomia.CATEGORIE.includes(v.data.group))
     .map((v) => JSON.stringify({ subCategory: v.id, category: v.data.group,
       names: [v.label.it, v.label.en], description: v.data.hint ?? "" })).join("\n");
+  TIPI_PER_NOME.clear();
+  for (const v of voci(c, "clothing_type")) {
+    if (v.id === tassonomia.ALTRO || !tassonomia.CATEGORIE.includes(v.data.group)) continue;
+    for (const n of [v.label.it, v.label.en]) TIPI_PER_NOME.set(semplifica(n.trim()), { sub: v.id, cat: v.data.group });
+  }
   PROMPT_NOME = promptNomeDa(categorie, coloriPrompt, righe).replace("{sottocategorie}", () => tipi);
   PROMPT_SCAN = promptScanDa(categorie, coloriPrompt, righe).replace("{sottocategorie}", () => tipi);
 }
@@ -228,6 +234,12 @@ export function normalizza(grezzo: unknown, nome?: string | null): Normalizzata 
 
   let cat = g.category;
   let sub = g.subCategory;
+  // Se la prima parola del nome e' un tipo ("Pile leggero", "Muta"), vince il nome.
+  const tipoNome = TIPI_PER_NOME.get(semplifica(nomeOk.trim().split(/\s+/)[0] ?? ""));
+  if (tipoNome) {
+    sub = tipoNome.sub;
+    cat = tipoNome.cat;
+  }
   if (cat === NON_CAPO) {
     const tipo = typeof g.notClothingKind === "string" && Object.hasOwn(TIPI_NON_CAPO, g.notClothingKind)
       ? g.notClothingKind : "Other";
