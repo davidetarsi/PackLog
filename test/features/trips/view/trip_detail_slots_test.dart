@@ -430,7 +430,7 @@ void main() {
       expect(find.byKey(const Key('trip_item_i-aux')), findsOneWidget);
       expect(find.byKey(const Key('trip_item_remove_i-aux')), findsNothing);
       expect(find.byType(DsCheckbox), findsNWidgets(4));
-      expect(find.byKey(const Key('trip_detail_cta')), findsNothing);
+      expect(find.byKey(const Key('trip_detail_cta')), findsOneWidget);
     });
 
     testWidgets(
@@ -1055,7 +1055,7 @@ void main() {
 
       expect(find.text('0 di 4 in valigia'), findsOneWidget);
       expect(find.byKey(const Key('trip_detail_progress')), findsOneWidget);
-      expect(find.byType(SuitcaseProgressHeader), findsNothing);
+      expect(find.byType(SuitcaseProgressHeader), findsOneWidget);
       expect(find.byType(ImportantSlotCard), findsNothing);
       expect(find.byType(ProposedSlotsCard), findsNothing);
       expect(find.text('Elettronica · 2'), findsOneWidget);
@@ -1065,9 +1065,9 @@ void main() {
       await pumpDetail(tester, _trip(withResult: false));
 
       expect(find.text('0 di 4 in valigia'), findsOneWidget);
-      expect(find.byType(SuitcaseProgressHeader), findsNothing);
+      expect(find.byType(SuitcaseProgressHeader), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('trip_item_i-aux')));
+      await tester.tap(find.byType(DsCheckbox).first);
       await tester.pumpAndSettle();
       expect(find.text('1 di 4 in valigia'), findsOneWidget);
     });

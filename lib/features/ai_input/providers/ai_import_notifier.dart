@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -18,6 +19,7 @@ import '../../items/providers/item_provider.dart';
 import '../../items/repositories/item_repository.dart';
 import '../../tour/providers/post_login_onboarding_provider.dart';
 import '../helpers/ai_item_category.dart';
+import '../helpers/scan_analytics.dart';
 import '../model/ai_failure_reason.dart';
 import '../model/ai_import_state.dart';
 import '../model/clothing_analysis_result.dart';
@@ -217,18 +219,54 @@ class AiImportNotifier extends _$AiImportNotifier {
     state = const AiImportState();
   }
 
-  /// Un evento per capo salvato i cui dettagli sono cambiati dalla scheda
-  /// della scansione rispetto all'analisi.
-  void _trackScanEdits() {
+  /// Gli eventi di un salvataggio, da chiamare prima di svuotare lo stato:
+  /// `ai_items_saved` con i conteggi della scansione; per ogni capo salvato
+  /// con dettagli cambiati `item_details_edited`, e con dubbi o correzioni
+  /// `ai_scan_doubt_resolved`.
+  void _trackSave({required int count, required bool isOnboarding}) {
+    // Gli oggetti sono già salvati: un errore qui non deve diventare un
+    // errore di salvataggio (un nuovo tocco li salverebbe due volte).
+    try {
+      _trackSaveOrThrow(count: count, isOnboarding: isOnboarding);
+    } catch (e) {
+      debugPrint('[AiImport] eventi del salvataggio non emessi: $e');
+    }
+  }
+
+  void _trackSaveOrThrow({required int count, required bool isOnboarding}) {
     final analytics = ref.read(coreAnalyticsServiceProvider);
+    final stats = scanSaveStats(state, _analyzed);
+    analytics.trackAiItemsSaved(
+      count: count,
+      isOnboarding: isOnboarding,
+      found: stats.found,
+      excluded: stats.excluded,
+      renamed: stats.renamed,
+      detailsEdited: stats.detailsEdited,
+      photos: stats.photos,
+      excludedTypes: stats.excludedTypes,
+      renamedTypes: stats.renamedTypes,
+    );
     for (final entry in _savedEntries) {
       final original = _analyzed[(entry.group, entry.item)];
       if (original == null) continue;
       final fields = ClothingDetails.of(
         entry.result,
       ).changedFields(ClothingDetails.of(original));
-      if (fields.isEmpty) continue;
-      analytics.trackItemDetailsEdited(source: 'scan', fields: fields);
+      if (fields.isNotEmpty) {
+        analytics.trackItemDetailsEdited(source: 'scan', fields: fields);
+      }
+      final doubts = doubtOutcome(original, entry.result);
+      if (doubts != null) {
+        analytics.trackAiScanDoubtResolved(
+          doubtFields: doubts.doubtFields,
+          choseJev: doubts.choseJev,
+          keptGpt: doubts.keptGpt,
+          otherValue: doubts.otherValue,
+          correctedWithoutDoubt: doubts.correctedWithoutDoubt,
+          subCategory: doubts.subCategory,
+        );
+      }
     }
   }
 
@@ -270,10 +308,7 @@ class AiImportNotifier extends _$AiImportNotifier {
           .saveAiItemsToHouse(houseId: houseId, newItems: items);
       ref.invalidate(itemNotifierProvider(houseId));
       ref.read(syncOrchestratorProvider).requestSync();
-      ref
-          .read(coreAnalyticsServiceProvider)
-          .trackAiItemsSaved(count: items.length, isOnboarding: false);
-      _trackScanEdits();
+      _trackSave(count: items.length, isOnboarding: false);
       _analyzed.clear();
       state = const AiImportState();
     } catch (e) {
@@ -322,10 +357,7 @@ class AiImportNotifier extends _$AiImportNotifier {
       ref.invalidate(houseNotifierProvider);
       ref.invalidate(itemNotifierProvider(houseId));
       ref.read(syncOrchestratorProvider).requestSync();
-      ref
-          .read(coreAnalyticsServiceProvider)
-          .trackAiItemsSaved(count: items.length, isOnboarding: true);
-      _trackScanEdits();
+      _trackSave(count: items.length, isOnboarding: true);
       _analyzed.clear();
       await ref.read(postLoginOnboardingProvider.notifier).completeAi(houseId);
       state = const AiImportState();

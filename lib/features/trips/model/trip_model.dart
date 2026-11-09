@@ -104,9 +104,12 @@ class TripModel with _$TripModel {
   }
 
   /// Prima della partenza (senza data di partenza vale come non partito).
-  bool get notDeparted {
+  bool get notDeparted => notDepartedAt(DateTime.now());
+
+  /// Come [notDeparted], con l'istante [now] deciso da chi chiama.
+  bool notDepartedAt(DateTime now) {
     final departure = departureDateTime;
-    return departure == null || DateTime.now().isBefore(departure);
+    return departure == null || now.isBefore(departure);
   }
 
   /// Determina lo stato attuale del viaggio

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/consent/consent_provider.dart';
 import 'package:pack_log/core/auth/auth_provider.dart';
@@ -19,6 +18,7 @@ import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/providers/suitcase_edits_provider.dart';
 import 'package:pack_log/features/trips/providers/trip_provider.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
+import 'package:pack_log/features/trips/services/ai_suitcase_adoption.dart';
 
 import '../../../helpers/mock_suitcase_edits.dart';
 import '../../../helpers/test_database_setup.dart';
@@ -29,8 +29,6 @@ class MockTripRepository extends Mock implements TripRepository {}
 class MockItemRepository extends Mock implements ItemRepository {}
 
 class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
-
-class MockRawAnalyticsService extends Mock implements AppAnalyticsService {}
 
 class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 
@@ -44,7 +42,6 @@ class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 void main() {
   late MockTripRepository mockRepository;
   late MockCoreAnalyticsService mockAnalytics;
-  late MockRawAnalyticsService mockRawAnalytics;
   late ProviderContainer container;
 
   setUp(() {
@@ -85,26 +82,41 @@ void main() {
       () => mockItemRepo.moveItemsToHouse(any(), any(), any()),
     ).thenAnswer((_) async {});
 
-    mockRawAnalytics = MockRawAnalyticsService();
-    when(
-      () => mockRawAnalytics.logEvent(
-        any(),
-        properties: any(named: 'properties'),
-      ),
-    ).thenAnswer((_) async {});
-
     // Create ProviderContainer with mocked repository
     container = ProviderContainer(
       overrides: [
         tripRepositoryProvider.overrideWithValue(mockRepository),
         coreAnalyticsServiceProvider.overrideWithValue(mockAnalytics),
-        analyticsServiceProvider.overrideWithValue(mockRawAnalytics),
         syncOrchestratorProvider.overrideWithValue(mockSync),
         itemRepositoryProvider.overrideWithValue(mockItemRepo),
         suitcaseEditsDaoProvider.overrideWithValue(noopSuitcaseEditsDao()),
       ],
     );
   });
+
+  void verifyNoPackingEvents() {
+    verifyNever(
+      () => mockAnalytics.trackPackingStarted(
+        tripId: any(named: 'tripId'),
+        totalItems: any(named: 'totalItems'),
+        daysToDeparture: any(named: 'daysToDeparture'),
+      ),
+    );
+    verifyNever(
+      () => mockAnalytics.trackPackingProgress(
+        tripId: any(named: 'tripId'),
+        threshold: any(named: 'threshold'),
+        daysToDeparture: any(named: 'daysToDeparture'),
+      ),
+    );
+    verifyNever(
+      () => mockAnalytics.trackPackingCompleted(
+        tripId: any(named: 'tripId'),
+        totalItems: any(named: 'totalItems'),
+        daysToDeparture: any(named: 'daysToDeparture'),
+      ),
+    );
+  }
 
   tearDown(() {
     // Dispose container to prevent memory leaks between tests
@@ -417,9 +429,10 @@ void main() {
             .toggleItemCheck('trip-packing', 'item-0');
 
         verify(
-          () => mockRawAnalytics.logEvent(
-            'packing_started',
-            properties: any(named: 'properties'),
+          () => mockAnalytics.trackPackingStarted(
+            tripId: 'trip-packing',
+            totalItems: any(named: 'totalItems'),
+            daysToDeparture: any(named: 'daysToDeparture'),
           ),
         ).called(1);
       });
@@ -438,9 +451,10 @@ void main() {
             .toggleItemCheck('trip-packing', 'item-1');
 
         verify(
-          () => mockRawAnalytics.logEvent(
-            'packing_completed',
-            properties: any(named: 'properties'),
+          () => mockAnalytics.trackPackingCompleted(
+            tripId: 'trip-packing',
+            totalItems: 2,
+            daysToDeparture: any(named: 'daysToDeparture'),
           ),
         ).called(1);
       });
@@ -458,12 +472,7 @@ void main() {
             .read(tripNotifierProvider.notifier)
             .toggleItemCheck('trip-packing', 'item-0');
 
-        verifyNever(
-          () => mockRawAnalytics.logEvent(
-            any(that: startsWith('packing_')),
-            properties: any(named: 'properties'),
-          ),
-        );
+        verifyNoPackingEvents();
       });
 
       // Misuriamo fatti, non intenzioni: se il salvataggio fallisce non deve
@@ -484,12 +493,7 @@ void main() {
           throwsA(isA<Exception>()),
         );
 
-        verifyNever(
-          () => mockRawAnalytics.logEvent(
-            any(that: startsWith('packing_')),
-            properties: any(named: 'properties'),
-          ),
-        );
+        verifyNoPackingEvents();
       });
     });
 
@@ -786,38 +790,227 @@ void main() {
     );
   });
 
-  group('TripNotifier - reuseTrip', () {
+  group('TripNotifier - eventi della valigia AI', () {
+    const reason = AiReason(code: 'base', label: 'Base', sentence: 'Serve.');
+
+    TripItem packed(String id) => TripItem(
+      id: id,
+      name: 'capo $id',
+      category: ItemCategory.vestiti,
+      quantity: 1,
+    );
+
+    AiPackingResult result(DateTime generatedAt) => AiPackingResult(
+      generatedAt: generatedAt,
+      houseId: 'h1',
+      proposal: const [
+        AiPackedItem(itemId: 'A', quantity: 1, reason: reason),
+        AiPackedItem(itemId: 'B', quantity: 1, reason: reason),
+      ],
+      warnings: const [
+        AiWarning(
+          id: 'w1',
+          code: 'rain_gear',
+          level: AiWarningLevel.important,
+          title: 'Pioggia',
+          why: 'Piove.',
+        ),
+      ],
+      slots: const [
+        AiSlot(
+          id: 's1',
+          type: 'calze',
+          category: ItemCategory.vestiti,
+          level: AiSlotLevel.useful,
+          name: 'Calze',
+          copies: 1,
+          remaining: 1,
+          addLabel: 'Aggiungi',
+        ),
+      ],
+    );
+
+    late TripModel stored;
+
+    Future<void> load(TripModel trip) async {
+      stored = trip;
+      when(
+        () => mockRepository.getAllTrips(),
+      ).thenAnswer((_) async => [stored]);
+      when(() => mockRepository.updateTrip(any())).thenAnswer((inv) async {
+        stored = inv.positionalArguments.first as TripModel;
+      });
+      when(
+        () => mockRepository.setTripItemChecked(any(), any(), any()),
+      ).thenAnswer((_) async {});
+      await container.read(tripNotifierProvider.future);
+    }
+
+    final suitcase = TripModel(
+      id: 't1',
+      name: 'Lisbona',
+      items: [packed('A'), packed('B')],
+      aiResult: result(DateTime(2026, 11, 8)),
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+    );
+
+    TripNotifier notifier() => container.read(tripNotifierProvider.notifier);
+
+    // ai_suitcase_changed parte dopo la lettura del meteo salvato.
+    Future<List<Map<String, Object>>> changes() async {
+      await pumpEventQueue();
+      return verify(
+        () => mockAnalytics.trackAiSuitcaseChanged(
+          tripId: 't1',
+          counts: captureAny(named: 'counts'),
+          context: any(named: 'context'),
+        ),
+      ).captured.cast<Map<String, Object>>();
+    }
+
+    Future<void> verifyNoChange() async {
+      await pumpEventQueue();
+      verifyNever(
+        () => mockAnalytics.trackAiSuitcaseChanged(
+          tripId: any(named: 'tripId'),
+          counts: any(named: 'counts'),
+          context: any(named: 'context'),
+        ),
+      );
+    }
+
+    setUp(() => registerFallbackValue(<String, Object>{}));
+
+    test('togliere un capo proposto: ai_suitcase_changed', () async {
+      await load(suitcase);
+      await notifier().updateTrip(suitcase.copyWith(items: [packed('A')]));
+      final counts = (await changes()).single;
+      expect(counts['removed'], 1);
+      expect(counts['kept'], 1);
+    });
+
+    test('spuntare un capo non è una modifica', () async {
+      await load(suitcase);
+      await notifier().toggleItemCheck('t1', 'A');
+      await verifyNoChange();
+    });
+
+    test('valigia senza proposta AI: nessun evento', () async {
+      final manual = suitcase.copyWith(aiResult: null);
+      await load(manual);
+      await notifier().updateTrip(manual.copyWith(items: [packed('A')]));
+      await verifyNoChange();
+    });
+
     test(
-      'calls repository.reuseTrip, returns the new id and tracks duplicate analytics',
+      'la proposta rigenerata non conta; dopo si confronta con lei',
       () async {
-        final existingTrip = TripModel(
-          id: 't1',
-          name: 'Existing Trip',
-          items: const [],
-          luggages: const [],
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
+        await load(suitcase);
+        final regenerated = suitcase.copyWith(
+          items: [packed('A')],
+          aiResult: result(DateTime(2026, 11, 9)).copyWith(
+            proposal: const [
+              AiPackedItem(itemId: 'A', quantity: 1, reason: reason),
+            ],
+          ),
         );
+        await notifier().updateTrip(regenerated);
+        await verifyNoChange();
 
-        when(
-          () => mockRepository.getAllTrips(),
-        ).thenAnswer((_) async => [existingTrip]);
-        when(
-          () => mockRepository.reuseTrip('t1'),
-        ).thenAnswer((_) async => 'new-trip-id');
-
-        // Prime the notifier's initial state.
-        await container.read(tripNotifierProvider.future);
-
-        final newId = await container
-            .read(tripNotifierProvider.notifier)
-            .reuseTrip('t1');
-
-        expect(newId, 'new-trip-id');
-        verify(() => mockRepository.reuseTrip('t1')).called(1);
-        verify(() => mockAnalytics.trackTripDuplicated()).called(1);
+        await notifier().updateTrip(regenerated.copyWith(items: const []));
+        final counts = (await changes()).single;
+        expect(counts['proposed'], 1);
+        expect(counts['removed'], 1);
       },
     );
+
+    test('avviso scartato: ai_warning_dismissed una volta', () async {
+      await load(suitcase);
+      await notifier().updateTrip(
+        suitcase.copyWith(
+          aiResult: suitcase.aiResult!.copyWith(dismissedWarnings: ['w1']),
+        ),
+      );
+      verify(
+        () => mockAnalytics.trackAiWarningDismissed(
+          code: 'rain_gear',
+          level: 'important',
+        ),
+      ).called(1);
+      await verifyNoChange();
+    });
+
+    test('posto tolto: ai_slot_removed una volta', () async {
+      await load(suitcase);
+      await notifier().updateAiSlot(
+        't1',
+        's1',
+        (s) => s.copyWith(removed: true),
+      );
+      verify(
+        () => mockAnalytics.trackAiSlotRemoved(type: 'calze', level: 'useful'),
+      ).called(1);
+    });
+
+    // Il primo salvataggio della valigia fatto dal lavoro AI (aggiunta di un
+    // viaggio nuovo, Rigenera, o l'update di un id già salvato) non è una
+    // modifica dell'utente.
+    test('adoption_does_not_emit_suitcase_changed', () async {
+      ItemModel house(String id) => ItemModel(
+        id: id,
+        houseId: 'h1',
+        name: 'capo $id',
+        category: ItemCategory.vestiti,
+        quantity: 2,
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+      final houseItems = [house('A'), house('B')];
+      const setup = AiPackingSetup(houseId: 'h1');
+      final fresh = result(DateTime(2026, 11, 9));
+
+      // Rigenera: la valigia di prima ha un'altra proposta.
+      await load(suitcase);
+      final regenerated = adoptedTrip(
+        trip: suitcase,
+        proposal: fresh,
+        setup: setup,
+        houseItems: houseItems,
+      );
+      await notifier().updateTrip(regenerated);
+
+      // Guardia "id già esistente": lo stesso viaggio si riscrive uguale.
+      await notifier().updateTrip(regenerated);
+
+      // Viaggio nuovo: arriva con addTrip.
+      final newTrip = TripModel(
+        id: 't2',
+        name: 'Nuovo',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+      when(() => mockRepository.addTrip(any())).thenAnswer((_) async {});
+      await notifier().addTrip(
+        adoptedTrip(
+          trip: newTrip,
+          proposal: fresh,
+          setup: setup,
+          houseItems: houseItems,
+        ),
+        source: 'new',
+      );
+
+      await verifyNoChange();
+      verify(
+        () => mockAnalytics.trackTripCreated(
+          tripId: 't2',
+          totalTrips: any(named: 'totalTrips'),
+          daysToDeparture: any(named: 'daysToDeparture'),
+          source: 'new',
+        ),
+      ).called(1);
+    });
   });
 
   group('TripNotifier - updateAiSlot', () {
@@ -1010,10 +1203,7 @@ void main() {
           .fillAiSlot('t1', 's-magliette', item('i1', 2));
 
       verify(
-        () => mockRawAnalytics.logEvent(
-          'slot_filled',
-          properties: {'level': 'useful', 'copies': 2},
-        ),
+        () => mockAnalytics.trackSlotFilled(level: 'useful', copies: 2),
       ).called(1);
     });
 
@@ -1029,9 +1219,9 @@ void main() {
       );
 
       verifyNever(
-        () => mockRawAnalytics.logEvent(
-          'slot_filled',
-          properties: any(named: 'properties'),
+        () => mockAnalytics.trackSlotFilled(
+          level: any(named: 'level'),
+          copies: any(named: 'copies'),
         ),
       );
     });
@@ -1277,6 +1467,53 @@ void main() {
     test('un viaggio senza aiResult non mette niente', () async {
       final before = trip(withResult: false);
       final after = trip(withResult: false, withItem: false);
+      await load(before, after);
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+
+      await c.read(tripNotifierProvider.notifier).updateTrip(after);
+
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(await db.suitcaseEditsDao.pending(), isEmpty);
+    });
+
+    test('add_page_done_records_added_items', () async {
+      // "Fatto" della pagina di aggiunta: updateTrip sul viaggio attuale con
+      // l'oggetto aggiunto e uno tolto. Origine utente per l'aggiunto.
+      final before = trip();
+      final after = before.copyWith(
+        items: [
+          TripItem(
+            id: 'i2',
+            name: 'Nome privato due',
+            category: ItemCategory.vestiti,
+            quantity: 1,
+          ),
+        ],
+      );
+      await load(before, after);
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+
+      await c.read(tripNotifierProvider.notifier).updateTrip(after);
+
+      for (var i = 0; i < 50; i++) {
+        if ((await db.suitcaseEditsDao.pending()).length >= 2) break;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      final pending = await db.suitcaseEditsDao.pending();
+      final byAction = {for (final e in pending) e.action.dbValue: e};
+      expect(pending, hasLength(2));
+      expect(byAction['aggiunto']?.origin.dbValue, 'utente');
+      expect(byAction['tolto']?.origin.dbValue, 'proposta');
+      expect(pending.any((e) => e.toString().contains('Nome privato')), isFalse);
+    });
+
+    test('trip_info_change_records_no_edits', () async {
+      // Date e tappe (Modifica viaggio) non sono una modifica della valigia.
+      final before = trip();
+      final after = before.copyWith(
+        name: 'Altro nome',
+        departureDateTime: DateTime.now().add(const Duration(days: 40)),
+      );
       await load(before, after);
       when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
 

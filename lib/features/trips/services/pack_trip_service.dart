@@ -46,14 +46,29 @@ class PackTripNetworkException extends PackTripException {
   const PackTripNetworkException(super.message);
 }
 
+/// La funzione ha risposto 200 ma il corpo non è una valigia leggibile: il
+/// credito è stato scalato, quindi non va detto che non lo è stato.
+class PackTripInvalidResponseException extends PackTripException {
+  const PackTripInvalidResponseException(super.message);
+}
+
+/// Dopo questo tempo senza risposta la chiamata a `pack-trip` è persa: si
+/// tratta come un errore di rete.
+const kPackTripTimeout = Duration(seconds: 90);
+
 /// La valigia AI dalla funzione `pack-trip`.
 class PackTripService {
-  PackTripService({http.Client Function()? client, String? Function()? token})
-    : _newClient = client ?? http.Client.new,
-      _token = token ?? _sessionToken;
+  PackTripService({
+    http.Client Function()? client,
+    String? Function()? token,
+    Duration timeout = kPackTripTimeout,
+  }) : _newClient = client ?? http.Client.new,
+       _token = token ?? _sessionToken,
+       _timeout = timeout;
 
   final http.Client Function() _newClient;
   final String? Function() _token;
+  final Duration _timeout;
 
   _PackTripAttempt? _attempt;
 
@@ -78,15 +93,17 @@ class PackTripService {
 
     final http.Response response;
     try {
-      response = await client.post(
-        Uri.parse('${AppConfig.supabaseUrl}/functions/v1/pack-trip'),
-        headers: {
-          'Authorization': 'Bearer $jwt',
-          'apikey': AppConfig.supabaseAnonKey,
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(body),
-      );
+      response = await client
+          .post(
+            Uri.parse('${AppConfig.supabaseUrl}/functions/v1/pack-trip'),
+            headers: {
+              'Authorization': 'Bearer $jwt',
+              'apikey': AppConfig.supabaseAnonKey,
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(_timeout);
     } catch (e) {
       if (attempt.cancelled) throw const PackTripException('annullata');
       if (e is SocketException ||
@@ -122,10 +139,12 @@ class PackTripService {
     try {
       decoded = jsonDecode(response.body);
     } catch (e) {
-      throw PackTripException('risposta non valida: $e');
+      throw PackTripInvalidResponseException('risposta non valida: $e');
     }
     if (decoded is! Map<String, dynamic>) {
-      throw const PackTripException('risposta non valida: non è un oggetto');
+      throw const PackTripInvalidResponseException(
+        'risposta non valida: non è un oggetto',
+      );
     }
     return parsePackTripResponse(
       decoded,
@@ -228,7 +247,7 @@ AiPackingResult parsePackTripResponse(
   } on PackTripException {
     rethrow;
   } catch (e) {
-    throw PackTripException('risposta non valida: $e');
+    throw PackTripInvalidResponseException('risposta non valida: $e');
   }
 }
 

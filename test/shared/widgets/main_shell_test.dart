@@ -64,12 +64,7 @@ void main() {
           ),
         ],
       ),
-      GoRoute(
-        path: '/new-trip',
-        builder: (_, state) => Text(
-          state.uri.queryParameters['ai'] == '1' ? 'NEW TRIP AI' : 'NEW TRIP',
-        ),
-      ),
+      GoRoute(path: '/new-trip', builder: (_, _) => const Text('NEW TRIP')),
       GoRoute(
         path: '/houses/:id',
         builder: (_, state) => Text(
@@ -247,14 +242,14 @@ void main() {
       expect(find.text('NEW TRIP'), findsOneWidget);
     });
 
-    testWidgets('Valigia con AI apre il nuovo viaggio con ai=1 e lo traccia', (
+    testWidgets('Valigia con AI apre il nuovo viaggio e lo traccia', (
       tester,
     ) async {
       await pumpShell(tester);
       await openCreate(tester);
       await tester.tap(find.byKey(const Key('create_ai_suitcase')));
       await tester.pumpAndSettle();
-      expect(find.text('NEW TRIP AI'), findsOneWidget);
+      expect(find.text('NEW TRIP'), findsOneWidget);
       verify(
         () => analytics.logEvent(
           'create_sheet_choice',

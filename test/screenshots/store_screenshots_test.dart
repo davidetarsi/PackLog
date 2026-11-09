@@ -60,9 +60,10 @@ Future<void> _scrollTo(
   await app.settle();
 }
 
-Future<void> _pack(ScreenshotApp app, String tripId) async {
+/// Il dettaglio del viaggio, dove sta la valigia, sopra la tab Viaggi.
+Future<void> _detail(ScreenshotApp app, String tripId) async {
   await app.go('/trips');
-  await app.push('/trips/$tripId/edit-items');
+  await app.push('/trips/$tripId');
 }
 
 Future<void> _tapShown(ScreenshotApp app, Finder finder) async {
@@ -76,17 +77,8 @@ final _scenarios = <(int, String, AppSetup, _Steps)>[
     'valigia-ai',
     AppSetup(seedWith: _data.seed, locale: _locale),
     (app) async {
-      await _pack(app, StoreData.tripId);
+      await _detail(app, StoreData.tripId);
       await _scrollTo(app, 'trips.pack.items'.tr());
-    },
-  ),
-  (
-    2,
-    'motivi',
-    AppSetup(seedWith: _data.seed, locale: _locale),
-    (app) async {
-      await _pack(app, StoreData.tripId);
-      await app.tap(find.text('trips.pack.ai.reasons_row'.tr()));
     },
   ),
   (
@@ -94,8 +86,10 @@ final _scenarios = <(int, String, AppSetup, _Steps)>[
     'foglio-ai',
     AppSetup(seedWith: _data.seed, locale: _locale),
     (app) async {
-      await _pack(app, StoreData.weekendTripId);
-      await app.tap(find.byKey(const Key('pack_ai_suitcase')));
+      // "Rigenera" dal menu del dettaglio: il foglio si apre sopra il dettaglio.
+      await _detail(app, StoreData.weekendTripId);
+      await app.tap(find.byWidgetPredicate((w) => w is PopupMenuButton));
+      await app.tap(find.text('trips.pack.ai.regenerate'.tr()));
       final replace = find.text('trips.pack.ai.replace_confirm'.tr());
       if (replace.evaluate().isNotEmpty) await app.tap(replace);
       await _tapShown(app, find.text(etichettaDi('activity', 'city')));

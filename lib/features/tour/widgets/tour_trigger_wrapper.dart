@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
-import '../../../core/analytics/analytics_service.dart';
+import '../../../core/analytics/core_analytics_service.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../model/onboarding_state.dart';
 import '../providers/post_login_onboarding_provider.dart';
@@ -104,13 +104,14 @@ class _TourTriggerWrapperState extends ConsumerState<TourTriggerWrapper> {
 
   void _showCoachMark(OnboardingState onboarding) {
     final notifier = ref.read(postLoginOnboardingProvider.notifier);
-    final analytics = ref.read(analyticsServiceProvider);
+    final analytics = ref.read(coreAnalyticsServiceProvider);
     // step_index: vedi il commento gemello in tour_orchestrator.dart.
-    final stepProps = {
-      'step_name': onboarding.step.name,
-      'step_index': onboarding.step.tourStepIndex,
-    };
-    analytics.logEvent('onboarding_step_viewed', properties: stepProps);
+    final stepName = onboarding.step.name;
+    final stepIndex = onboarding.step.tourStepIndex;
+    analytics.trackOnboardingStepViewed(
+      stepName: stepName,
+      stepIndex: stepIndex,
+    );
 
     TutorialCoachMark(
       targets: [
@@ -140,18 +141,18 @@ class _TourTriggerWrapperState extends ConsumerState<TourTriggerWrapper> {
                     controller.skip();
                     // Chiude l'intero tour, non solo lo step corrente — vedi
                     // `PostLoginOnboarding.markDone`.
-                    analytics.logEvent(
-                      'onboarding_closed',
-                      properties: stepProps,
+                    analytics.trackOnboardingClosed(
+                      stepName: stepName,
+                      stepIndex: stepIndex,
                     );
                     notifier.markDone();
                   },
                   onNext: () {
                     controller.next();
                     if (widget.advancesOnOk) {
-                      analytics.logEvent(
-                        'onboarding_step_advanced',
-                        properties: stepProps,
+                      analytics.trackOnboardingStepAdvanced(
+                        stepName: stepName,
+                        stepIndex: stepIndex,
                       );
                       notifier.advance();
                     }
@@ -170,9 +171,9 @@ class _TourTriggerWrapperState extends ConsumerState<TourTriggerWrapper> {
       onClickTarget: widget.onTargetTap == null
           ? null
           : (_) {
-              analytics.logEvent(
-                'onboarding_step_advanced',
-                properties: stepProps,
+              analytics.trackOnboardingStepAdvanced(
+                stepName: stepName,
+                stepIndex: stepIndex,
               );
               notifier.advance();
               widget.onTargetTap!();
