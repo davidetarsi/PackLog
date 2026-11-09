@@ -145,4 +145,27 @@ void main() {
       isFalse,
     );
   });
+
+  test('house_rename_does_not_make_suitcase_outdated', () {
+    LocationSuggestionModel casa(String nome) => LocationSuggestionModel(
+      placeId: 'house_h1',
+      displayName: nome,
+      city: nome,
+    );
+    final base = _saved().copyWith(
+      destinationHouseId: 'h1',
+      destinationLocation: casa('Casa Milano'),
+      legs: [
+        TripLeg(id: 'l1', locationDisplayName: 'Casa al mare', houseId: 'h2'),
+      ],
+    );
+    final withShape = base.copyWith(aiResult: _resultFor(base));
+    final renamed = withShape.copyWith(
+      destinationLocation: casa('Casa di Milano'),
+      legs: [TripLeg(id: 'l1', locationDisplayName: 'Mare', houseId: 'h2')],
+    );
+    expect(suitcaseOutdated(renamed, now: _now), isFalse);
+    final other = withShape.copyWith(destinationHouseId: 'h3');
+    expect(suitcaseOutdated(other, now: _now), isTrue);
+  });
 }

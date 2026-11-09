@@ -89,6 +89,9 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
   /// In modifica: il viaggio com'era all'apertura.
   TripModel? _original;
 
+  /// La bozza com'è al momento dell'apertura, per capire cosa è stato toccato.
+  TripDraft? _baseline;
+
   /// In modifica: l'utente ha cambiato qualcosa.
   bool _edited = false;
 
@@ -177,19 +180,23 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
     }
   }
 
-  /// Modifica o elimina una tappa. La meta (indice 0) non si cambia qui: si
-  /// cambia dalla sua ricerca.
+  /// Modifica o elimina una tappa. Della meta (indice 0) si cambia solo la
+  /// fine: il luogo si cambia dalla sua ricerca. Con una sola tappa la fine si
+  /// cambia da "Quando?".
   Future<void> _editStop(int index) async {
-    if (index < 1) return;
     final stops = _draft.stops;
+    if (index == 0 && stops.length < 2) return;
     final result = await showStopSheet(
       context,
       start: _draft.stopStart(index)!,
-      previousName: stops[index - 1].place.shortName,
+      previousName: index == 0 ? '' : stops[index - 1].place.shortName,
       initial: stops[index],
+      placeLocked: index == 0,
     );
     if (!mounted) return;
     switch (result) {
+      case StopSaved(:final stop) when index == 0:
+        _update(_draft.withDestinationEnd(stop.end));
       case StopSaved(:final stop):
         _update(_draft.updateStop(index, place: stop.place, end: stop.end));
       case StopRemoved():
@@ -336,16 +343,29 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
         .valueOrNull
         ?.where((t) => t.id == original.id)
         .firstOrNull;
-    final updated = (corrente ?? original).copyWith(
-      name: draftTrip.name,
-      departureDateTime: draftTrip.departureDateTime,
-      returnDateTime: draftTrip.returnDateTime,
-      destinationHouseId: draftTrip.destinationHouseId,
-      destinationLocation: draftTrip.destinationLocation,
-      legs: draftTrip.legs,
-      transports: draftTrip.transports,
-      updatedAt: draftTrip.updatedAt,
-    );
+    final base = corrente ?? original;
+    // Né meta, né date, né tappe, né mezzi toccati: si cambia solo il nome. La
+    // bozza normalizza il viaggio (date a mezzanotte, meta casa col nome di
+    // oggi), quindi i campi originali restano quelli di prima.
+    final baseline = _baseline;
+    final onlyName =
+        baseline != null &&
+        AiTripShape.of(draftTrip) ==
+            AiTripShape.of(
+              baseline.toTripModel(id: original.id, now: draftTrip.updatedAt),
+            );
+    final updated = onlyName
+        ? base.copyWith(name: draftTrip.name, updatedAt: draftTrip.updatedAt)
+        : base.copyWith(
+            name: draftTrip.name,
+            departureDateTime: draftTrip.departureDateTime,
+            returnDateTime: draftTrip.returnDateTime,
+            destinationHouseId: draftTrip.destinationHouseId,
+            destinationLocation: draftTrip.destinationLocation,
+            legs: draftTrip.legs,
+            transports: draftTrip.transports,
+            updatedAt: draftTrip.updatedAt,
+          );
     final saved = await ErrorRetryDialog.executeWithRetry(
       context: context,
       operation: () =>
@@ -368,6 +388,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       trip,
       houseName: houseNames[trip.destinationHouseId],
     );
+    _baseline = _draft;
     _nameController.text = _draft.name;
   }
 
@@ -635,7 +656,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
                       sortLegs: false,
                     ),
                     onPlaceTap: _editStop,
-                    firstTappablePlace: 1,
+                    firstTappablePlace: stops.length < 2 ? 1 : 0,
                   ),
                   SizedBox(height: context.spacingSm),
                   DsLinkButton(

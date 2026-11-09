@@ -370,6 +370,52 @@ void main() {
     verifyNever(() => tripRepo.addTrip(any()));
   });
 
+  testWidgets('reuse_zero_night_destination_can_be_fixed_in_itinerary', (
+    tester,
+  ) async {
+    await pumpReuse(tester);
+    await _pickDates(tester);
+    expect(
+      find.text('Firenze finisce prima di iniziare: controlla le date.'),
+      findsOneWidget,
+    );
+
+    // Dopo la scelta delle date tutte le tappe finiscono al ritorno: si
+    // anticipa la fine della meta per dare notti a Firenze.
+    await tester.ensureVisible(find.text('Siena'));
+    await tester.tap(find.text('Siena'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('stop_sheet_dates')));
+    await tester.pumpAndSettle();
+    await _tapDay(tester, DateTime(_nextMonth.year, _nextMonth.month, 11));
+    await tester.tap(find.text('Conferma'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('stop_sheet_save')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Firenze finisce prima di iniziare: controlla le date.'),
+      findsNothing,
+    );
+    expect(
+      tester
+          .widget<DsButton>(find.byKey(const Key('new_trip_choose_items')))
+          .onPressed,
+      isNotNull,
+    );
+    await tester.tap(find.byKey(const Key('new_trip_choose_items')));
+    await tester.pumpAndSettle();
+    final saved =
+        verify(() => tripRepo.addTrip(captureAny())).captured.single
+            as TripModel;
+    expect(
+      saved.legs.single.from,
+      DateTime(_nextMonth.year, _nextMonth.month, 11),
+    );
+    expect(saved.legs.single.to, _return);
+    expect(saved.returnDateTime, _return);
+  });
+
   testWidgets(
     'reuse_choose_items_saves_copy_with_unchecked_items_and_luggages',
     (tester) async {

@@ -312,6 +312,18 @@ class TripDraft {
     );
   }
 
+  /// Cambia la fine della meta (la prima tappa): sposta solo l'inizio della
+  /// seconda. Il luogo non cambia: si cambia da "Dove vai?".
+  TripDraft withDestinationEnd(DateTime end) {
+    assert(stops.isNotEmpty);
+    return _copy(
+      stops: [
+        DraftStop(place: stops.first.place, end: _dayOf(end)),
+        ...stops.skip(1),
+      ],
+    );
+  }
+
   /// Cambia luogo o fine della tappa [index] (>= 1). Cambiare la fine sposta
   /// solo l'inizio della tappa successiva.
   TripDraft updateStop(int index, {DraftPlace? place, DateTime? end}) {

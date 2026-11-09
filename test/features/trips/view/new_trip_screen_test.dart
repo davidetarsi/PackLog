@@ -25,6 +25,8 @@ import 'package:pack_log/features/kits/providers/kit_provider.dart';
 import 'package:pack_log/features/luggages/repositories/luggage_repository.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/ai_packing_request.dart';
+import 'package:pack_log/features/trips/model/trip_leg.dart';
+import 'package:pack_log/features/trips/services/suitcase_outdated.dart';
 import 'package:pack_log/features/trips/model/pack_trip_job.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/providers/ai_packing_run_provider.dart';
@@ -32,6 +34,7 @@ import 'package:pack_log/features/trips/providers/trip_provider.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/services/trip_lifecycle_service.dart';
 import 'package:pack_log/features/trips/view/new_trip_screen.dart';
+import 'package:pack_log/features/trips/view/widgets/postcard/trip_itinerary_view.dart';
 import 'package:pack_log/features/trips/view/widgets/place_search.dart';
 import 'package:pack_log/features/trips/view/widgets/trip_calendar.dart';
 import 'package:pack_log/shared/model/location_suggestion_model.dart';
@@ -205,6 +208,12 @@ String _datesText(WidgetTester tester) => tester
     )
     .data!;
 
+/// Il testo di una riga dell'itinerario (non il campo "Dove vai?").
+Finder _itineraryRow(String text) => find.descendant(
+  of: find.byType(TripItineraryView),
+  matching: find.text(text),
+);
+
 DateTime _day(int day) => DateTime(_nextMonth.year, _nextMonth.month, day);
 
 /// Il campo place della tappa aperta nel foglio.
@@ -251,6 +260,33 @@ Future<void> _pickDates(WidgetTester tester) async {
   await tester.tap(find.text('Conferma date'));
   await tester.pumpAndSettle();
 }
+
+/// Un viaggio della vecchia schermata: partenza e ritorno con l'ora, meta casa
+/// salvata col nome che la casa aveva allora.
+TripModel _legacyTrip() => TripModel(
+  id: 'trip-1',
+  name: 'Milano',
+  departureDateTime: DateTime(2026, 9, 12, 8, 30),
+  returnDateTime: DateTime(2026, 9, 20, 18, 45),
+  destinationHouseId: 'h1',
+  destinationLocation: LocationSuggestionModel(
+    placeId: 'house_h1',
+    displayName: 'Casa vecchio nome',
+    city: 'Casa vecchio nome',
+  ),
+  legs: [
+    TripLeg(
+      id: 'l1',
+      locationDisplayName: 'Casa al mare',
+      houseId: 'h2',
+      from: DateTime(2026, 9, 15, 10),
+      to: DateTime(2026, 9, 20, 18, 45),
+    ),
+  ],
+  transports: const ['car'],
+  createdAt: DateTime(2026),
+  updatedAt: DateTime(2026),
+);
 
 void main() {
   late MockTripRepository tripRepo;
@@ -962,6 +998,56 @@ void main() {
       expect(savedTrip().transports, isEmpty);
     });
 
+    testWidgets('name_only_edit_keeps_original_fields', (tester) async {
+      final trip = _legacyTrip();
+      when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [trip]);
+      when(() => tripRepo.updateTrip(any())).thenAnswer((_) async {});
+
+      await pumpScreen(tester, open: '/trips/trip-1/edit-info');
+      await tester.enterText(_nameField, 'Altro nome');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('edit_trip_save')));
+      await tester.pumpAndSettle();
+
+      final updated =
+          verify(() => tripRepo.updateTrip(captureAny())).captured.single
+              as TripModel;
+      expect(updated.name, 'Altro nome');
+      expect(updated.departureDateTime, trip.departureDateTime);
+      expect(updated.returnDateTime, trip.returnDateTime);
+      expect(updated.destinationHouseId, 'h1');
+      expect(updated.destinationLocation, trip.destinationLocation);
+      expect(updated.legs, trip.legs);
+      expect(updated.transports, trip.transports);
+    });
+
+    testWidgets('name_only_edit_does_not_show_notice_on_legacy_trip', (
+      tester,
+    ) async {
+      final base = _legacyTrip();
+      final trip = base.copyWith(
+        aiResult: AiPackingResult(
+          generatedAt: DateTime(2026),
+          houseId: 'h1',
+          tripShape: AiTripShape.of(base),
+        ),
+      );
+      when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [trip]);
+      when(() => tripRepo.updateTrip(any())).thenAnswer((_) async {});
+
+      await pumpScreen(tester, open: '/trips/trip-1/edit-info');
+      await tester.enterText(_nameField, 'Altro nome');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('edit_trip_save')));
+      await tester.pumpAndSettle();
+
+      final updated =
+          verify(() => tripRepo.updateTrip(captureAny())).captured.single
+              as TripModel;
+      expect(updated.name, 'Altro nome');
+      expect(suitcaseOutdated(updated, now: DateTime(2020)), isFalse);
+    });
+
     testWidgets('modificare il viaggio conserva i mezzi', (tester) async {
       caricaCatalogoDelRepo();
       final trip = TripModel(
@@ -1129,6 +1215,94 @@ void main() {
 
       expect(find.text('Casa in montagna'), findsOneWidget);
       expect(find.text('Casa al mare'), findsNothing);
+    });
+
+    testWidgets('destination_end_editable_with_two_stops', (tester) async {
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+      await _addStop(tester, houseId: 'h2', endDay: 15);
+
+      await tester.ensureVisible(_itineraryRow('Casa Milano'));
+      await tester.tap(_itineraryRow('Casa Milano'));
+      await tester.pumpAndSettle();
+
+      // Il luogo si vede ma non si cambia, e la meta non si elimina.
+      expect(find.text('Modifica tappa'), findsOneWidget);
+      expect(find.byKey(const Key('stop_sheet_place_locked')), findsOneWidget);
+      expect(find.byKey(const Key('stop_sheet_place')), findsNothing);
+      expect(find.byKey(const Key('stop_sheet_remove')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('stop_sheet_dates')));
+      await tester.pumpAndSettle();
+      await _tapDay(tester, _day(13));
+      await tester.tap(find.text('Conferma'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('stop_sheet_save')));
+      await tester.pumpAndSettle();
+
+      // Il viaggio resta 10-15; la seconda tappa ora parte il 13.
+      expect(
+        _datesText(tester),
+        '${_dayLabel(_departure)} – ${_dayLabel(_day(15))}',
+      );
+      await tester.tap(find.text('Casa al mare'));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining(_dayLabel(_day(13)), findRichText: true),
+        findsWidgets,
+      );
+      expect(find.text('2 notti'), findsOneWidget);
+    });
+
+    testWidgets('one_stop_destination_row_is_not_tappable', (tester) async {
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+
+      await tester.ensureVisible(_itineraryRow('Casa Milano'));
+      await tester.tap(_itineraryRow('Casa Milano'), warnIfMissed: false);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Modifica tappa'), findsNothing);
+    });
+
+    testWidgets('middle_stop_change_keeps_rows_in_order', (tester) async {
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+      await _addStop(tester, houseId: 'h2', endDay: 14);
+      await _addStop(tester, houseId: 'h3', endDay: 16);
+
+      // La tappa intermedia ("Casa al mare") finisce il 18, dopo la fine
+      // dell'ultima: le righe restano nell'ordine della catena, e quella
+      // toccata è la tappa giusta.
+      await tester.ensureVisible(find.text('Casa al mare'));
+      await tester.tap(find.text('Casa al mare'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('stop_sheet_dates')));
+      await tester.pumpAndSettle();
+      await _tapDay(tester, _day(18));
+      await tester.tap(find.text('Conferma'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('stop_sheet_save')));
+      await tester.pumpAndSettle();
+
+      final mare = tester.getTopLeft(find.text('Casa al mare')).dy;
+      final montagna = tester.getTopLeft(find.text('Casa in montagna')).dy;
+      expect(mare, lessThan(montagna));
+
+      await tester.tap(find.text('Casa in montagna'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(_stopPlaceField).controller!.text,
+        'Casa in montagna',
+      );
+      await tester.tap(find.byKey(const Key('stop_sheet_remove')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Casa in montagna'), findsNothing);
+      expect(find.text('Casa al mare'), findsOneWidget);
     });
 
     testWidgets('when_shows_whole_trip_with_two_stops', (tester) async {

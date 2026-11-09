@@ -253,9 +253,10 @@ class AiTripShape with _$AiTripShape {
   }) = _AiTripShape;
 
   /// La forma di [trip]: la destinazione (se c'è) e poi le tappe, in ordine;
-  /// i mezzi senza ordine.
+  /// i mezzi senza ordine. Una casa si riconosce dal suo id: il nome si può
+  /// cambiare senza cambiare il viaggio.
   factory AiTripShape.of(TripModel trip) {
-    final destination = trip.destinationDisplayName ?? trip.destinationHouseId;
+    final destination = trip.destinationHouseId ?? trip.destinationDisplayName;
     return AiTripShape(
       departure: trip.departureDateTime?.toLocal(),
       returnAt: trip.returnDateTime?.toLocal(),
@@ -263,7 +264,7 @@ class AiTripShape with _$AiTripShape {
         if (destination != null) AiTripShapeStop(name: destination),
         for (final leg in trip.legs)
           AiTripShapeStop(
-            name: leg.locationDisplayName,
+            name: leg.houseId ?? leg.locationDisplayName,
             from: leg.from?.toLocal(),
             to: leg.to?.toLocal(),
           ),
