@@ -27,6 +27,17 @@ const _kRefreshBuffer = Duration(seconds: 2);
 class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
   final Map<String, Future<void>> _editQueues = {};
 
+  /// Per viaggio: gli avvisi scartati e i posti tolti già registrati per la
+  /// proposta di `generatedAt`. Due salvataggi sovrapposti partono dallo
+  /// stesso viaggio di prima e vedrebbero tutti e due lo stesso scarto: così
+  /// ogni avviso e ogni posto si conta una volta per proposta. Vive solo in
+  /// memoria: dopo un riavvio l'app riparte dal viaggio salvato.
+  final Map<
+    String,
+    ({DateTime generatedAt, Set<String> warnings, Set<String> slots})
+  >
+  _aiSent = {};
+
   TripRepository get _repo => ref.read(tripRepositoryProvider);
   CoreAnalyticsService get _analytics => ref.read(coreAnalyticsServiceProvider);
 
@@ -339,8 +350,15 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
       unawaited(_trackSuitcaseChanged(after, now));
     }
 
+    var sent = _aiSent[after.id];
+    if (sent == null || sent.generatedAt != result.generatedAt) {
+      sent = (generatedAt: result.generatedAt, warnings: {}, slots: {});
+      _aiSent[after.id] = sent;
+    }
+
     for (final id in result.dismissedWarnings) {
       if (previous.dismissedWarnings.contains(id)) continue;
+      if (!sent.warnings.add(id)) continue;
       final warning = result.warnings.where((w) => w.id == id).firstOrNull;
       if (warning == null) continue;
       _analytics.trackAiWarningDismissed(
@@ -353,7 +371,9 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
       for (final s in previous.slots ?? const <AiSlot>[]) s.id: s.removed,
     };
     for (final slot in result.slots ?? const <AiSlot>[]) {
-      if (slot.removed && wasRemoved[slot.id] == false) {
+      if (slot.removed &&
+          wasRemoved[slot.id] == false &&
+          sent.slots.add(slot.id)) {
         _analytics.trackAiSlotRemoved(type: slot.type, level: slot.level.name);
       }
     }

@@ -988,6 +988,54 @@ void main() {
       await verifyNoChange();
     });
 
+    test('due salvataggi sovrapposti contano l avviso una volta', () async {
+      await load(suitcase);
+      final saving = Completer<void>();
+      when(() => mockRepository.updateTrip(any())).thenAnswer((inv) async {
+        await saving.future;
+        stored = inv.positionalArguments.first as TripModel;
+      });
+      final dismissed = suitcase.copyWith(
+        aiResult: suitcase.aiResult!.copyWith(dismissedWarnings: ['w1']),
+      );
+      // Tutti e due partono dallo stesso viaggio, prima che uno finisca.
+      final first = notifier().updateTrip(dismissed);
+      final second = notifier().updateTrip(dismissed);
+      saving.complete();
+      await Future.wait([first, second]);
+
+      verify(
+        () => mockAnalytics.trackAiWarningDismissed(
+          code: 'rain_gear',
+          level: 'important',
+        ),
+      ).called(1);
+    });
+
+    test('rigenerata la valigia, lo stesso avviso si conta di nuovo', () async {
+      await load(suitcase);
+      await notifier().updateTrip(
+        suitcase.copyWith(
+          aiResult: suitcase.aiResult!.copyWith(dismissedWarnings: ['w1']),
+        ),
+      );
+      final regenerated = suitcase.copyWith(
+        aiResult: result(DateTime(2026, 11, 9)),
+      );
+      await notifier().updateTrip(regenerated);
+      await notifier().updateTrip(
+        regenerated.copyWith(
+          aiResult: regenerated.aiResult!.copyWith(dismissedWarnings: ['w1']),
+        ),
+      );
+      verify(
+        () => mockAnalytics.trackAiWarningDismissed(
+          code: 'rain_gear',
+          level: 'important',
+        ),
+      ).called(2);
+    });
+
     test('posto tolto: ai_slot_removed una volta', () async {
       await load(suitcase);
       await notifier().updateAiSlot(
