@@ -743,7 +743,7 @@
   "create_sheet": {
     "title": "Create",
     "ai_scan": "Scan your clothes",
-    "ai_scan_hint": "Take a photo or pick one from your gallery: AI recognises your clothes and saves them",
+    "ai_scan_hint": "One photo, AI recognizes them",
     "need_house": "Create a house first: scanned items go there",
     "ai_exhausted": "You've used all your AI for this month",
     "in_house": "in {}",
@@ -752,13 +752,10 @@
     "manual": "Add items",
     "manual_hint": "Type them one after another",
     "manual_need_house": "Create a house to put them in first",
-    "without_ai": "Without AI",
     "new_house": "New house",
     "new_house_hint": "Another place where you keep your things",
     "new_trip": "New trip",
-    "new_trip_hint": "Destination, dates and what to pack",
-    "ai_suitcase": "Trip with AI",
-    "ai_suitcase_hint": "Creates the trip and packs for you based on destination, weather and length"
+    "new_trip_hint": "Create the trip and your suitcase with AI, based on destination, weather and dates"
   },
   "promo": {
     "code_label": "Promo code",

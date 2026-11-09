@@ -743,7 +743,7 @@
   "create_sheet": {
     "title": "Crea",
     "ai_scan": "Scansiona i vestiti",
-    "ai_scan_hint": "Fai una foto o sceglila dalla galleria: l'AI riconosce i vestiti e li salva",
+    "ai_scan_hint": "Una foto, l'AI li riconosce",
     "need_house": "Crea prima una casa: gli oggetti scansionati finiscono lì",
     "ai_exhausted": "Hai esaurito gli usi AI di questo mese",
     "in_house": "in {}",
@@ -752,13 +752,10 @@
     "manual": "Aggiungi oggetti",
     "manual_hint": "Scrivili uno dopo l'altro",
     "manual_need_house": "Prima crea una casa dove metterli",
-    "without_ai": "Senza AI",
     "new_house": "Nuova casa",
     "new_house_hint": "Un altro posto dove tieni le tue cose",
     "new_trip": "Nuovo viaggio",
-    "new_trip_hint": "Destinazione, date e cosa portare",
-    "ai_suitcase": "Viaggio con AI",
-    "ai_suitcase_hint": "Crea il viaggio e ti prepara la valigia in base a meta, meteo e durata"
+    "new_trip_hint": "Crea il viaggio e la valigia con l'AI, in base a meta, meteo e date"
   },
   "promo": {
     "code_label": "Codice promo",
