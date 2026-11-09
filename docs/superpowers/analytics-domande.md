@@ -353,7 +353,26 @@ Come il catalogo è diventato codice, dove si discosta e perché:
   scan, che prima ci finivano. Restano in `ai_input_failed` e
   `ai_limit_reached`.
 - **Un errore dell'analytics non blocca mai un salvataggio**: il calcolo
-  degli eventi della valigia è protetto.
+  degli eventi della valigia, dello scan e della preparazione è protetto.
+- **`ai_limit_reached` del nome oggetto ha `source`**: `manual` (aggiunta
+  dell'utente) o `backfill` (recupero in background delle schede). Il
+  segnale "l'utente ha finito il tetto" si legge con `source = manual`.
+- **Sentry e item-metadata**: per gli errori HTTP entra lo stato e il
+  messaggio `error` della funzione (testi fissi nostri, al massimo 200
+  caratteri), mai il resto del corpo; per una risposta illeggibile nessun
+  pezzo del corpo. La privacy policy (§4) prevede in Sentry informazioni
+  tecniche, non testo dell'utente. Decisione di Davide del 9 nov.
+- **`SentryNavigatorObserver` senza transazioni automatiche**: solo le
+  schermate come breadcrumb negli errori, niente quota di performance.
+- **`ai_slot_removed` resta contato anche dopo Annulla** (come
+  `slot_marked_to_buy`): si legge come "tentativi di togliere un posto".
+  Lo stato finale della valigia è nell'ultimo `ai_suitcase_changed`.
+- **Limite noto, accettato il 9 nov**: il meteo di `ai_suitcase_changed`
+  viene dalla copia sul telefono senza controllo del viaggio; dopo un
+  cambio di date o tappe le fasce possono essere quelle vecchie. Da
+  sistemare quando servirà leggerle davvero.
+- **Limite noto, accettato il 9 nov**: ogni scrittura della valigia rilegge
+  le schede di tutto l'armadio (pochi ms); da ottimizzare se si nota.
 
 ## Avvisi su Telegram
 
