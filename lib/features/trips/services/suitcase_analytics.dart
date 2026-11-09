@@ -186,14 +186,14 @@ Map<String, String> subCategoryByIdOf(List<ItemModel> items) {
 
 /// Come è finito un tentativo di generare la valigia, per
 /// `ai_suitcase_finished`.
-String packOutcomeOf(Object? failure, {required bool cancelled}) {
-  if (cancelled) return 'cancelled';
+String packOutcomeOf(Object? failure) {
   return switch (failure) {
     null => 'ok',
     PackTripCreditsException() => 'credits',
     PackTripEmptyWardrobeException() => 'empty_wardrobe',
     PackTripWardrobeTooLargeException() => 'wardrobe_too_large',
     PackTripNetworkException() => 'network',
+    PackTripInvalidResponseException() => 'error',
     _ => 'error',
   };
 }

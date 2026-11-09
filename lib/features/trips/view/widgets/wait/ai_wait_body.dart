@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
-import '../../../../../shared/widgets/ds_text_button.dart';
 import '../../../../../shared/widgets/packlog_gradient.dart';
 import '../../../model/pack_trip_job.dart';
 import 'wait_step_row.dart';
@@ -20,18 +19,12 @@ class AiWaitBody extends ConsumerWidget {
     required this.tripId,
     required this.steps,
     required this.cardKey,
-    required this.onCancel,
-    this.canCancel = true,
   });
 
   final PackTripJob job;
   final String tripId;
   final WaitStepSequence? steps;
   final GlobalKey cardKey;
-  final VoidCallback onCancel;
-
-  /// Falso quando la valigia è arrivata: "Annulla" non serve più e sfuma.
-  final bool canCancel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -108,25 +101,14 @@ class AiWaitBody extends ConsumerWidget {
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
-            ],
-          ),
-        ),
-        Center(
-          child: IgnorePointer(
-            ignoring: !canCancel,
-            child: ExcludeSemantics(
-              excluding: !canCancel,
-              child: AnimatedOpacity(
-                key: const Key('ai_wait_cancel'),
-                duration: AppMotion.medium,
-                curve: AppMotion.standard,
-                opacity: canCancel ? 1 : 0,
-                child: DsTextButton(
-                  onPressed: onCancel,
-                  label: 'common.cancel'.tr(),
+              SizedBox(height: context.spacingSm),
+              Text(
+                'trips.ai.wait.stay'.tr(),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
-            ),
+            ],
           ),
         ),
         SizedBox(height: context.spacingXl),

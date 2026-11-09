@@ -223,16 +223,31 @@ Scan:
 ### 5. Viaggio
 - `first_trip_started` — SPOSTATO.
 - `trip_created` {trip_id, is_first_trip, **trip_number**,
-  **days_to_departure**} — ARRICCHITO (domanda 15, L).
+  **days_to_departure**, **source**} — ARRICCHITO (domanda 15, L).
+  `source`: `new` (viaggio da zero) | `reuse` (da Riusa). Serve perché Riusa
+  non manda più `trip_duplicated`: ora è un passo 1 precompilato e il viaggio
+  nasce con `addTrip`. Assente se il viaggio non nasce dal passo 1.
 - `trip_updated`, `trip_deleted`, `trip_duplicated`, `trip_saved_toggled`
   — C'È GIÀ.
 
 ### 6. Valigia AI: generazione
-`ai_suitcase_finished` — NUOVO. Parte alla fine dell'attesa, sempre.
+`ai_suitcase_finished` — NUOVO. Parte alla fine di ogni tentativo, dal
+lavoro AI (`aiPackingRunProvider`) e non dalla pagina d'attesa: esce anche se
+l'utente ha lasciato la pagina. Una volta per tentativo, anche per i
+"Riprova".
 Domande 1, 3, 5, 12; E, F, L, M.
 - `outcome`: ok | credits | empty_wardrobe | wardrobe_too_large | network |
-  error | cancelled. `error` va anche in Sentry come oggi.
-- `duration_ms`
+  error | save_failed. Niente più `cancelled`: l'attesa non ha Annulla.
+  `network` include il timeout (90 s). `error` include la risposta 200
+  illeggibile. `save_failed`: la risposta è arrivata ma non si è salvata.
+  `error` e `save_failed` vanno anche in Sentry (il salvataggio fallito è un
+  errore silenzioso per l'utente); `network` no.
+- `duration_ms`: misurata dal lavoro, dalla partenza all'esito (salvataggio
+  compreso).
+- `left_wait` (bool): la pagina d'attesa era già staccata quando è arrivata
+  la valigia o l'errore.
+- `retry_save` (bool, solo se true): è il solo salvataggio rifatto dopo un
+  `save_failed`; la generazione non si rifà e non ha un secondo evento.
 - `trip_id`, `nights`, `stops`, `is_regeneration`, `days_to_departure`
 - `wardrobe_items`, `wardrobe_with_metadata`
 - `wardrobe_by_category`: conteggi per categoria come proprietà piatte
@@ -241,6 +256,8 @@ Domande 1, 3, 5, 12; E, F, L, M.
 - `proposal_items`, `slots_count` (valigie sospette anche se "ok")
 - `setup_changed`: risposte cambiate dal giro precedente (activities,
   stays, washer, luggage), solo per le rigenerazioni.
+- Con `outcome` = credits parte anche `ai_limit_reached` (`feature:
+  suitcase`).
 - Contesto del viaggio (vedi sotto).
 
 - `first_suitcase_generated` {slots_important, slots_proposed,
@@ -345,8 +362,8 @@ Come il catalogo è diventato codice, dove si discosta e perché:
 - **Meteo nel contesto di `ai_suitcase_changed`**: viene dalla copia salvata
   sul telefono. Il provider del meteo dipende dai viaggi, quindi leggerlo
   da `TripNotifier` crea un ciclo. Se la copia manca, l'evento parte senza
-  clima. `ai_suitcase_finished` invece legge il meteo già caricato nella
-  pagina.
+  clima. `ai_suitcase_finished` invece legge il meteo già caricato (se non
+  è caricato, parte senza clima: il lavoro non avvia richieste).
 - **Fasce di temperatura**: `lt5`, `5_15`, `15_21`, `21_26`, `gte26` (soglia
   21 = capi estivi, scelta dubbia).
 - **Sentry**: ora non riceve più nemmeno i 429 e gli errori di rete dello

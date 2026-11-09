@@ -351,6 +351,7 @@ GoRouter appRouter(Ref ref) {
           child: NewTripScreen(
             aiIntent: state.uri.queryParameters['ai'] == '1',
             firstRun: state.uri.queryParameters['first'] == '1',
+            reuseFromId: state.uri.queryParameters['reuseFrom'],
           ),
         ),
       ),
@@ -364,10 +365,7 @@ GoRouter appRouter(Ref ref) {
             return _ErrorScreen(message: 'common.content_unavailable'.tr());
           }
           // Stessa pagina del nuovo viaggio, in modifica.
-          return NewTripScreen(
-            tripId: id,
-            discardOnExit: state.uri.queryParameters['reuse'] == '1',
-          );
+          return NewTripScreen(tripId: id);
         },
       ),
       GoRoute(
@@ -383,7 +381,6 @@ GoRouter appRouter(Ref ref) {
             tripId: id,
             fromNewTrip: state.uri.queryParameters['from'] == 'new',
             startAi: state.uri.queryParameters['ai'] == '1',
-            firstRun: state.uri.queryParameters['first'] == '1',
           );
         },
       ),
@@ -404,17 +401,10 @@ GoRouter appRouter(Ref ref) {
         },
       ),
       GoRoute(
-        path: '/trips/:id/ai-packing',
+        path: '/ai-packing',
         name: 'trip-ai-packing',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
-          final id = state.pathParameters['id'];
-          final job = state.extra;
-          if (id == null || id.isEmpty || job is! PackTripJob) {
-            return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
-          }
-          return AiPackingWaitScreen(tripId: id, job: job);
-        },
+        builder: (context, state) => const AiPackingWaitScreen(),
       ),
       GoRoute(
         path: '/dev/ds-showcase',

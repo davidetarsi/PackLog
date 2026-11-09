@@ -12,6 +12,7 @@ import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/providers/trip_provider.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
+import 'package:pack_log/features/trips/services/ai_suitcase_adoption.dart';
 
 /// Mock implementation of TripRepository for testing.
 class MockTripRepository extends Mock implements TripRepository {}
@@ -779,40 +780,6 @@ void main() {
     );
   });
 
-  group('TripNotifier - reuseTrip', () {
-    test(
-      'calls repository.reuseTrip, returns the new id and tracks duplicate analytics',
-      () async {
-        final existingTrip = TripModel(
-          id: 't1',
-          name: 'Existing Trip',
-          items: const [],
-          luggages: const [],
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
-
-        when(
-          () => mockRepository.getAllTrips(),
-        ).thenAnswer((_) async => [existingTrip]);
-        when(
-          () => mockRepository.reuseTrip('t1'),
-        ).thenAnswer((_) async => 'new-trip-id');
-
-        // Prime the notifier's initial state.
-        await container.read(tripNotifierProvider.future);
-
-        final newId = await container
-            .read(tripNotifierProvider.notifier)
-            .reuseTrip('t1');
-
-        expect(newId, 'new-trip-id');
-        verify(() => mockRepository.reuseTrip('t1')).called(1);
-        verify(() => mockAnalytics.trackTripDuplicated()).called(1);
-      },
-    );
-  });
-
   group('TripNotifier - eventi della valigia AI', () {
     const reason = AiReason(code: 'base', label: 'Base', sentence: 'Serve.');
 
@@ -1045,6 +1012,65 @@ void main() {
       );
       verify(
         () => mockAnalytics.trackAiSlotRemoved(type: 'calze', level: 'useful'),
+      ).called(1);
+    });
+
+    // Il primo salvataggio della valigia fatto dal lavoro AI (aggiunta di un
+    // viaggio nuovo, Rigenera, o l'update di un id già salvato) non è una
+    // modifica dell'utente.
+    test('adoption_does_not_emit_suitcase_changed', () async {
+      ItemModel house(String id) => ItemModel(
+        id: id,
+        houseId: 'h1',
+        name: 'capo $id',
+        category: ItemCategory.vestiti,
+        quantity: 2,
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+      final houseItems = [house('A'), house('B')];
+      const setup = AiPackingSetup(houseId: 'h1');
+      final fresh = result(DateTime(2026, 11, 9));
+
+      // Rigenera: la valigia di prima ha un'altra proposta.
+      await load(suitcase);
+      final regenerated = adoptedTrip(
+        trip: suitcase,
+        proposal: fresh,
+        setup: setup,
+        houseItems: houseItems,
+      );
+      await notifier().updateTrip(regenerated);
+
+      // Guardia "id già esistente": lo stesso viaggio si riscrive uguale.
+      await notifier().updateTrip(regenerated);
+
+      // Viaggio nuovo: arriva con addTrip.
+      final newTrip = TripModel(
+        id: 't2',
+        name: 'Nuovo',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+      when(() => mockRepository.addTrip(any())).thenAnswer((_) async {});
+      await notifier().addTrip(
+        adoptedTrip(
+          trip: newTrip,
+          proposal: fresh,
+          setup: setup,
+          houseItems: houseItems,
+        ),
+        source: 'new',
+      );
+
+      await verifyNoChange();
+      verify(
+        () => mockAnalytics.trackTripCreated(
+          tripId: 't2',
+          totalTrips: any(named: 'totalTrips'),
+          daysToDeparture: any(named: 'daysToDeparture'),
+          source: 'new',
+        ),
       ).called(1);
     });
   });

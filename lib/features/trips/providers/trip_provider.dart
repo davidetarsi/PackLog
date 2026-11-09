@@ -100,7 +100,9 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
   // CRUD
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Future<void> addTrip(TripModel model) => mutate(
+  /// [source] dice da dove nasce il viaggio (`'new'` | `'reuse'`) e va solo
+  /// nell'evento `trip_created`.
+  Future<void> addTrip(TripModel model, {String? source}) => mutate(
     operation: () => _repo.addTrip(model),
     reload: _repo.getAllTrips,
     rethrowOnly: true,
@@ -108,6 +110,7 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
       tripId: model.id,
       totalTrips: trips.length,
       daysToDeparture: daysToDeparture(model.departureDateTime, DateTime.now()),
+      source: source,
     ),
   );
 
@@ -438,23 +441,6 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
           tripId,
           nameSuffix: nameSuffix ?? ' (Copia)',
         );
-      },
-      reload: _repo.getAllTrips,
-      rethrowOnly: true,
-      onSuccess: (_) => _analytics.trackTripDuplicated(),
-    );
-    return newTripId;
-  }
-
-  /// Riusa un viaggio: crea una copia senza date, con tappe, oggetti
-  /// (non spuntati) e bagagli.
-  ///
-  /// Returns: ID del nuovo viaggio creato.
-  Future<String> reuseTrip(String tripId) async {
-    late String newTripId;
-    await mutate(
-      operation: () async {
-        newTripId = await _repo.reuseTrip(tripId);
       },
       reload: _repo.getAllTrips,
       rethrowOnly: true,

@@ -284,32 +284,23 @@ void main() {
 
   group('packOutcomeOf', () {
     test('un esito per ogni modo di finire', () {
-      expect(packOutcomeOf(null, cancelled: false), 'ok');
-      expect(packOutcomeOf(null, cancelled: true), 'cancelled');
+      expect(packOutcomeOf(null), 'ok');
+      expect(packOutcomeOf(const PackTripCreditsException()), 'credits');
       expect(
-        packOutcomeOf(const PackTripCreditsException(), cancelled: false),
-        'credits',
-      );
-      expect(
-        packOutcomeOf(const PackTripEmptyWardrobeException(), cancelled: false),
+        packOutcomeOf(const PackTripEmptyWardrobeException()),
         'empty_wardrobe',
       );
       expect(
-        packOutcomeOf(
-          const PackTripWardrobeTooLargeException(),
-          cancelled: false,
-        ),
+        packOutcomeOf(const PackTripWardrobeTooLargeException()),
         'wardrobe_too_large',
       );
+      expect(packOutcomeOf(const PackTripNetworkException('rete')), 'network');
+      expect(packOutcomeOf(const PackTripException('x')), 'error');
       expect(
-        packOutcomeOf(const PackTripNetworkException('rete'), cancelled: false),
-        'network',
-      );
-      expect(
-        packOutcomeOf(const PackTripException('x'), cancelled: false),
+        packOutcomeOf(const PackTripInvalidResponseException('x')),
         'error',
       );
-      expect(packOutcomeOf(StateError('x'), cancelled: false), 'error');
+      expect(packOutcomeOf(StateError('x')), 'error');
     });
   });
 

@@ -478,4 +478,72 @@ void main() {
       expect(draft.destination?.name, 'Baita');
     });
   });
+
+  group('TripDraft.reuseOf', () {
+    TripModel past() => TripModel(
+      id: 'past',
+      name: 'Estate in Portogallo',
+      departureDateTime: d(1),
+      returnDateTime: d(10),
+      destinationLocation: LocationSuggestionModel(
+        placeId: 'lisbona',
+        displayName: 'Lisbona, Portogallo',
+        city: 'Lisbona',
+        lat: 38.72,
+        lon: -9.14,
+      ),
+      legs: [
+        TripLeg(
+          id: 'l1',
+          locationDisplayName: 'Porto, Portogallo',
+          from: d(5),
+          to: d(10),
+          lat: 41.15,
+          lon: -8.61,
+        ),
+      ],
+      transports: const ['plane', 'train'],
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+    );
+
+    test('trip_draft_reuse_of_drops_dates', () {
+      final draft = TripDraft.reuseOf(past());
+
+      expect(draft.departure, isNull);
+      expect(draft.returnDate, isNull);
+      expect(draft.hasDates, isFalse);
+      expect(draft.stops, isEmpty);
+      expect(draft.canSave, isFalse);
+      expect(draft.destination?.shortName, 'Lisbona');
+      expect(draft.name, 'Estate in Portogallo');
+      expect(draft.nameEdited, isTrue);
+      expect(draft.transports, ['plane', 'train']);
+      expect(draft.pendingStops.map((p) => p.name), ['Porto, Portogallo']);
+    });
+
+    test('scegliendo le date le tappe tornano, a zero notti da sistemare', () {
+      final draft = TripDraft.reuseOf(past()).withFirstDates(d(20), d(24));
+
+      expect(draft.stops.map((s) => s.place.name), [
+        'Lisbona, Portogallo',
+        'Porto, Portogallo',
+      ]);
+      expect(draft.pendingStops, isEmpty);
+      expect(draft.stopsWithoutNights, {1});
+      expect(draft.canSave, isFalse);
+
+      final fixed = draft.updateStop(1, end: d(27));
+      expect(fixed.canSave, isTrue);
+      final trip = fixed.toTripModel(id: 'new', now: DateTime(2026));
+      expect(trip.legs.single.from, d(24));
+      expect(trip.legs.single.to, d(27));
+    });
+
+    test('togliere la meta lascia andare anche le tappe in attesa', () {
+      final draft = TripDraft.reuseOf(past()).clearDestination();
+
+      expect(draft.pendingStops, isEmpty);
+    });
+  });
 }

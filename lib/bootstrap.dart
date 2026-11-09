@@ -63,6 +63,7 @@ import 'core/monitoring/app_error_observer.dart';
 import 'core/monitoring/bootstrap_error_buffer.dart';
 import 'core/monitoring/monitoring_service.dart';
 import 'core/routing/app_router.dart';
+import 'features/trips/view/widgets/wait/ai_packing_run_listener.dart';
 import 'core/sync/sync_provider.dart';
 import 'features/onboarding/providers/onboarding_status_provider.dart';
 import 'shared/config/app_config.dart';
@@ -555,6 +556,9 @@ class MyApp extends ConsumerWidget {
         darkTheme: AppTheme.dark,
         themeMode: themeMode,
         routerConfig: routerConfig,
+        // L'avviso della valigia AI vive sopra tutte le pagine.
+        builder: (context, child) =>
+            AiPackingRunListener(child: child ?? const SizedBox.shrink()),
         localizationsDelegates: context.localizationDelegates,
         supportedLocales: context.supportedLocales,
         locale: context.locale,

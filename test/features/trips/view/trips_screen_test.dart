@@ -234,7 +234,6 @@ void main() {
               children: [
                 const Text('edit-info'),
                 Text('path=${state.uri.path}'),
-                Text('reuse=${state.uri.queryParameters['reuse']}'),
               ],
             ),
           ),
@@ -246,7 +245,14 @@ void main() {
         ),
         GoRoute(
           path: '/new-trip',
-          builder: (_, _) => const Scaffold(body: Text('new-trip')),
+          builder: (_, state) => Scaffold(
+            body: Column(
+              children: [
+                const Text('new-trip'),
+                Text('reuseFrom=${state.uri.queryParameters['reuseFrom']}'),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -491,20 +497,19 @@ void main() {
       expect(find.byKey(const Key('album_postcard_active')), findsNothing);
     });
 
-    testWidgets('Riusa chiama reuseTrip e porta a edit-info con reuse=1', (
+    testWidgets('Riusa apre il passo 1 con reuseFrom e non salva niente', (
       tester,
     ) async {
-      when(() => tripRepo.reuseTrip(any())).thenAnswer((_) async => 'copy-1');
       await pumpScreen(tester, trips: [_past]);
 
       await tapFilter(tester, 'Passati');
       await tester.tap(find.byKey(const Key('album_reuse_past')));
       await tester.pumpAndSettle();
 
-      verify(() => tripRepo.reuseTrip('past')).called(1);
-      expect(find.text('edit-info'), findsOneWidget);
-      expect(find.text('path=/trips/copy-1/edit-info'), findsOneWidget);
-      expect(find.text('reuse=1'), findsOneWidget);
+      expect(find.text('new-trip'), findsOneWidget);
+      expect(find.text('reuseFrom=past'), findsOneWidget);
+      verifyNever(() => tripRepo.addTrip(any()));
+      verifyNever(() => tripRepo.duplicateTrip(any()));
     });
 
     testWidgets(

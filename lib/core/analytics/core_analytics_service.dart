@@ -181,6 +181,7 @@ class CoreAnalyticsService {
     required String tripId,
     required int totalTrips,
     int? daysToDeparture,
+    String? source,
   }) {
     _safeLogEvent(
       'trip_created',
@@ -189,6 +190,7 @@ class CoreAnalyticsService {
         'is_first_trip': totalTrips == 1,
         'trip_number': totalTrips,
         'days_to_departure': ?daysToDeparture,
+        'source': ?source,
       },
     );
   }
@@ -211,9 +213,10 @@ class CoreAnalyticsService {
     );
   }
 
-  /// Un tentativo di generare la valigia è finito (una volta per tentativo,
-  /// anche annullato). `outcome`: `ok`, `credits`, `empty_wardrobe`,
-  /// `wardrobe_too_large`, `network`, `error`, `cancelled`. [properties]
+  /// Un tentativo di generare la valigia è finito (una volta per tentativo).
+  /// `outcome`: `ok`, `credits`, `empty_wardrobe`, `wardrobe_too_large`,
+  /// `network`, `error`, `save_failed` (la risposta è arrivata ma non si è
+  /// salvata). [properties]
   /// sono già piatte: viaggio, armadio, contesto.
   void trackAiSuitcaseFinished({
     required String outcome,

@@ -2,7 +2,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/monitoring/monitoring_service.dart';
 import '../../houses/providers/house_provider.dart';
 import '../model/trip_model.dart';
 import '../model/trip_postcard.dart';
@@ -10,7 +9,6 @@ import '../providers/to_buy_provider.dart';
 import '../providers/trip_provider.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/entity_action_handler.dart';
-import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/app_pill_tab.dart';
 import '../../../shared/widgets/ds_text_button.dart';
@@ -114,27 +112,10 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     );
   }
 
-  /// Riusa il viaggio: copia senza date, poi apre la modifica in modalità
-  /// riuso. Se l'utente esce senza salvare, la copia viene eliminata dalla
-  /// rotta di modifica.
-  Future<void> _handleReuse(TripModel trip) async {
-    // Letto prima dell'await: il catch può arrivare dopo il dispose.
-    final monitoring = ref.read(monitoringServiceProvider);
-    try {
-      final newId = await ref
-          .read(tripNotifierProvider.notifier)
-          .reuseTrip(trip.id);
-      if (!mounted) return;
-      context.push('/trips/$newId/edit-info?reuse=1');
-    } catch (error, stack) {
-      monitoring.captureException(error, stackTrace: stack);
-      if (!mounted) return;
-      AppSnackBar.showError(
-        context,
-        'errors.duplicate_trip_failed'.tr(args: [trip.name]),
-      );
-    }
-  }
+  /// Riusa il viaggio: apre il passo 1 di un viaggio nuovo, già compilato.
+  /// Non si salva niente finché l'utente non sceglie una strada.
+  void _handleReuse(TripModel trip) =>
+      context.push('/new-trip?reuseFrom=${trip.id}');
 
   void _onPileCta(TripModel trip, PostcardCta cta) {
     if (cta == PostcardCta.prepare && !(trip.aiResult?.hasSlots ?? false)) {

@@ -253,6 +253,38 @@ void main() {
       );
     });
 
+    test('generate_times_out_as_network_error', () async {
+      final service = PackTripService(
+        // Una connessione che non risponde mai.
+        client: () => MockClient((_) => Completer<http.Response>().future),
+        token: () => 'jwt',
+        timeout: const Duration(milliseconds: 50),
+      );
+
+      await expectLater(
+        service.generate(_body, houseId: _houseId),
+        throwsA(isA<PackTripNetworkException>()),
+      );
+    });
+
+    test('il timeout di produzione è di 90 secondi', () {
+      expect(kPackTripTimeout, const Duration(seconds: 90));
+    });
+
+    test(
+      'risposta 200 illeggibile: PackTripInvalidResponseException',
+      () async {
+        final service = _service(
+          () => MockClient((_) async => http.Response('non json', 200)),
+        );
+
+        await expectLater(
+          service.generate(_body, houseId: _houseId),
+          throwsA(isA<PackTripInvalidResponseException>()),
+        );
+      },
+    );
+
     test(
       'cancel: la generate in corso solleva PackTripException(annullata)',
       () async {

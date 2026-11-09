@@ -86,6 +86,24 @@ void main() {
     });
   });
 
+  group('trip_created source', () {
+    test('trackTripCreated porta source', () async {
+      service.trackTripCreated(tripId: 't', totalTrips: 1, source: 'reuse');
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'trip_created',
+          properties: {
+            'trip_id': 't',
+            'is_first_trip': true,
+            'trip_number': 1,
+            'source': 'reuse',
+          },
+        ),
+      ).called(1);
+    });
+  });
+
   group('house events', () {
     test('trackHouseDeleted logs house_deleted', () async {
       service.trackHouseDeleted();

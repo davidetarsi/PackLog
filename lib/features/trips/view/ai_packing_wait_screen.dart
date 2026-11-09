@@ -1,21 +1,11 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/analytics/core_analytics_service.dart';
-import '../../../core/monitoring/monitoring_service.dart';
 import '../../../shared/theme/app_spacing.dart';
-import '../../items/providers/item_provider.dart';
-import '../../profile/providers/gpt_usage_provider.dart';
-import '../model/ai_packing.dart';
-import '../model/pack_trip_job.dart';
-import '../providers/trip_provider.dart';
-import '../providers/trip_weather_provider.dart';
-import '../services/pack_trip_service.dart';
+import '../model/ai_packing_request.dart';
+import '../providers/ai_packing_run_provider.dart';
 import '../services/pack_trip_timing.dart';
-import '../services/suitcase_analytics.dart';
 import 'widgets/wait/ai_wait_body.dart';
 import 'widgets/wait/ai_wait_failure.dart';
 import 'widgets/wait/wait_handoff.dart';
@@ -23,18 +13,13 @@ import 'widgets/wait/wait_step_sequence.dart';
 
 export '../model/pack_trip_job.dart';
 
-/// Pagina intera mentre `pack-trip` prepara la valigia. Alla risposta i passi
-/// finiscono il racconto, la card si apre e la pagina torna con il
-/// [AiPackingResult]; "Annulla" torna con null; un errore mostra la sua uscita.
+/// Pagina intera mentre il lavoro AI ([aiPackingRunProvider]) prepara la
+/// valigia. Non chiama niente: mostra lo stato. Indietro la stacca e il
+/// lavoro continua; all'arrivo i passi finiscono il racconto, la card si apre
+/// e la pagina va al dettaglio del viaggio in revisione; un errore mostra la
+/// sua uscita.
 class AiPackingWaitScreen extends ConsumerStatefulWidget {
-  const AiPackingWaitScreen({
-    super.key,
-    required this.tripId,
-    required this.job,
-  });
-
-  final String tripId;
-  final PackTripJob job;
+  const AiPackingWaitScreen({super.key});
 
   @override
   ConsumerState<AiPackingWaitScreen> createState() =>
@@ -42,85 +27,74 @@ class AiPackingWaitScreen extends ConsumerStatefulWidget {
 }
 
 class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
-  late final PackTripService _service;
+  late final AiPackingRun _run;
   final _cardKey = GlobalKey();
   WaitStepSequence? _steps;
   Rect? _handoff;
 
-  /// Errore da mostrare; null mentre la richiesta è in corso.
-  Object? _failure;
+  /// L'ultima richiesta vista: la pagina resta leggibile anche dopo il
+  /// [AiRunDone], quando lo stato non la porta più.
+  AiPackingRequest? _request;
 
-  /// La valigia è arrivata.
-  AiPackingResult? _result;
+  /// La valigia è arrivata, sul viaggio con questo id.
+  String? _doneTripId;
 
-  /// Un'uscita è già partita: nessun'altra può fare pop (chiuderebbe il chiamante).
+  /// Un'uscita è già partita: nessun'altra può navigare (due uscite
+  /// chiuderebbero anche la pagina sotto).
   bool _leaving = false;
 
-  /// Durata del tentativo in corso, anche per l'annullamento.
-  final _timer = Stopwatch();
+  /// I tempi dei passi si stanno caricando.
+  bool _loadingSteps = false;
 
   @override
   void initState() {
     super.initState();
-    _service = ref.read(packTripServiceProvider);
-    _generate();
+    _run = ref.read(aiPackingRunProvider.notifier)..attach();
+    final state = ref.read(aiPackingRunProvider);
+    _request = _requestOf(state);
+    // Il lavoro può essere già finito prima che la pagina si veda.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _sync(ref.read(aiPackingRunProvider));
+    });
   }
 
   @override
   void dispose() {
     _steps?.dispose();
+    _run.detach();
     super.dispose();
   }
 
-  Future<void> _generate() async {
-    _steps?.dispose();
-    _steps = null;
-    setState(() => _failure = null);
-    _timer
-      ..reset()
-      ..start();
-    final started = PackTripTiming.load().then(_startSteps);
+  AiPackingRequest? _requestOf(AiPackingRunState state) => switch (state) {
+    AiRunRunning(:final request) => request,
+    AiRunFailed(:final request) => request,
+    _ => null,
+  };
 
-    AiPackingResult? result;
-    Object? failure;
-    StackTrace? failureStack;
-    try {
-      result = await _service.generate(
-        widget.job.body,
-        houseId: widget.job.houseId,
-      );
-    } catch (error, stack) {
-      failure = error;
-      failureStack = stack;
+  void _sync(AiPackingRunState state) {
+    if (_leaving) return;
+    switch (state) {
+      case AiRunRunning(:final request):
+        _request = request;
+        _startSteps();
+      case AiRunFailed(:final request):
+        _request = request;
+        _stopSteps();
+      case AiRunDone(:final tripId):
+        _arrived(tripId);
+      case AiRunIdle():
+        // Niente da mostrare (lavoro azzerato): si lascia la pagina.
+        if (_doneTripId == null) _close(clear: false);
     }
-    await started;
-
-    // Annullata o già in uscita: la pagina non deve più fare niente (un
-    // annullamento ha già registrato il suo esito).
-    if (_leaving || !mounted) return;
-    ref.invalidate(gptUsageProvider);
-    _trackFinished(packOutcomeOf(failure, cancelled: false), result);
-
-    if (result == null) {
-      // Offline e casi previsti (crediti, armadio) non sono guasti da segnalare.
-      if (failure is PackTripException &&
-          failure is! PackTripNetworkException) {
-        ref
-            .read(monitoringServiceProvider)
-            .captureException(failure, stackTrace: failureStack);
-      }
-      _steps?.dispose();
-      _steps = null;
-      setState(() => _failure = failure);
-      return;
-    }
-    unawaited(PackTripTiming.record(_timer.elapsed));
-    _arrived(result);
   }
 
-  void _startSteps(int averageMs) {
-    if (!mounted || _leaving) return;
-    _steps?.dispose();
+  Future<void> _startSteps() async {
+    if (_steps != null || _loadingSteps) return;
+    _loadingSteps = true;
+    final averageMs = await PackTripTiming.load();
+    _loadingSteps = false;
+    if (!mounted || _leaving || _steps != null || _doneTripId != null) return;
+    if (ref.read(aiPackingRunProvider) is! AiRunRunning) return;
     _steps =
         WaitStepSequence(
             stepDuration: Duration(milliseconds: averageMs ~/ kWaitSteps),
@@ -128,26 +102,29 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
           )
           ..addListener(() => setState(() {}))
           ..start();
+    setState(() {});
+  }
+
+  void _stopSteps() {
+    _steps?.dispose();
+    setState(() => _steps = null);
   }
 
   /// Valigia pronta: i passi finiscono il racconto; senza animazioni, via subito.
-  void _arrived(AiPackingResult result) {
-    setState(() => _result = result);
+  void _arrived(String tripId) {
+    if (_doneTripId != null) return;
+    setState(() => _doneTripId = tripId);
     final steps = _steps;
     if (steps == null || MediaQuery.disableAnimationsOf(context)) {
-      return _exit(result);
+      return _openReview();
     }
     steps.arrive();
   }
 
-  void _exit(AiPackingResult result) =>
-      _leave(() => context.pop<AiPackingResult>(result));
-
   void _openOnSuitcase() {
-    final result = _result;
-    if (result == null || _leaving || !mounted) return;
+    if (_doneTripId == null || _leaving || !mounted) return;
     final box = _cardKey.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return _exit(result);
+    if (box == null || !box.hasSize) return _openReview();
     setState(() => _handoff = box.localToGlobal(Offset.zero) & box.size);
   }
 
@@ -159,66 +136,40 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
     exit();
   }
 
-  void _cancel() {
-    if (_result != null) return;
-    // Annullata mentre la richiesta era in corso; dalla pagina d'errore
-    // l'esito è già stato registrato.
-    if (_failure == null && !_leaving) _trackFinished('cancelled', null);
+  /// Al dettaglio in revisione, poi il lavoro si azzera.
+  void _openReview() {
+    final tripId = _doneTripId;
+    if (tripId == null) return;
     _leave(() {
-      _service.cancel();
-      ref.invalidate(gptUsageProvider);
-      context.pop();
+      context.go('/trips/$tripId?review=1');
+      _run.clear();
     });
   }
 
-  /// `ai_suitcase_finished`, una volta per tentativo. Armadio e meteo solo
-  /// se già caricati: qui non si avviano richieste.
-  void _trackFinished(String outcome, AiPackingResult? result) {
-    _timer.stop();
-    final analytics = ref.read(coreAnalyticsServiceProvider);
-    if (outcome == 'credits') {
-      analytics.trackAiLimitReached(feature: 'suitcase');
-    }
-
-    final job = widget.job;
-    final trip = ref
-        .read(tripNotifierProvider)
-        .valueOrNull
-        ?.where((t) => t.id == widget.tripId)
-        .firstOrNull;
-    final items = ref.exists(itemNotifierProvider(job.houseId))
-        ? ref.read(itemNotifierProvider(job.houseId)).valueOrNull
-        : null;
-    final weatherState = ref.exists(tripWeatherNotifierProvider(widget.tripId))
-        ? ref.read(tripWeatherNotifierProvider(widget.tripId)).valueOrNull
-        : null;
-    final days = daysToDeparture(trip?.departureDateTime, DateTime.now());
-    analytics.trackAiSuitcaseFinished(
-      outcome: outcome,
-      durationMs: _timer.elapsedMilliseconds,
-      tripId: widget.tripId,
-      properties: {
-        'nights': job.nights,
-        'stops': trip?.aiSetup?.stops.length ?? 0,
-        'is_regeneration': job.isRegeneration,
-        'setup_changed': job.setupChanged,
-        'days_to_departure': ?days,
-        if (result != null) 'proposal_items': result.proposal.length,
-        if (result != null) 'slots_count': result.slots?.length ?? 0,
-        ...wardrobeStats(items ?? const []),
-        if (trip != null)
-          ...tripContext(
-            trip,
-            luggage: job.luggage,
-            weather: weatherState is TripWeatherReady
-                ? weatherState.weather
-                : null,
-          ),
-      },
+  /// Indietro in attesa: la pagina si stacca e il lavoro continua; ad
+  /// arrivare ci pensa l'avviso globale. Il passo 1 che ha avviato il lavoro
+  /// si chiude con la pagina (niente è salvato, i dati sono nel lavoro): si
+  /// va ai Viaggi, o al dettaglio se è una Rigenera.
+  void _stay() => _leave(() {
+    _run.detach();
+    final request = _request;
+    context.go(
+      request == null || request.isNew ? '/trips' : '/trips/${request.trip.id}',
     );
-  }
+  });
 
-  void _leaveFor(String location) => _leave(() {
+  /// Chiude un errore (o una pagina senza lavoro): [clear] azzera il lavoro.
+  void _close({bool clear = true}) => _leave(() {
+    if (clear) _run.clear();
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/trips');
+    }
+  });
+
+  void _goTo(String location) => _leave(() {
+    _run.clear();
     final router = GoRouter.of(context);
     context.pop();
     router.push(location);
@@ -226,46 +177,55 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final failure = _failure;
+    ref.listen(aiPackingRunProvider, (_, next) => _sync(next));
+    final state = ref.watch(aiPackingRunProvider);
+    final request = _requestOf(state) ?? _request;
+    final failed = state is AiRunFailed;
+
     return PopScope(
-      // Indietro passa dalla porta d'uscita: in attesa = Annulla, in errore = Chiudi.
+      // Indietro passa dalla porta d'uscita: in attesa si stacca, a valigia
+      // arrivata apre la revisione, in errore chiude.
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        if (failure == null) {
-          _cancel();
+        if (state is AiRunFailed) {
+          _close();
+        } else if (_doneTripId != null) {
+          _openReview();
         } else {
-          _leave(() => context.pop());
+          _stay();
         }
       },
       child: Scaffold(
-        body: Stack(
-          children: [
-            SafeArea(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: context.spacingLg),
-                child: failure == null
-                    ? AiWaitBody(
-                        job: widget.job,
-                        tripId: widget.tripId,
-                        steps: _steps,
-                        cardKey: _cardKey,
-                        onCancel: _cancel,
-                        canCancel: _result == null,
-                      )
-                    : AiWaitFailure(
-                        failure: failure,
-                        houseId: widget.job.houseId,
-                        onRetry: _generate,
-                        onClose: () => _leave(() => context.pop()),
-                        onGoTo: _leaveFor,
+        body: request == null
+            ? const SizedBox.shrink()
+            : Stack(
+                children: [
+                  SafeArea(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: context.spacingLg,
                       ),
+                      child: failed
+                          ? AiWaitFailure(
+                              failure: state.error,
+                              houseId: request.job.houseId,
+                              onRetry: _run.retry,
+                              onClose: _close,
+                              onGoTo: _goTo,
+                            )
+                          : AiWaitBody(
+                              job: request.job,
+                              tripId: request.trip.id,
+                              steps: _steps,
+                              cardKey: _cardKey,
+                            ),
+                    ),
+                  ),
+                  if (_handoff case final from?)
+                    WaitHandoff(from: from, onDone: _openReview),
+                ],
               ),
-            ),
-            if (_handoff case final from?)
-              WaitHandoff(from: from, onDone: () => _exit(_result!)),
-          ],
-        ),
       ),
     );
   }
