@@ -18,7 +18,13 @@ import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/ai_packing_request.dart';
 import 'package:pack_log/features/trips/model/pack_trip_job.dart';
+import 'package:pack_log/features/trips/model/trip_leg.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
+import 'package:pack_log/features/trips/model/trip_weather.dart';
+import 'package:pack_log/features/trips/providers/trip_provider.dart';
+import 'package:pack_log/features/trips/providers/trip_weather_provider.dart';
+import 'package:pack_log/features/trips/services/trip_weather_service.dart';
+import 'package:pack_log/features/trips/view/widgets/pack/pack_weather.dart';
 import 'package:pack_log/features/trips/providers/ai_packing_run_provider.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/services/ai_packing_launcher.dart';
@@ -53,6 +59,31 @@ class _HangingService extends PackTripService {
   }) {
     bodies.add(body);
     return Completer<AiPackingResult>().future;
+  }
+}
+
+/// Meteo finto: conta le richieste.
+class _FakeWeather extends TripWeatherService {
+  int calls = 0;
+
+  @override
+  Future<TripWeather> fetch(TripWeatherRequest request) async {
+    calls++;
+    return TripWeather(
+      signature: request.signature,
+      fetchedAt: DateTime.now(),
+      stops: [
+        for (final stop in request.stops)
+          StopWeather(
+            name: stop.name,
+            from: stop.from,
+            to: stop.to,
+            source: WeatherSource.forecast,
+            tempMin: 3,
+            tempMax: 9,
+          ),
+      ],
+    );
   }
 }
 
@@ -102,6 +133,8 @@ void main() {
   late _HangingService service;
   late String location;
   late ProviderContainer container;
+  late List<TripModel> savedTrips;
+  late _FakeWeather weather;
   AiPackingSetup? returned;
   var called = false;
 
@@ -114,7 +147,10 @@ void main() {
     WidgetTester tester, {
     required TripModel trip,
     bool isNew = false,
+    bool saved = true,
   }) async {
+    // La cache del meteo vive nelle preferenze: ogni prova parte vuota.
+    SharedPreferences.setMockInitialValues({});
     caricaCatalogoDelRepo();
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -127,7 +163,9 @@ void main() {
     final houseRepo = _MockHouseRepository();
     final itemRepo = _MockItemRepository();
     final luggageRepo = _MockLuggageRepository();
-    when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [trip]);
+    savedTrips = saved ? [trip] : [];
+    weather = _FakeWeather();
+    when(() => tripRepo.getAllTrips()).thenAnswer((_) async => savedTrips);
     when(() => houseRepo.getAllHouses()).thenAnswer((_) async => [_milano]);
     when(() => itemRepo.getItemsByHouseId(any())).thenAnswer((_) async => []);
     when(() => luggageRepo.getAllLuggages()).thenAnswer((_) async => []);
@@ -177,6 +215,7 @@ void main() {
             (ref) => Completer<CategoryInferService>().future,
           ),
           packTripServiceProvider.overrideWithValue(service),
+          tripWeatherServiceProvider.overrideWithValue(weather),
           kitNotifierProvider('h1').overrideWith(_Kits.new),
         ],
         child: EasyLocalization(
@@ -369,5 +408,64 @@ void main() {
     expect(request.isNew, isTrue);
     expect(request.job.isRegeneration, isFalse);
     expect(request.job.setupChanged, isEmpty);
+  });
+
+  testWidgets('sheet_shows_stop_weather_for_unsaved_trip', (tester) async {
+    // La scheda meteo compare per tappa: serve un viaggio con più tappe.
+    final trip = _trip().copyWith(
+      legs: [
+        TripLeg(
+          id: 'leg-1',
+          locationDisplayName: 'Oslo, Norvegia',
+          from: _partenza.add(const Duration(days: 3)),
+          to: _partenza.add(const Duration(days: 5)),
+          lat: 59.9,
+          lon: 10.7,
+          country: 'Norvegia',
+        ),
+      ],
+    );
+    await pumpLauncher(tester, trip: trip, isNew: true, saved: false);
+    await container.read(tripNotifierProvider.future);
+    await tapStart(tester);
+
+    expect(find.byType(DsFormSheet), findsOneWidget);
+    expect(find.byType(WeatherStopCard), findsOneWidget);
+    expect(find.text('3° / 9°'), findsOneWidget);
+    // Una sola richiesta, anche con due tappe.
+    expect(weather.calls, 1);
+  });
+
+  testWidgets('new_trip_finished_has_weather_from_sheet', (tester) async {
+    await pumpLauncher(tester, trip: _trip(), isNew: true, saved: false);
+    await container.read(tripNotifierProvider.future);
+    await tapStart(tester);
+    await confirmSheet(tester);
+
+    final request =
+        (container.read(aiPackingRunProvider) as AiRunRunning).request;
+    expect(request.weather?.stops.single.tempMax, 9);
+    // Una sola richiesta, quella del foglio.
+    expect(weather.calls, 1);
+  });
+
+  testWidgets('saved_new_trip_reuses_weather_without_new_request', (
+    tester,
+  ) async {
+    final trip = _trip();
+    await pumpLauncher(tester, trip: trip, isNew: true, saved: false);
+    await container.read(tripNotifierProvider.future);
+    await tapStart(tester);
+    await confirmSheet(tester);
+    expect(weather.calls, 1);
+
+    // La valigia arriva e il viaggio si salva: il dettaglio non richiede.
+    savedTrips = [trip];
+    container.invalidate(tripNotifierProvider);
+    final state = await container.read(
+      tripWeatherNotifierProvider(trip.id).future,
+    );
+    expect(state, isA<TripWeatherReady>());
+    expect(weather.calls, 1);
   });
 }

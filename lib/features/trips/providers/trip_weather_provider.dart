@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/monitoring/monitoring_service.dart';
 import '../../houses/providers/house_provider.dart';
+import '../model/trip_model.dart';
 import '../model/trip_weather.dart';
 import '../services/trip_weather_service.dart';
 import 'trip_provider.dart';
@@ -39,7 +40,27 @@ class TripWeatherFailed extends TripWeatherState {
   const TripWeatherFailed();
 }
 
+/// Viaggi non ancora salvati per cui serve il meteo (il foglio AI sopra il
+/// passo 1 del viaggio nuovo), per id. Un viaggio salvato con lo stesso id ha
+/// sempre la precedenza.
+@Riverpod(keepAlive: true)
+class TripWeatherDrafts extends _$TripWeatherDrafts {
+  @override
+  Map<String, TripModel> build() => const {};
+
+  /// Registra la bozza: se è cambiata, il meteo di quell'id si ricalcola
+  /// (la cache vale solo per le stesse tappe e date).
+  void put(TripModel trip) {
+    if (state[trip.id] == trip) return;
+    state = {...state, trip.id: trip};
+  }
+}
+
 /// Il meteo di un viaggio, per tappa.
+///
+/// Un viaggio non salvato si registra prima con [TripWeatherDrafts.put]: è la
+/// stessa richiesta e la stessa cache di sempre, sotto l'id del viaggio, così
+/// quando il viaggio si salva il dettaglio trova il meteo già pronto.
 ///
 /// Si chiama la funzione solo se in cache non c'è un meteo fresco per lo
 /// stesso viaggio (stesse tappe e date). Resta vivo: "Avanti" del nuovo
@@ -59,7 +80,9 @@ class TripWeatherNotifier extends _$TripWeatherNotifier {
   Future<TripWeatherState> build(String tripId) async {
     final trips = await ref.watch(tripNotifierProvider.future);
     final houses = await ref.watch(houseNotifierProvider.future);
-    final trip = trips.where((t) => t.id == tripId).firstOrNull;
+    final drafts = ref.watch(tripWeatherDraftsProvider);
+    final trip =
+        trips.where((t) => t.id == tripId).firstOrNull ?? drafts[tripId];
     if (trip == null) {
       return const TripWeatherNotAvailable(WeatherUnavailable.noDates);
     }

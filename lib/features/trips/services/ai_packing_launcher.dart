@@ -20,6 +20,7 @@ import '../model/trip_model.dart';
 import '../model/trip_postcard.dart';
 import '../model/trip_weather.dart';
 import '../providers/ai_packing_run_provider.dart';
+import '../providers/trip_weather_provider.dart';
 import '../view/widgets/ai/ai_packing_sheet.dart';
 import 'ai_suitcase_adoption.dart';
 import 'trip_weather_service.dart';
@@ -74,6 +75,10 @@ Future<AiPackingSetup?> startAiPacking(
     if (!replace || !context.mounted) return null;
   }
 
+  // Un viaggio non salvato non è fra i viaggi: il meteo del foglio lo chiede
+  // sulla bozza (stessa richiesta e stessa cache di un viaggio salvato).
+  if (isNew) ref.read(tripWeatherDraftsProvider.notifier).put(trip);
+
   final setup = await showAiPackingSheet(context, trip: trip, plan: plan);
   final houseId = setup?.houseId;
   if (setup == null || houseId == null || !context.mounted) return null;
@@ -103,7 +108,7 @@ Future<AiPackingSetup?> startAiPacking(
     setupChanged: isNew ? const [] : setupChangedFields(trip.aiSetup, setup),
     luggage: luggage,
   );
-  final weather = await _cachedWeather(ref, trip.id);
+  final weather = await _weatherOf(ref, trip.id);
   if (!context.mounted) return null;
   final started = ref
       .read(aiPackingRunProvider.notifier)
@@ -145,9 +150,15 @@ Future<List<KitModel>> _kitsOf(WidgetRef ref, String houseId) async {
   }
 }
 
-/// Il meteo salvato sul telefono, senza rete. Vuoto o illeggibile: niente.
-Future<TripWeather?> _cachedWeather(WidgetRef ref, String tripId) async {
+/// Il meteo già ottenuto dal foglio, se c'è; altrimenti quello salvato sul
+/// telefono. Non avvia richieste. Vuoto o illeggibile: niente.
+Future<TripWeather?> _weatherOf(WidgetRef ref, String tripId) async {
   try {
+    final provider = tripWeatherNotifierProvider(tripId);
+    if (ref.exists(provider)) {
+      final state = ref.read(provider).valueOrNull;
+      if (state is TripWeatherReady) return state.weather;
+    }
     return await ref.read(tripWeatherCacheProvider).read(tripId);
   } catch (_) {
     return null;
