@@ -68,6 +68,10 @@ void main() {
     await app.go('/trips');
     await app.push('/trips/$kUpcomingTripId');
     await tester.ensureVisible(find.byKey(const Key('pack_manage_luggages')));
+    // Lo scorrimento di ensureVisible è animato: senza un fotogramma il tocco
+    // parte prima che il bottone sia arrivato (con il meteo giorno per giorno
+    // la pagina è più lunga e lo scorrimento più lungo).
+    await tester.pumpAndSettle();
     await app.tap(find.byKey(const Key('pack_manage_luggages')));
     return app;
   }
@@ -408,6 +412,8 @@ void main() {
       // Con dei bagagli "Nuovo bagaglio" sta dentro "Gestisci bagagli".
       expect(find.byKey(const Key('pack_new_luggage')), findsNothing);
       await tester.ensureVisible(find.byKey(const Key('pack_manage_luggages')));
+      // Come in openLuggages: il tocco aspetta la fine dello scorrimento.
+      await tester.pumpAndSettle();
       await app.tap(find.byKey(const Key('pack_manage_luggages')));
       await app.tap(find.byKey(const Key('storage_add_luggage')));
       await app.enterText(
