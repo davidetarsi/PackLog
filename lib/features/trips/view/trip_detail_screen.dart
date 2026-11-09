@@ -26,12 +26,12 @@ import '../model/trip_model.dart';
 import '../services/suitcase_analytics.dart';
 import '../providers/trip_provider.dart';
 import 'widgets/pack/pack_luggage_selector.dart';
-import 'widgets/pack/pack_luggages.dart';
 import 'widgets/ai/ai_pack_rows.dart';
 import 'widgets/ai/ai_pack_item_sheet.dart';
 import 'widgets/pack/pack_summary_line.dart';
 import 'widgets/pack/pack_weather.dart';
 import 'widgets/slots/slot_actions.dart';
+import 'widgets/slots/suitcase_progress_header.dart';
 import 'widgets/slots/slot_flights.dart';
 import 'widgets/slots/slot_edits.dart';
 import 'widgets/slots/slot_fill_flow.dart';
@@ -40,18 +40,17 @@ import 'widgets/slots/trip_items_card.dart';
 
 enum _TripMenu { edit, regenerate, duplicate, save, delete }
 
-/// La valigia del viaggio mentre la si fa: cosa c'è da portare e cosa è già
-/// dentro. È la pagina valigia (lo step 2 del nuovo viaggio) vista nel momento
-/// dopo: stessi pezzi (riepilogo, meteo, bagagli, oggetti per categoria), ma
-/// qui si spunta invece di scegliere.
+/// La valigia del viaggio: riepilogo, meteo, bagagli e oggetti per categoria,
+/// per ogni viaggio (a mano o con la proposta AI). Qui si spunta, si tolgono
+/// oggetti, si cambiano le copie e si apre la scheda dell'oggetto.
 ///
-/// Un solo bottone, "Modifica valigia", che apre la pagina valigia; modifica
-/// del viaggio, copia, salvati ed eliminazione stanno nel menu ⋮, come nel
-/// dettaglio casa.
+/// Un solo bottone, "Aggiungi oggetti", che apre la pagina di aggiunta (dopo
+/// la prima revisione AI c'è "Fatto" al suo posto); modifica del viaggio,
+/// copia, salvati ed eliminazione stanno nel menu ⋮, come nel dettaglio casa.
 ///
 /// Con una valigia AI fatta di posti ([AiPackingResult.hasSlots]) "Cosa
 /// porti" mostra anche gli importanti, i "da comprare" e i proposti di
-/// PackLog; senza posti resta com'era.
+/// PackLog.
 class TripDetailScreen extends ConsumerStatefulWidget {
   final String tripId;
   final bool showNeeds;
@@ -224,14 +223,23 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
         ?.where((entry) => entry.id == tripId)
         .firstOrNull;
     if (trip == null) return;
-    final houseId = trip.aiResult?.houseId;
-    final inventoryItem = houseId == null
-        ? null
-        : _container
-              .read(itemNotifierProvider(houseId))
-              .valueOrNull
-              ?.where((entry) => entry.id == item.id)
-              .firstOrNull;
+    // La casa dell'oggetto, non quella della proposta AI: la valigia a mano non
+    // ha `aiResult` e gli oggetti possono venire da case diverse.
+    final houseId = item.originHouseId.isNotEmpty
+        ? item.originHouseId
+        : trip.aiResult?.houseId;
+    ItemModel? inventoryItem;
+    if (houseId != null) {
+      try {
+        final items = await _container.read(
+          itemNotifierProvider(houseId).future,
+        );
+        inventoryItem = items.where((entry) => entry.id == item.id).firstOrNull;
+      } catch (_) {
+        inventoryItem = null;
+      }
+    }
+    if (!mounted) return;
     final proposed = trip.aiResult?.proposal
         .where((entry) => entry.itemId == item.id)
         .firstOrNull;
@@ -473,17 +481,15 @@ class _TripDetail extends ConsumerWidget {
                 if (context.mounted) context.go('/trips');
               },
             )
-          : !hasSlots
-          ? DsButton(
+          : showNeeds && hasSlots
+          ? null
+          : DsButton(
               key: const Key('trip_detail_cta'),
-              label: hasItems
-                  ? 'trips.detail.edit_suitcase'.tr()
-                  : 'trips.pack.title'.tr(),
-              icon: hasItems ? Icons.edit_outlined : Icons.luggage_outlined,
+              label: 'trips.detail.add_items'.tr(),
+              icon: Icons.add,
               expand: true,
               onPressed: () => context.push('/trips/${trip.id}/edit-items'),
-            )
-          : null,
+            ),
       body: Builder(
         builder: (context) => ListView(
           padding: EdgeInsets.fromLTRB(
@@ -528,33 +534,31 @@ class _TripDetail extends ConsumerWidget {
               SlotsSection(trip: trip, actions: slotActions)
             else ...[
               PackWeatherSection(trip: trip),
-              if (hasSlots) ...[
-                DsSectionTitle('trips.pack.luggages'.tr()),
-                PackLuggageSelector(
-                  selectedIds: trip.luggages
-                      .map((luggage) => luggage.id)
-                      .toSet(),
-                  onToggle: onToggleLuggage,
-                  onCreated: onCreatedLuggages,
-                ),
-              ] else
-                PackLuggages(trip.luggages),
-              if (!hasSlots)
-                PlainItemsSection(trip: trip)
-              else ...[
-                DsSectionTitle('trips.detail.owned_items_title'.tr()),
-                ItemsOnlySection(
-                  trip: trip,
-                  houseId: trip.aiResult?.houseId,
-                  checklistEnabled: !firstReview,
-                  onAddInventory: onAddInventory,
-                  onRemoveItem: firstReview ? slotActions.removeItem : null,
-                  onToggleItem: slotActions.toggleItem,
-                  onOpenItem: onOpenItem,
-                  rowKey: slotActions.rowKey,
-                  flying: slotActions.flying,
-                ),
-              ],
+              DsSectionTitle('trips.pack.luggages'.tr()),
+              PackLuggageSelector(
+                selectedIds: trip.luggages.map((luggage) => luggage.id).toSet(),
+                onToggle: onToggleLuggage,
+                onCreated: onCreatedLuggages,
+              ),
+              DsSectionTitle(
+                hasSlots
+                    ? 'trips.detail.owned_items_title'.tr()
+                    : 'trips.pack.items'.tr(),
+              ),
+              if (!hasSlots && hasItems)
+                SuitcaseProgressHeader(progress: SuitcaseProgress.of(trip)),
+              SuitcaseItemsSection(
+                trip: trip,
+                // Senza posti niente proposta: niente ricerca nella casa.
+                houseId: hasSlots ? trip.aiResult?.houseId : null,
+                checklistEnabled: !firstReview,
+                onAddInventory: onAddInventory,
+                onRemoveItem: firstReview ? slotActions.removeItem : null,
+                onToggleItem: slotActions.toggleItem,
+                onOpenItem: onOpenItem,
+                rowKey: slotActions.rowKey,
+                flying: slotActions.flying,
+              ),
             ],
           ],
         ),

@@ -45,8 +45,8 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _housesNavigatorKey = GlobalKey<NavigatorState>();
 final _tripsNavigatorKey = GlobalKey<NavigatorState>();
 
-/// Dove portare un account al primo avvio: "Dove vai?" (`/new-trip` con l'AI
-/// come strada principale), da ogni rotta tranne quelle in cui sta già
+/// Dove portare un account al primo avvio: "Dove vai?" (`/new-trip?first=1`),
+/// da ogni rotta tranne quelle in cui sta già
 /// facendo il suo percorso (nuovo viaggio, i viaggi e la loro valigia, il
 /// primo onboarding) e il login. `null` se non serve nessun redirect.
 @visibleForTesting
@@ -57,7 +57,7 @@ String? firstTripRedirect({
   if (step != OnboardingStep.firstTrip) return null;
   const exempt = ['/new-trip', '/trips', '/onboarding', '/login'];
   if (exempt.any(location.startsWith)) return null;
-  return '/new-trip?ai=1&first=1';
+  return '/new-trip?first=1';
 }
 
 class _AuthChangeNotifier extends ChangeNotifier {
@@ -349,7 +349,6 @@ GoRouter appRouter(Ref ref) {
           body: 'tour.trip_creation_tooltip.body'.tr(),
           advancesOnOk: true,
           child: NewTripScreen(
-            aiIntent: state.uri.queryParameters['ai'] == '1',
             firstRun: state.uri.queryParameters['first'] == '1',
             reuseFromId: state.uri.queryParameters['reuseFrom'],
           ),

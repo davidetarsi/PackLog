@@ -56,7 +56,6 @@ class NewTripScreen extends ConsumerStatefulWidget {
     super.key,
     this.tripId,
     this.reuseFromId,
-    this.aiIntent = false,
     this.firstRun = false,
   });
 
@@ -69,11 +68,7 @@ class NewTripScreen extends ConsumerStatefulWidget {
   /// portare". Non si salva niente finché non si sceglie una strada.
   final String? reuseFromId;
 
-  /// Viene da "Valigia con AI" (`/new-trip?ai=1`). Il passo 1 ha sempre le
-  /// stesse due strade, quindi oggi non cambia nulla.
-  final bool aiIntent;
-
-  /// Primo avvio dell'account (`/new-trip?ai=1&first=1`): il titolo è "Dove
+  /// Primo avvio dell'account (`/new-trip?first=1`): il titolo è "Dove
   /// vai?" e una X chiude il passo e porta alla home.
   final bool firstRun;
 
@@ -309,7 +304,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       if (!mounted) return;
     }
 
-    // Il meteo parte subito: la pagina valigia trova la richiesta già in
+    // Il meteo parte subito: il dettaglio trova la richiesta già in
     // corso, o la cache se il viaggio ce l'ha già.
     ref.read(tripWeatherNotifierProvider(trip.id));
     router.go('/trips');

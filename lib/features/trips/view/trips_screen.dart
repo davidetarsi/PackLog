@@ -118,11 +118,9 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
       context.push('/new-trip?reuseFrom=${trip.id}');
 
   void _onPileCta(TripModel trip, PostcardCta cta) {
-    if (cta == PostcardCta.prepare && !(trip.aiResult?.hasSlots ?? false)) {
-      context.push('/trips/${trip.id}/edit-items');
-    } else {
-      context.push('/trips/${trip.id}');
-    }
+    // La cartolina porta sempre al dettaglio: lì ci sono bagagli, meteo e il
+    // bottone "Aggiungi oggetti".
+    context.push('/trips/${trip.id}');
   }
 
   /// Nome della meta: casa di destinazione se esiste, altrimenti città o

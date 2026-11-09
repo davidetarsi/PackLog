@@ -380,7 +380,6 @@ void main() {
         GoRoute(
           path: '/new-trip',
           builder: (_, state) => NewTripScreen(
-            aiIntent: state.uri.queryParameters['ai'] == '1',
             firstRun: state.uri.queryParameters['first'] == '1',
           ),
         ),
@@ -505,44 +504,39 @@ void main() {
     DsButton button(WidgetTester tester, String key) =>
         tester.widget<DsButton>(find.byKey(Key(key)));
 
-    for (final open in ['/new-trip', '/new-trip?ai=1']) {
-      testWidgets('two_buttons_only ($open)', (tester) async {
-        await pumpScreen(tester, open: open);
+    testWidgets('two_buttons_only', (tester) async {
+      await pumpScreen(tester);
 
-        final ai = find.byKey(const Key('new_trip_prepare_ai'));
-        final choose = find.byKey(const Key('new_trip_choose_items'));
-        expect(ai, findsOneWidget);
-        expect(choose, findsOneWidget);
-        expect(find.text('Prepara la valigia con AI'), findsOneWidget);
-        expect(find.text('Scegli tu cosa portare'), findsOneWidget);
-        expect(
-          button(tester, 'new_trip_prepare_ai').variant,
-          DsButtonVariant.primary,
-        );
-        expect(
-          button(tester, 'new_trip_choose_items').variant,
-          DsButtonVariant.secondary,
-        );
-        expect(
-          find.descendant(of: ai, matching: find.byIcon(Icons.auto_awesome)),
-          findsOneWidget,
-        );
-        expect(tester.getSize(ai).height, tester.getSize(choose).height);
-        expect(
-          tester.getTopLeft(ai).dy,
-          lessThan(tester.getTopLeft(choose).dy),
-        );
-        for (final gone in [
-          'new_trip_next',
-          'new_trip_later',
-          'new_trip_manual',
-        ]) {
-          expect(find.byKey(Key(gone)), findsNothing);
-        }
-        expect(find.text('Prepara la valigia più tardi'), findsNothing);
-        expect(find.text('Prepara a mano'), findsNothing);
-      });
-    }
+      final ai = find.byKey(const Key('new_trip_prepare_ai'));
+      final choose = find.byKey(const Key('new_trip_choose_items'));
+      expect(ai, findsOneWidget);
+      expect(choose, findsOneWidget);
+      expect(find.text('Prepara la valigia con AI'), findsOneWidget);
+      expect(find.text('Scegli tu cosa portare'), findsOneWidget);
+      expect(
+        button(tester, 'new_trip_prepare_ai').variant,
+        DsButtonVariant.primary,
+      );
+      expect(
+        button(tester, 'new_trip_choose_items').variant,
+        DsButtonVariant.secondary,
+      );
+      expect(
+        find.descendant(of: ai, matching: find.byIcon(Icons.auto_awesome)),
+        findsOneWidget,
+      );
+      expect(tester.getSize(ai).height, tester.getSize(choose).height);
+      expect(tester.getTopLeft(ai).dy, lessThan(tester.getTopLeft(choose).dy));
+      for (final gone in [
+        'new_trip_next',
+        'new_trip_later',
+        'new_trip_manual',
+      ]) {
+        expect(find.byKey(Key(gone)), findsNothing);
+      }
+      expect(find.text('Prepara la valigia più tardi'), findsNothing);
+      expect(find.text('Prepara a mano'), findsNothing);
+    });
 
     testWidgets('edit_shows_save_only', (tester) async {
       final trip = TripModel(
@@ -779,7 +773,7 @@ void main() {
     });
 
     testWidgets('firstRun: titolo "Dove vai?" e due strade', (tester) async {
-      await pumpScreen(tester, open: '/new-trip?ai=1&first=1');
+      await pumpScreen(tester, open: '/new-trip?first=1');
 
       expect(
         find.descendant(
@@ -796,7 +790,7 @@ void main() {
     testWidgets('senza firstRun non c\'è la X e il titolo è "Nuovo viaggio"', (
       tester,
     ) async {
-      await pumpScreen(tester, open: '/new-trip?ai=1');
+      await pumpScreen(tester, open: '/new-trip');
 
       expect(find.byKey(const Key('new_trip_first_close')), findsNothing);
       expect(
@@ -809,7 +803,7 @@ void main() {
     });
 
     testWidgets('firstRun: la X salva done e porta a /', (tester) async {
-      await pumpScreen(tester, open: '/new-trip?ai=1&first=1');
+      await pumpScreen(tester, open: '/new-trip?first=1');
       expect(onboardingRepo.step, OnboardingStep.firstTrip);
 
       await tester.tap(find.byKey(const Key('new_trip_first_close')));
@@ -822,7 +816,7 @@ void main() {
     testWidgets(
       'firstRun: "Scegli tu cosa portare" chiude "Dove vai?" (done)',
       (tester) async {
-        await pumpScreen(tester, open: '/new-trip?ai=1&first=1');
+        await pumpScreen(tester, open: '/new-trip?first=1');
         await _pickHouse(tester, 'h1');
         await _pickDates(tester);
 
@@ -837,7 +831,7 @@ void main() {
     testWidgets('firstRun: la strada AI non chiude "Dove vai?" da sola', (
       tester,
     ) async {
-      await pumpScreen(tester, open: '/new-trip?ai=1&first=1');
+      await pumpScreen(tester, open: '/new-trip?first=1');
       await fillStep(tester);
 
       await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
@@ -850,7 +844,7 @@ void main() {
     });
 
     testWidgets('firstRun: first_trip_started parte una volta', (tester) async {
-      await pumpScreen(tester, open: '/new-trip?ai=1&first=1');
+      await pumpScreen(tester, open: '/new-trip?first=1');
       await _pickHouse(tester, 'h1');
       await _pickDates(tester);
       verifyNever(
@@ -871,7 +865,7 @@ void main() {
 
     testWidgets('senza firstRun first_trip_started non parte e il passo '
         'non cambia', (tester) async {
-      await pumpScreen(tester, open: '/new-trip?ai=1');
+      await pumpScreen(tester, open: '/new-trip');
       await _pickHouse(tester, 'h1');
       await _pickDates(tester);
 
