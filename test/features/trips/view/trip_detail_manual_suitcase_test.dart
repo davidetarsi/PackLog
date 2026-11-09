@@ -275,7 +275,7 @@ void main() {
     });
   });
 
-  ItemModel _inv(String id, String name, int quantity) => ItemModel(
+  ItemModel inv(String id, String name, int quantity) => ItemModel(
     id: id,
     houseId: 'h1',
     name: name,
@@ -289,7 +289,7 @@ void main() {
     testWidgets('manual_item_sheet_shows_copies_and_stepper', (tester) async {
       when(
         () => itemRepo.getItemsByHouseId('h1'),
-      ).thenAnswer((_) async => [_inv('i-cuscino', 'Cuscino aereo', 3)]);
+      ).thenAnswer((_) async => [inv('i-cuscino', 'Cuscino aereo', 3)]);
       final trip = _trip(
         items: [
           TripItem(
@@ -323,7 +323,7 @@ void main() {
       // Nessuna ricerca osserva la casa: la scheda deve aspettarne gli oggetti.
       when(
         () => itemRepo.getItemsByHouseId('h1'),
-      ).thenAnswer((_) async => [_inv('i-cuscino', 'Cuscino aereo', 3)]);
+      ).thenAnswer((_) async => [inv('i-cuscino', 'Cuscino aereo', 3)]);
       await pumpDetail(
         tester,
         _trip(
