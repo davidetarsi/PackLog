@@ -54,6 +54,12 @@ class TripWeatherDrafts extends _$TripWeatherDrafts {
     if (state[trip.id] == trip) return;
     state = {...state, trip.id: trip};
   }
+
+  /// La bozza non serve più: il viaggio è salvato o il lavoro è finito.
+  void remove(String tripId) {
+    if (!state.containsKey(tripId)) return;
+    state = {...state}..remove(tripId);
+  }
 }
 
 /// Il meteo di un viaggio, per tappa.
@@ -80,9 +86,11 @@ class TripWeatherNotifier extends _$TripWeatherNotifier {
   Future<TripWeatherState> build(String tripId) async {
     final trips = await ref.watch(tripNotifierProvider.future);
     final houses = await ref.watch(houseNotifierProvider.future);
-    final drafts = ref.watch(tripWeatherDraftsProvider);
-    final trip =
-        trips.where((t) => t.id == tripId).firstOrNull ?? drafts[tripId];
+    // Solo la bozza di questo viaggio: le altre non lo toccano.
+    final draft = ref.watch(
+      tripWeatherDraftsProvider.select((drafts) => drafts[tripId]),
+    );
+    final trip = trips.where((t) => t.id == tripId).firstOrNull ?? draft;
     if (trip == null) {
       return const TripWeatherNotAvailable(WeatherUnavailable.noDates);
     }

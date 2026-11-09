@@ -51,6 +51,7 @@ class _MockLuggageRepository extends Mock implements LuggageRepository {}
 class _HangingService extends PackTripService {
   _HangingService() : super(token: () => 'jwt');
   final bodies = <Map<String, dynamic>>[];
+  final pending = Completer<AiPackingResult>();
 
   @override
   Future<AiPackingResult> generate(
@@ -58,7 +59,21 @@ class _HangingService extends PackTripService {
     required String houseId,
   }) {
     bodies.add(body);
-    return Completer<AiPackingResult>().future;
+    return pending.future;
+  }
+}
+
+/// Archivio viaggi finto: registra i viaggi aggiunti dal lavoro AI.
+class _FakeTrips extends TripNotifier {
+  final added = <TripModel>[];
+
+  @override
+  Future<List<TripModel>> build() async => const [];
+
+  @override
+  Future<void> addTrip(TripModel model, {String? source}) async {
+    added.add(model);
+    state = AsyncData([...?state.valueOrNull, model]);
   }
 }
 
@@ -148,6 +163,7 @@ void main() {
     required TripModel trip,
     bool isNew = false,
     bool saved = true,
+    TripNotifier? trips,
   }) async {
     // La cache del meteo vive nelle preferenze: ogni prova parte vuota.
     SharedPreferences.setMockInitialValues({});
@@ -208,6 +224,7 @@ void main() {
       ProviderScope(
         overrides: [
           tripRepositoryProvider.overrideWithValue(tripRepo),
+          if (trips != null) tripNotifierProvider.overrideWith(() => trips),
           houseRepositoryProvider.overrideWithValue(houseRepo),
           itemRepositoryProvider.overrideWithValue(itemRepo),
           luggageRepositoryProvider.overrideWithValue(luggageRepo),
@@ -453,19 +470,52 @@ void main() {
     tester,
   ) async {
     final trip = _trip();
-    await pumpLauncher(tester, trip: trip, isNew: true, saved: false);
+    final fakeTrips = _FakeTrips();
+    await pumpLauncher(
+      tester,
+      trip: trip,
+      isNew: true,
+      saved: false,
+      trips: fakeTrips,
+    );
     await container.read(tripNotifierProvider.future);
     await tapStart(tester);
     await confirmSheet(tester);
     expect(weather.calls, 1);
+    expect(container.read(tripWeatherDraftsProvider), contains(trip.id));
 
-    // La valigia arriva e il viaggio si salva: il dettaglio non richiede.
-    savedTrips = [trip];
-    container.invalidate(tripNotifierProvider);
+    // La valigia arriva e si salva davvero: addTrip dal lavoro AI.
+    service.pending.complete(
+      AiPackingResult(
+        generatedAt: DateTime(2026),
+        houseId: 'h1',
+        proposal: const [],
+        slots: const [],
+      ),
+    );
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pumpAndSettle();
+    expect(container.read(aiPackingRunProvider), isA<AiRunDone>());
+
+    // Il viaggio salvato ha id, tappe e date della bozza: stessa firma.
+    final saved = fakeTrips.added.single;
+    expect(saved.id, trip.id);
+    final signature =
+        (await container.read(tripWeatherCacheProvider).read(trip.id))!
+            .signature;
+    final plan = planTripWeather(
+      saved,
+      houses: [_milano],
+      today: DateTime.now(),
+    );
+    expect((plan as TripWeatherRequest).signature, signature);
+
     final state = await container.read(
       tripWeatherNotifierProvider(trip.id).future,
     );
     expect(state, isA<TripWeatherReady>());
     expect(weather.calls, 1);
+    // La bozza non resta viva.
+    expect(container.read(tripWeatherDraftsProvider), isEmpty);
   });
 }

@@ -81,7 +81,13 @@ Future<AiPackingSetup?> startAiPacking(
 
   final setup = await showAiPackingSheet(context, trip: trip, plan: plan);
   final houseId = setup?.houseId;
-  if (setup == null || houseId == null || !context.mounted) return null;
+  if (setup == null || houseId == null || !context.mounted) {
+    // Foglio chiuso senza avviare: la bozza non serve più.
+    if (isNew && context.mounted) {
+      ref.read(tripWeatherDraftsProvider.notifier).remove(trip.id);
+    }
+    return null;
+  }
 
   final luggage = _luggageById(ref, setup.luggageId);
   final kits = await _kitsOf(ref, houseId);
