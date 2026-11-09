@@ -351,6 +351,25 @@ void main() {
     );
   });
 
+  testWidgets('reuse_zero_night_stop_blocks_choose_items', (tester) async {
+    await pumpReuse(tester);
+    await _pickDates(tester);
+
+    expect(
+      find.text('Firenze finisce prima di iniziare: controlla le date.'),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<DsButton>(find.byKey(const Key('new_trip_choose_items')))
+          .onPressed,
+      isNull,
+    );
+    await tester.tap(find.byKey(const Key('new_trip_choose_items')));
+    await tester.pumpAndSettle();
+    verifyNever(() => tripRepo.addTrip(any()));
+  });
+
   testWidgets(
     'reuse_choose_items_saves_copy_with_unchecked_items_and_luggages',
     (tester) async {

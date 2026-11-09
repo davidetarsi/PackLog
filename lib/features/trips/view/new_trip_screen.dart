@@ -128,9 +128,9 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
 
   bool get _whenMissing => !_draft.hasDates;
 
-  /// Fine della prima tappa, o le date in attesa se non c'è ancora una meta.
-  DateTime? get _firstEnd =>
-      _draft.stops.isEmpty ? _draft.pendingEnd : _draft.stops.first.end;
+  /// Fine del viaggio mostrata in "Quando?": con una tappa è la sua fine (o le
+  /// date in attesa senza meta), con più tappe la fine dell'ultima.
+  DateTime? get _tripEnd => _draft.returnDate;
 
   /// Cambia la bozza e riallinea il campo nome: segue la meta finché il nome
   /// non è stato scritto a mano.
@@ -154,10 +154,15 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
     final range = await showTripRangeSheet(
       context,
       initialDeparture: _draft.departure,
-      initialReturn: _firstEnd,
+      initialReturn: _tripEnd,
     );
     if (!mounted || range == null || !range.isComplete) return;
-    _update(_draft.withFirstDates(range.departureDate!, range.returnDate!));
+    final next = _draft.withTripDates(range.departureDate!, range.returnDate!);
+    if (next == null) {
+      AppSnackBar.showInfo(context, 'trips.new.dates_cut_stops'.tr());
+      return;
+    }
+    _update(next);
   }
 
   Future<void> _addStop() async {
@@ -549,7 +554,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final departure = _draft.departure;
-    final end = _firstEnd;
+    final end = _tripEnd;
     final showError = _showErrors && _whenMissing;
     final nights = nightsBetween(departure, end);
 

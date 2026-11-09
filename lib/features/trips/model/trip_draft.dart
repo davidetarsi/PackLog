@@ -268,6 +268,28 @@ class TripDraft {
     );
   }
 
+  /// Imposta partenza e ritorno di tutto il viaggio ("Quando?").
+  ///
+  /// Con una sola tappa (o con le tappe di "Riusa" ancora in attesa, che non
+  /// sono tappe vere) è [withFirstDates]. Con più tappe cambia la partenza e la
+  /// fine dell'ultima; le fine intermedie restano. Null se le date tagliano
+  /// fuori una tappa: partenza non prima della fine della prima, o ritorno non
+  /// dopo l'inizio dell'ultima.
+  TripDraft? withTripDates(DateTime departure, DateTime returnDate) {
+    if (stops.length < 2) return withFirstDates(departure, returnDate);
+    final s = _dayOf(departure);
+    final e = _dayOf(returnDate);
+    if (!s.isBefore(stops.first.end)) return null;
+    if (!e.isAfter(stopStart(stops.length - 1)!)) return null;
+    return _copy(
+      departure: s,
+      stops: [
+        ...stops.take(stops.length - 1),
+        DraftStop(place: stops.last.place, end: e),
+      ],
+    );
+  }
+
   /// Nome del campo. Vuoto o solo spazi: torna a seguire la meta.
   TripDraft withName(String text) =>
       _copy(name: text, nameEdited: text.trim().isNotEmpty);
