@@ -83,6 +83,18 @@ void main() {
     await tester.pumpAndSettle();
 
     final primary = tester.widget<DsButton>(find.byType(DsButton).first);
+    expect(find.byType(DsButton), findsOneWidget);
+    final secondary = tester
+        .widgetList<DsTextButton>(find.byType(DsTextButton))
+        .toList();
+    expect(secondary.map((button) => button.label), [
+      'Esci comunque',
+      'Annulla',
+    ]);
+    expect(
+      secondary.every((button) => !button.accent && !button.destructive),
+      isTrue,
+    );
     expect(primary.label, 'Sincronizza ed esci');
     expect(primary.variant, DsButtonVariant.primary);
   });

@@ -128,9 +128,7 @@ class DialogHelpers {
         title: title,
         message: message,
         actions: [
-          // Tre scelte impilate e non affiancate: tre pill su una riga
-          // starebbero strette e le etichette andrebbero troncate proprio
-          // dove servono per capire la differenza fra le due uscite.
+          // Tre scelte impilate: solo quella consigliata ha un bottone pieno.
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -140,17 +138,13 @@ class DialogHelpers {
                 onPressed: () => Navigator.pop(dialogContext, primaryValue),
               ),
               SizedBox(height: dialogContext.spacingSm),
-              DsButton(
+              DsTextButton(
                 label: secondaryLabel,
-                variant: DsButtonVariant.secondary,
-                expand: true,
                 onPressed: () => Navigator.pop(dialogContext, secondaryValue),
               ),
               SizedBox(height: dialogContext.spacingSm),
-              DsButton(
+              DsTextButton(
                 label: cancelLabel ?? 'common.cancel'.tr(),
-                variant: DsButtonVariant.secondary,
-                expand: true,
                 onPressed: () => Navigator.pop(dialogContext),
               ),
             ],

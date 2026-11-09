@@ -326,6 +326,9 @@ final _cases = <_DialogCase>[
         ),
       );
       await app.settle();
+      final cancel = app.tester.getRect(find.text('common.cancel'.tr()));
+      final retry = app.tester.getRect(find.text('common.retry'.tr()));
+      expect(cancel.center.dy, closeTo(retry.center.dy, 1));
     },
   ),
   _DialogCase(
