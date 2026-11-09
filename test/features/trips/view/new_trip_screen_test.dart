@@ -235,18 +235,6 @@ Future<void> _addStop(
   await tester.pumpAndSettle();
 }
 
-/// Cambia la fine della meta: il foglio ha il range completo, quindi il primo
-/// tocco riparte dalla partenza e il secondo sceglie il ritorno.
-Future<void> _moveDestinationEnd(WidgetTester tester, DateTime end) async {
-  await tester.ensureVisible(find.byKey(const Key('new_trip_dates')));
-  await tester.tap(find.byKey(const Key('new_trip_dates')));
-  await tester.pumpAndSettle();
-  await _tapDay(tester, _departure);
-  await _tapDay(tester, end);
-  await tester.tap(find.text('Conferma date'));
-  await tester.pumpAndSettle();
-}
-
 /// Apre il foglio "Quando?" dal campo, portandolo in vista.
 Future<void> _openDates(WidgetTester tester) async {
   await tester.ensureVisible(find.byKey(const Key('new_trip_dates')));
