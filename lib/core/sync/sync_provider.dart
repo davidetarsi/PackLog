@@ -11,6 +11,7 @@ import '../database/database_provider.dart';
 import '../monitoring/monitoring_service.dart';
 import 'supabase_repository.dart';
 import 'sync_orchestrator.dart';
+import 'sync_run_state.dart';
 import 'sync_service.dart';
 import 'tombstone_config_service.dart';
 
@@ -52,26 +53,28 @@ class SyncTrigger extends _$SyncTrigger {
   void increment() => state++;
 }
 
-/// True mentre un fullPull è in corso, false quando completa (o fallisce).
-/// Usato dalla houses screen per mostrare skeleton invece dell'empty state
-/// durante la finestra tra wipe del DB e completamento del pull remoto.
+/// Unica proiezione Riverpod dello stato runtime pubblicato dall'orchestrator.
 @Riverpod(keepAlive: true)
-class Syncing extends _$Syncing {
-  @override
-  bool build() => false;
+Stream<SyncRunState> syncRunState(Ref ref) =>
+    ref.watch(syncOrchestratorProvider).states;
 
-  void setSyncing(bool value) => state = value;
+/// Alias compatibile e read-only: la schermata case mostra loading durante pull.
+@Riverpod(keepAlive: true)
+bool syncing(Ref ref) {
+  final state =
+      ref.watch(syncRunStateProvider).valueOrNull ??
+      ref.read(syncOrchestratorProvider).state;
+  return (state is SyncRunning && state.operation == SyncOperationKind.pull) ||
+      state is SyncSwitchingSession;
 }
 
-/// True mentre un processQueue (push) è in corso, false a riposo.
-/// Usato dalla [SyncStatusTile] per mostrare uno spinner durante il push
-/// invece di lasciare il pulsante "Riprova" senza feedback visivo.
+/// Alias compatibile e read-only usato dalla tile di stato sync.
 @Riverpod(keepAlive: true)
-class SyncPushInProgress extends _$SyncPushInProgress {
-  @override
-  bool build() => false;
-
-  void setInProgress(bool value) => state = value;
+bool syncPushInProgress(Ref ref) {
+  final state =
+      ref.watch(syncRunStateProvider).valueOrNull ??
+      ref.read(syncOrchestratorProvider).state;
+  return state is SyncRunning && state.operation == SyncOperationKind.push;
 }
 
 @Riverpod(keepAlive: true)
@@ -111,38 +114,26 @@ SyncOrchestrator syncOrchestrator(Ref ref) {
   );
   orchestrator.init();
 
-  // Segnala all'UI che un fullPull è in corso (usato per mostrare skeleton
-  // invece dell'empty state durante la finestra di pull dopo un account switch).
-  orchestrator.onFullPullStart = () {
-    ref.read(syncingProvider.notifier).setSyncing(true);
-  };
-
-  // Quando fullPull completa, riporta il flag a false e incrementa il trigger
-  // così i notifier si ricostruiscono con i dati freschi.
+  // Il trigger resta success-only: sincronizza i notifier solo dopo pull ok.
   orchestrator.onFullPullComplete = () {
-    ref.read(syncingProvider.notifier).setSyncing(false);
     ref.read(syncTriggerProvider.notifier).increment();
   };
 
-  // Quando un push parte davvero (mutex acquisito): segnala il push in corso
-  // per lo spinner nel tile e invalida il counter pending.
+  // Quando un push parte davvero invalida il counter pending, evitando valori
+  // cacheati mentre la coda viene processata.
   orchestrator.onSyncStarted = () {
-    ref.read(syncPushInProgressProvider.notifier).setInProgress(true);
     ref.invalidate(pendingChangesCountProvider);
   };
 
-  // Quando processQueue termina (successo o errore): riporta il flag a false
-  // e invalida entrambi i counter così il tile mostra il dato fresco.
+  // Quando processQueue termina (successo o errore) invalida entrambi i
+  // counter così il tile mostra il dato fresco.
   orchestrator.onProcessQueueComplete = () {
-    ref.read(syncPushInProgressProvider.notifier).setInProgress(false);
     ref.invalidate(pendingChangesCountProvider);
     ref.invalidate(totalUnsyncedCountProvider);
   };
 
   Future<void> dispatch(String userId) async {
     final prefs = await SharedPreferences.getInstance();
-    final last = prefs.getString(kLastKnownUserIdKey);
-    final isAccountSwitch = last != null && last != userId;
 
     await handleAuthenticatedUser(
       userId: userId,
@@ -150,16 +141,6 @@ SyncOrchestrator syncOrchestrator(Ref ref) {
       requestFullPull: orchestrator.requestFullPull,
       prefs: prefs,
     );
-
-    // Dopo un cambio account il DB locale è stato svuotato da handleAuthenticatedUser.
-    // syncingProvider deve diventare true PRIMA di syncTriggerProvider++:
-    // quando i notifier ricaricano dal DB vuoto (houses = []), la houses screen
-    // vede isSyncing=true e mostra lo skeleton invece della CTA "crea la tua prima casa".
-    // onFullPullStart la setterà di nuovo (no-op), onFullPullComplete la resetterà.
-    if (isAccountSwitch) {
-      ref.read(syncingProvider.notifier).setSyncing(true);
-      ref.read(syncTriggerProvider.notifier).increment();
-    }
   }
 
   // Full pull all'avvio: copre sia la sessione persistita (read immediato)

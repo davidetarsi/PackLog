@@ -226,7 +226,7 @@ void main() {
       orchestrator.dispose();
     });
 
-    test('does NOT fire onSyncStarted when mutex skips the sync', () async {
+    test('fires onSyncStarted for the coalesced push followup', () async {
       final completer = Completer<void>();
       when(() => mockService.processQueue()).thenAnswer((_) async {
         await completer.future;
@@ -242,17 +242,15 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(startedCalls, 1);
 
-      // Second event while still syncing: skipped by mutex.
+      // Second event while still syncing: coalesced into one followup.
       connectivityController.add([ConnectivityResult.mobile]);
       await Future<void>.delayed(Duration.zero);
-      expect(
-        startedCalls,
-        1,
-        reason: 'skipped sync must not fire onSyncStarted',
-      );
+      expect(startedCalls, 1, reason: 'followup has not started yet');
 
       completer.complete();
       await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      expect(startedCalls, 2);
 
       orchestrator.dispose();
     });
@@ -361,7 +359,7 @@ void main() {
     );
 
     test(
-      'does not fire onProcessQueueComplete when sync is skipped by mutex',
+      'coalesces onProcessQueueComplete for sync requested during a push',
       () async {
         final completer = Completer<void>();
         when(() => mockService.processQueue()).thenAnswer((_) async {
@@ -377,7 +375,7 @@ void main() {
         connectivityController.add([ConnectivityResult.wifi]);
         await Future<void>.delayed(Duration.zero);
 
-        // Second event arrives while still syncing → mutex skips.
+        // Second event arrives while still syncing → one followup is queued.
         connectivityController.add([ConnectivityResult.mobile]);
         await Future<void>.delayed(Duration.zero);
 
@@ -388,8 +386,8 @@ void main() {
         completer.complete();
         await Future<void>.delayed(Duration.zero);
 
-        // Only the in-flight sync ran → exactly one callback.
-        expect(callbackCalls, 1);
+        // The explicit second request gets a followup attempt.
+        expect(callbackCalls, 2);
 
         orchestrator.dispose();
       },

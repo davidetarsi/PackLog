@@ -4,40 +4,32 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/widgets.dart';
 
 import '../monitoring/monitoring_service.dart';
+import 'sync_run_state.dart';
 import 'sync_service.dart';
 
 class SyncOrchestrator with WidgetsBindingObserver {
   final SyncService _syncService;
   final AppMonitoringService _monitoring;
   final Connectivity _connectivity;
-  bool _isSyncing = false;
+  final StreamController<SyncRunState> _states =
+      StreamController<SyncRunState>.broadcast();
+
+  SyncRunState _state = const SyncIdle();
+  bool _disposed = false;
+  bool _running = false;
+  bool _pullPending = false;
+  bool _pushPending = false;
+  bool _resetRetriesPending = false;
+  String? _pendingPullUserId;
   String? _currentUserId;
+  int _operationId = 0;
+  String _pushTrigger = 'local_mutation';
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
-  /// Chiamato da [sync_provider] appena prima di avviare un fullPull.
-  /// Usato per segnalare all'UI che un pull remoto è in corso.
+  /// Callback UI conservate per compatibilità con i chiamanti esistenti.
   void Function()? onFullPullStart;
-
-  /// Chiamato da [sync_provider] dopo ogni fullPull riuscito.
-  /// Usato per notificare i notifier dei dati di rifetchare.
   void Function()? onFullPullComplete;
-
-  /// Chiamato immediatamente prima di ogni `processQueue` (push) che parte
-  /// davvero (dopo che il mutex è stato acquisito). Non chiamato quando il
-  /// mutex scarta un sync concorrente.
-  ///
-  /// Usato da [sync_provider] per invalidare subito `pendingChangesCountProvider`
-  /// così la `SyncStatusTile` mostra lo stato di caricamento mentre il push
-  /// è in corso, invece di restare su un valore cacheato potenzialmente stale.
   void Function()? onSyncStarted;
-
-  /// Chiamato da [sync_provider] dopo ogni tentativo di processQueue (push),
-  /// **anche se fallisce**: il numero di record pending può essere cambiato
-  /// in entrambi i casi (alcuni passati a `synced`, altri ancora `pending*`)
-  /// e la UI counter deve riflettere il nuovo conteggio.
-  ///
-  /// Non viene chiamato quando il mutex blocca un sync concorrente: in quel
-  /// caso il sync in-flight produrrà il proprio callback alla fine.
   void Function()? onProcessQueueComplete;
 
   SyncOrchestrator(
@@ -45,6 +37,25 @@ class SyncOrchestrator with WidgetsBindingObserver {
     this._monitoring, {
     Connectivity? connectivity,
   }) : _connectivity = connectivity ?? Connectivity();
+
+  SyncRunState get state => _state;
+  Stream<SyncRunState> get states => Stream<SyncRunState>.multi((controller) {
+    // Attach first, then read the snapshot: this closes the gap where a state
+    // could change after the snapshot read but before stream subscription.
+    final subscription = _states.stream.listen(
+      controller.add,
+      onError: controller.addError,
+      onDone: controller.close,
+    );
+    controller.add(_state);
+    controller.onCancel = subscription.cancel;
+  }, isBroadcast: true);
+
+  void _publish(SyncRunState next) {
+    if (_disposed) return;
+    _state = next;
+    _states.add(next);
+  }
 
   void init() {
     WidgetsBinding.instance.addObserver(this);
@@ -54,156 +65,178 @@ class SyncOrchestrator with WidgetsBindingObserver {
   }
 
   void dispose() {
+    _disposed = true;
     WidgetsBinding.instance.removeObserver(this);
     _connectivitySubscription?.cancel();
     _connectivitySubscription = null;
+    unawaited(_states.close());
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       final userId = _currentUserId;
-      if (userId != null) {
-        _attemptFullPullIfOnline(userId, resetRetries: true);
-      }
+      if (userId != null) _requestPull(userId, resetRetries: true);
     }
   }
 
   void _onConnectivityChanged(List<ConnectivityResult> results) {
-    if (_hasNetwork(results)) {
-      final userId = _currentUserId;
-      if (userId != null) {
-        _attemptFullPullIfOnline(userId, resetRetries: true);
-      } else {
-        _attemptSync('connectivity_restored');
+    if (!_hasNetwork(results)) return;
+    final userId = _currentUserId;
+    if (userId != null) {
+      _requestPull(userId, resetRetries: true);
+    } else {
+      _requestPush('connectivity_restored');
+    }
+  }
+
+  void requestSync() => _requestPush('local_mutation');
+
+  void requestForcedSync() => _requestPush('forced_sync', resetRetries: true);
+
+  void requestFullPull(String userId) {
+    _currentUserId = userId;
+    _requestPull(userId);
+  }
+
+  Future<void> _requestPush(String trigger, {bool resetRetries = false}) async {
+    final online = await _isOnline();
+    if (online == null) return;
+    if (!online) {
+      if (!_running) _publish(const SyncOffline());
+      return;
+    }
+    _pushPending = true;
+    _pushTrigger = trigger;
+    _resetRetriesPending |= resetRetries;
+    unawaited(_drain());
+  }
+
+  Future<void> _requestPull(String userId, {bool resetRetries = false}) async {
+    final online = await _isOnline();
+    if (online == null) return;
+    if (!online) {
+      if (!_running) _publish(const SyncOffline());
+      return;
+    }
+    _pendingPullUserId = userId;
+    _pullPending = true;
+    _resetRetriesPending |= resetRetries;
+    unawaited(_drain());
+  }
+
+  Future<bool?> _isOnline() async {
+    try {
+      return _hasNetwork(await _connectivity.checkConnectivity());
+    } catch (e, st) {
+      _monitoring.captureException(
+        e,
+        stackTrace: st,
+        tags: const {'operation': 'orchestrator_connectivity'},
+      );
+      if (!_running) _publish(const SyncFailed(SyncFailureCode.network));
+      return null;
+    }
+  }
+
+  Future<void> _drain() async {
+    if (_running || _disposed) return;
+    _running = true;
+    var failed = false;
+    try {
+      while (!_disposed && (_pullPending || _pushPending)) {
+        if (_pullPending) {
+          final userId = _pendingPullUserId!;
+          _pullPending = false;
+          _pendingPullUserId = null;
+          final reset = _takeResetIntent();
+          if (!await _runPull(userId, resetRetries: reset)) {
+            if (!_pullPending && !_pushPending) {
+              failed = true;
+              break;
+            }
+            continue;
+          }
+          failed = false;
+          // Il pull può produrre record locali pending. Accoda un solo push.
+          try {
+            final pending = await _syncService.countPendingChanges();
+            if (pending > 0) {
+              _pushPending = true;
+              _pushTrigger = 'full_pull_auto_flush';
+            }
+          } catch (e, st) {
+            _monitoring.captureException(
+              e,
+              stackTrace: st,
+              tags: const {'operation': 'orchestrator_autoFlush_count'},
+            );
+          }
+        } else if (_pushPending) {
+          _pushPending = false;
+          final trigger = _pushTrigger;
+          final reset = _takeResetIntent();
+          if (!await _runPush(trigger, resetRetries: reset)) {
+            if (!_pullPending && !_pushPending) {
+              failed = true;
+              break;
+            }
+            continue;
+          }
+          failed = false;
+        }
+      }
+    } finally {
+      _running = false;
+      if (!_disposed && !failed) {
+        _publish(const SyncIdle());
+      }
+      // Pending explicit work can only be left by a concurrent request during
+      // the final state publication; failures deliberately stop this drain.
+      if (!_disposed && !failed && (_pullPending || _pushPending)) {
+        unawaited(_drain());
       }
     }
   }
 
-  /// Triggers sync after a local DB mutation (create/update/delete).
-  /// Fire-and-forget: callers should not await this.
-  void requestSync() {
-    debugPrint('[SyncOrchestrator] requestSync called');
-    _attemptSyncIfOnline('local_mutation');
+  bool _takeResetIntent() {
+    final reset = _resetRetriesPending;
+    _resetRetriesPending = false;
+    return reset;
   }
 
-  /// Called from the manual "Sync now" button in profile.
-  /// Resets retry counters so records stuck in backoff get a fresh attempt,
-  /// then runs processQueue. Fire-and-forget.
-  void requestForcedSync() {
-    debugPrint('[SyncOrchestrator] requestForcedSync called');
-    _attemptForcedSyncIfOnline();
-  }
-
-  Future<void> _attemptForcedSyncIfOnline() async {
-    final results = await _connectivity.checkConnectivity();
-    if (!_hasNetwork(results)) return;
-    await _attemptSync('forced_sync', resetRetries: true);
-  }
-
-  /// Scarica tutti i record dell'utente da Supabase al DB locale.
-  /// Chiamato ad ogni avvio quando l'utente risulta autenticato.
-  /// Fire-and-forget: non blocca il chiamante.
-  void requestFullPull(String userId) {
-    _currentUserId = userId;
-    _attemptFullPullIfOnline(userId);
-  }
-
-  Future<void> _attemptFullPullIfOnline(
-    String userId, {
-    bool resetRetries = false,
-  }) async {
-    final results = await _connectivity.checkConnectivity();
-    if (!_hasNetwork(results)) {
-      debugPrint('[SyncOrchestrator] fullPull: skipped (no network)');
-      return;
-    }
-    if (_isSyncing) {
-      debugPrint('[SyncOrchestrator] fullPull: skipped (already syncing)');
-      return;
-    }
-    _isSyncing = true;
-    onFullPullStart?.call();
-    _monitoring.logBreadcrumb(
-      'Avvio fullPull. userId: $userId',
-      category: 'sync',
-      data: {'userId': userId},
+  Future<bool> _runPull(String userId, {required bool resetRetries}) async {
+    final operationId = ++_operationId;
+    _publish(
+      SyncRunning(
+        operation: SyncOperationKind.pull,
+        operationId: operationId,
+        sessionEpoch: 0,
+      ),
     );
+    onFullPullStart?.call();
+    _monitoring.logBreadcrumb('Avvio fullPull', category: 'sync');
     try {
       if (resetRetries) await _syncService.resetAllSyncRetries();
       await _syncService.fullPull(userId);
       onFullPullComplete?.call();
-      // Auto-flush: chiude la finestra di skip-by-mutex per le mutazioni
-      // locali tentate mentre il fullPull era in volo (es. TripNotifier.build()
-      // → transferItemsForCompletedTrips → moveItemsToHouse → pendingUpdate).
-      // Senza questo, i record resterebbero pending fino al prossimo trigger
-      // (mutazione utente, app_resume, connectivity_restored).
-      await _flushPendingIfAny();
+      return true;
     } catch (e, st) {
-      debugPrint('[SyncOrchestrator] fullPull failed: $e');
-      debugPrint('[SyncOrchestrator] Stack trace:\n$st');
-      _monitoring.captureException(
-        e,
-        stackTrace: st,
-        tags: const {'operation': 'orchestrator_fullPull'},
-      );
-    } finally {
-      _isSyncing = false;
+      _captureFailure(e, st, 'orchestrator_fullPull');
+      _publish(SyncFailed(_failureCode(e)));
+      return false;
     }
   }
 
-  /// Esegue [SyncService.processQueue] solo se ci sono record pending.
-  /// Pensato per essere chiamato all'interno del mutex `_isSyncing` da
-  /// [_attemptFullPullIfOnline]; non riacquisisce il mutex.
-  Future<void> _flushPendingIfAny() async {
-    final int pending;
-    try {
-      pending = await _syncService.countPendingChanges();
-    } catch (e, st) {
-      debugPrint('[SyncOrchestrator] auto-flush count failed: $e');
-      _monitoring.captureException(
-        e,
-        stackTrace: st,
-        tags: const {'operation': 'orchestrator_autoFlush_count'},
-      );
-      return;
-    }
-    if (pending == 0) return;
-
-    debugPrint('[SyncOrchestrator] Auto-flush: $pending pending record(s)');
-    try {
-      await _syncService.processQueue();
-    } catch (e, st) {
-      debugPrint('[SyncOrchestrator] auto-flush processQueue failed: $e');
-      _monitoring.captureException(
-        e,
-        stackTrace: st,
-        tags: const {'operation': 'orchestrator_autoFlush'},
-      );
-    } finally {
-      // Anche su failure: invalida il counter UI, così la tile riflette
-      // quanti record sono ancora indietro.
-      onProcessQueueComplete?.call();
-    }
-  }
-
-  Future<void> _attemptSyncIfOnline(String trigger) async {
-    final results = await _connectivity.checkConnectivity();
-    final hasNet = _hasNetwork(results);
-    debugPrint(
-      '[SyncOrchestrator] $trigger: hasNetwork=$hasNet isSyncing=$_isSyncing',
+  Future<bool> _runPush(String trigger, {required bool resetRetries}) async {
+    final operationId = ++_operationId;
+    _publish(
+      SyncRunning(
+        operation: SyncOperationKind.push,
+        operationId: operationId,
+        sessionEpoch: 0,
+      ),
     );
-    if (hasNet) {
-      await _attemptSync(trigger);
-    }
-  }
-
-  Future<void> _attemptSync(String trigger, {bool resetRetries = false}) async {
-    if (_isSyncing) {
-      debugPrint('[SyncOrchestrator] $trigger: skipped (already syncing)');
-      return;
-    }
-    _isSyncing = true;
     onSyncStarted?.call();
     _monitoring.logBreadcrumb(
       'Avvio sincronizzazione. Trigger: $trigger',
@@ -213,21 +246,33 @@ class SyncOrchestrator with WidgetsBindingObserver {
     try {
       if (resetRetries) await _syncService.resetAllSyncRetries();
       await _syncService.processQueue();
+      return true;
     } catch (e, st) {
-      debugPrint('[SyncOrchestrator] Sync failed: $e');
-      debugPrint('[SyncOrchestrator] Stack trace:\n$st');
-      _monitoring.captureException(
-        e,
-        stackTrace: st,
-        tags: {'operation': 'orchestrator_processQueue', 'trigger': trigger},
-      );
+      _captureFailure(e, st, 'orchestrator_processQueue', trigger: trigger);
+      _publish(SyncFailed(_failureCode(e)));
+      return false;
     } finally {
-      _isSyncing = false;
       onProcessQueueComplete?.call();
     }
   }
 
-  bool _hasNetwork(List<ConnectivityResult> results) {
-    return results.any((r) => r != ConnectivityResult.none);
+  void _captureFailure(
+    Object error,
+    StackTrace stackTrace,
+    String operation, {
+    String? trigger,
+  }) {
+    _monitoring.captureException(
+      error,
+      stackTrace: stackTrace,
+      tags: {'operation': operation, if (trigger != null) 'trigger': trigger},
+    );
   }
+
+  SyncFailureCode _failureCode(Object error) => error is TimeoutException
+      ? SyncFailureCode.network
+      : SyncFailureCode.service;
+
+  bool _hasNetwork(List<ConnectivityResult> results) =>
+      results.any((r) => r != ConnectivityResult.none);
 }
