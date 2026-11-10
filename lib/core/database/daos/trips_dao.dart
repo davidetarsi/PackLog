@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:drift/drift.dart';
 import '../database.dart';
 import '../tables/mixins/syncable_table.dart';
@@ -10,9 +8,6 @@ import '../tables/trip_luggage_entries_table.dart';
 import 'sync_dao_mixin.dart';
 
 part 'trips_dao.g.dart';
-
-/// Quale copia di un viaggio produce [TripsDao._copyTrip].
-enum _TripCopyMode { duplicate, reuse }
 
 /// DAO per le operazioni CRUD sui viaggi e i loro oggetti.
 @DriftAccessor(tables: [Trips, TripItemEntries, Luggages, TripLuggageEntries])
@@ -253,37 +248,7 @@ class TripsDao extends DatabaseAccessor<AppDatabase>
     String originalTripId,
     String newTripId, {
     String nameSuffix = ' (Copia)',
-  }) => _copyTrip(
-    originalTripId,
-    newTripId,
-    mode: _TripCopyMode.duplicate,
-    nameSuffix: nameSuffix,
-  );
-
-  /// Riusa un viaggio: crea un nuovo viaggio partendo da [originalTripId],
-  /// pensato per essere ridefinito (stessa meta, altre date).
-  ///
-  /// Copia come [duplicateTrip] (oggetti non spuntati), con queste differenze:
-  /// - Nome originale, senza suffisso
-  /// - Date di partenza e ritorno a null, viaggio non salvato
-  /// - Tappe con stessi id e nomi, ma `from` e `to` a null
-  /// - Bagagli collegati, una riga per ogni riga dell'originale
-  ///
-  /// Returns: ID del nuovo viaggio creato
-  /// Throws: Exception se il viaggio originale non esiste o è stato eliminato
-  Future<String> reuseTrip(String originalTripId, String newTripId) =>
-      _copyTrip(originalTripId, newTripId, mode: _TripCopyMode.reuse);
-
-  /// Nucleo condiviso di [duplicateTrip] e [reuseTrip]: copia viaggio e
-  /// oggetti in una transazione. [mode] decide solo ciò che differisce tra
-  /// le due copie (date, stato salvato, tappe, bagagli e suffisso del nome).
-  Future<String> _copyTrip(
-    String originalTripId,
-    String newTripId, {
-    required _TripCopyMode mode,
-    String nameSuffix = '',
   }) {
-    final reuse = mode == _TripCopyMode.reuse;
     return transaction(() async {
       final originalTrip = await getTripById(originalTripId);
       if (originalTrip == null) {
@@ -295,15 +260,9 @@ class TripsDao extends DatabaseAccessor<AppDatabase>
         id: newTripId,
         name: '${originalTrip.name}$nameSuffix',
         description: Value(originalTrip.description),
-        departureDateTime: reuse
-            ? const Value.absent()
-            : Value(originalTrip.departureDateTime),
-        returnDateTime: reuse
-            ? const Value.absent()
-            : Value(originalTrip.returnDateTime),
-        legs: reuse
-            ? Value(_legsWithoutDates(originalTrip.legs))
-            : const Value.absent(),
+        departureDateTime: Value(originalTrip.departureDateTime),
+        returnDateTime: Value(originalTrip.returnDateTime),
+        transports: Value(originalTrip.transports),
         destinationHouseId: Value(originalTrip.destinationHouseId),
         locationPlaceId: Value(originalTrip.locationPlaceId),
         locationDisplayName: Value(originalTrip.locationDisplayName),
@@ -314,7 +273,7 @@ class TripsDao extends DatabaseAccessor<AppDatabase>
         locationType: Value(originalTrip.locationType),
         locationLat: Value(originalTrip.locationLat),
         locationLon: Value(originalTrip.locationLon),
-        isSaved: Value(reuse ? false : originalTrip.isSaved),
+        isSaved: Value(originalTrip.isSaved),
         createdAt: now,
         updatedAt: now,
       );
@@ -337,38 +296,8 @@ class TripsDao extends DatabaseAccessor<AppDatabase>
         await insertMultipleTripItems(copiedItems);
       }
 
-      if (reuse) {
-        final originalLuggageLinks = await (select(
-          tripLuggageEntries,
-        )..where((t) => t.tripId.equals(originalTripId))).get();
-        if (originalLuggageLinks.isNotEmpty) {
-          await batch((batch) {
-            batch.insertAll(
-              tripLuggageEntries,
-              originalLuggageLinks
-                  .map(
-                    (link) => TripLuggageEntriesCompanion.insert(
-                      tripId: newTripId,
-                      luggageId: link.luggageId,
-                    ),
-                  )
-                  .toList(),
-            );
-          });
-        }
-      }
-
       return newTripId;
     });
-  }
-
-  /// Svuota le date delle tappe, mantenendo id e nome. `null` resta `null`.
-  static String? _legsWithoutDates(String? legsJson) {
-    if (legsJson == null) return null;
-    final legs = (jsonDecode(legsJson) as List).cast<Map<String, dynamic>>();
-    return jsonEncode(
-      legs.map((leg) => {...leg, 'from': null, 'to': null}).toList(),
-    );
   }
 
   // === OPTIMIZED BATCH LOADING (Avoid N+1) ===

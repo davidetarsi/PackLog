@@ -37,6 +37,7 @@ class WeatherStopRequest {
     required this.lon,
     required this.from,
     required this.days,
+    this.houseId,
   });
 
   /// Il luogo a cui appartiene il periodo: [kMainStopKey] per la meta, per le
@@ -51,6 +52,11 @@ class WeatherStopRequest {
   /// Primo giorno della tappa (mezzanotte locale).
   final DateTime from;
   final int days;
+
+  /// La casa dell'utente dove si dorme, se la tappa è una sua casa: per la
+  /// meta [TripModel.destinationHouseId], per una tratta [TripLeg.houseId]. Non
+  /// va nel JSON né nella firma del meteo: serve al foglio della valigia AI.
+  final String? houseId;
 
   /// Ultimo giorno della tappa.
   DateTime get to => _addDays(from, days - 1);
@@ -139,6 +145,7 @@ class StopWeather {
     this.windMaxKmh,
     this.uvMax,
     this.forecastDays = const [],
+    this.historicalDays = const [],
   });
 
   final String name;
@@ -165,6 +172,15 @@ class StopWeather {
   /// apre.
   final List<DayWeather> forecastDays;
 
+  /// Per una stima dallo storico, ogni giorno della tappa come media degli
+  /// ultimi anni. Vuoto per le previsioni e per le risposte di prima che la
+  /// funzione lo mandasse: allora conta solo [forecastDays].
+  final List<HistoricalDayWeather> historicalDays;
+
+  /// Vero se la tappa ha un giorno per giorno da aprire.
+  bool get hasDailyDetail =>
+      forecastDays.isNotEmpty || historicalDays.isNotEmpty;
+
   int get days => _daysBetween(from, to) + 1;
 
   Map<String, dynamic> toJson() => {
@@ -180,6 +196,7 @@ class StopWeather {
     'wind_max_kmh': windMaxKmh,
     'uv_max': uvMax,
     'forecast_days': [for (final day in forecastDays) day.toJson()],
+    'historical_days': [for (final day in historicalDays) day.toJson()],
   };
 
   factory StopWeather.fromJson(Map<String, dynamic> json) => StopWeather(
@@ -198,7 +215,58 @@ class StopWeather {
       for (final day in json['forecast_days'] as List? ?? const [])
         DayWeather.fromJson(day as Map<String, dynamic>),
     ],
+    historicalDays: [
+      for (final day in json['historical_days'] as List? ?? const [])
+        HistoricalDayWeather.fromJson(day as Map<String, dynamic>),
+    ],
   );
+}
+
+/// Un giorno di una stima dallo storico: le medie dello stesso giorno di
+/// calendario negli ultimi anni.
+class HistoricalDayWeather {
+  const HistoricalDayWeather({
+    required this.date,
+    this.tempMax,
+    this.tempMin,
+    this.windMaxKmh,
+    this.rainYears = 0,
+    this.dataYears = 0,
+  });
+
+  final DateTime date;
+
+  /// Medie della massima e della minima, in °C.
+  final double? tempMax;
+  final double? tempMin;
+  final double? windMaxKmh;
+
+  /// Anni con più di 1 mm di pioggia quel giorno...
+  final int rainYears;
+
+  /// ...su quelli con il dato. 0 se nessun anno lo ha.
+  final int dataYears;
+
+  Map<String, dynamic> toJson() => {
+    'data': isoDay(date),
+    'temp_max': tempMax,
+    'temp_min': tempMin,
+    'vento_max_kmh': windMaxKmh,
+    'anni_pioggia': rainYears,
+    'anni_con_dato': dataYears,
+  };
+
+  /// Dal giorno di `geo.per_tappa[i].giorni_storici`: la cache usa la stessa
+  /// forma.
+  factory HistoricalDayWeather.fromJson(Map<String, dynamic> json) =>
+      HistoricalDayWeather(
+        date: _parseDay(json['data'] as String),
+        tempMax: _double(json['temp_max']),
+        tempMin: _double(json['temp_min']),
+        windMaxKmh: _double(json['vento_max_kmh']),
+        rainYears: (json['anni_pioggia'] as num?)?.toInt() ?? 0,
+        dataYears: (json['anni_con_dato'] as num?)?.toInt() ?? 0,
+      );
 }
 
 /// Ore di una fascia: il giorno ne ha sei, 0-4, 4-8, … 20-24.
@@ -404,6 +472,11 @@ StopWeather _stopFromResponse(
       for (final day in perStop['dettaglio'] as List? ?? const [])
         DayWeather.fromJson(day as Map<String, dynamic>),
     ],
+    // Solo per le stime dallo storico; prima era assente: lista vuota.
+    historicalDays: [
+      for (final day in perStop['giorni_storici'] as List? ?? const [])
+        HistoricalDayWeather.fromJson(day as Map<String, dynamic>),
+    ],
   );
 }
 
@@ -416,6 +489,7 @@ class _Place {
     this.country,
     this.lat,
     this.lon,
+    this.houseId,
   });
 
   final String key;
@@ -424,6 +498,7 @@ class _Place {
   final String? country;
   final double? lat;
   final double? lon;
+  final String? houseId;
 }
 
 /// Prepara la richiesta del meteo di [trip] a partire da [today].
@@ -463,6 +538,7 @@ TripWeatherPlan planTripWeather(
     country: destinationHouse?.location?.country ?? destination?.country,
     lat: destinationHouse?.location?.lat ?? destination?.lat,
     lon: destinationHouse?.location?.lon ?? destination?.lon,
+    houseId: trip.destinationHouseId,
   );
   final places = <_Place>[destinationPlace];
   for (final leg in trip.legs) {
@@ -481,6 +557,7 @@ TripWeatherPlan planTripWeather(
         country: leg.country ?? housesById[leg.houseId]?.location?.country,
         lat: lat,
         lon: lon,
+        houseId: leg.houseId,
       ),
     );
   }
@@ -525,6 +602,7 @@ TripWeatherPlan planTripWeather(
         lon: run.place.lon!,
         from: run.from,
         days: run.days,
+        houseId: run.place.houseId,
       ),
   ]);
 }

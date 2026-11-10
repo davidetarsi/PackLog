@@ -1,0 +1,12 @@
+{
+  "Costume": { "expected": { "category": "Lower Body", "subCategory": "Swimwear", "warmth": 1 } },
+  "Muta sub": { "expected": { "category": "Lower Body", "subCategory": "Wetsuit" } },
+  "Tuta sci": { "expected": { "category": "Outerwear", "subCategory": "Ski Suit" } },
+  "Pile leggero": { "expected": { "category": "Upper Body", "subCategory": "Fleece", "warmth": 3 } },
+  "Calzini": { "expected": { "category": "Essentials", "subCategory": "Socks", "warmth": 1 } },
+  "Calzini di lana": { "expected": { "category": "Essentials", "subCategory": "Socks", "warmth": 4 } },
+  "Calzini da trekking": { "expected": { "category": "Essentials", "subCategory": "Socks", "warmth": 4 } },
+  "Costume da carnevale": { "forbidden": { "category": ["Not Clothing"], "subCategory": ["Swimwear"] } },
+  "Tuta da ginnastica": { "expected": { "category": "Lower Body", "subCategory": "Sweatpants" } },
+  "Giacca leggera": { "expected": { "category": "Outerwear" }, "forbidden": { "subCategory": ["Fleece"] } }
+}

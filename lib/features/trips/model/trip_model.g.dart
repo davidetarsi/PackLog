@@ -65,6 +65,11 @@ _$TripModelImpl _$$TripModelImplFromJson(Map<String, dynamic> json) =>
               ?.map((e) => TripLeg.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
+      transports:
+          (json['transports'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const <String>[],
       aiSetup: json['aiSetup'] == null
           ? null
           : AiPackingSetup.fromJson(json['aiSetup'] as Map<String, dynamic>),
@@ -88,6 +93,7 @@ Map<String, dynamic> _$$TripModelImplToJson(_$TripModelImpl instance) =>
       'destinationLocation': instance.destinationLocation,
       'luggages': instance.luggages,
       'legs': instance.legs,
+      'transports': instance.transports,
       'aiSetup': instance.aiSetup,
       'aiResult': instance.aiResult,
       'isSaved': instance.isSaved,

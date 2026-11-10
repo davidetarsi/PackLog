@@ -1,0 +1,1962 @@
+{
+  "entries": [
+    {
+      "domain": "clothing_group",
+      "id": "Upper Body",
+      "sort": 10,
+      "active": true,
+      "label": {
+        "it": "Sopra",
+        "en": "Tops"
+      },
+      "data": {}
+    },
+    {
+      "domain": "clothing_group",
+      "id": "Lower Body",
+      "sort": 20,
+      "active": true,
+      "label": {
+        "it": "Sotto",
+        "en": "Bottoms"
+      },
+      "data": {}
+    },
+    {
+      "domain": "clothing_group",
+      "id": "Full Body",
+      "sort": 30,
+      "active": true,
+      "label": {
+        "it": "Abito intero",
+        "en": "Full body"
+      },
+      "data": {}
+    },
+    {
+      "domain": "clothing_group",
+      "id": "Shoes",
+      "sort": 40,
+      "active": true,
+      "label": {
+        "it": "Scarpe",
+        "en": "Shoes"
+      },
+      "data": {}
+    },
+    {
+      "domain": "clothing_group",
+      "id": "Outerwear",
+      "sort": 50,
+      "active": true,
+      "label": {
+        "it": "Giacche",
+        "en": "Outerwear"
+      },
+      "data": {}
+    },
+    {
+      "domain": "clothing_group",
+      "id": "Accessory",
+      "sort": 60,
+      "active": true,
+      "label": {
+        "it": "Accessori",
+        "en": "Accessories"
+      },
+      "data": {}
+    },
+    {
+      "domain": "clothing_group",
+      "id": "Essentials",
+      "sort": 70,
+      "active": true,
+      "label": {
+        "it": "Essenziali",
+        "en": "Essentials"
+      },
+      "data": {}
+    },
+    {
+      "domain": "clothing_type",
+      "id": "T-Shirt",
+      "sort": 10,
+      "active": true,
+      "label": {
+        "it": "T-shirt",
+        "en": "T-shirt"
+      },
+      "data": {
+        "group": "Upper Body",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Shirt",
+      "sort": 20,
+      "active": true,
+      "label": {
+        "it": "Camicia",
+        "en": "Shirt"
+      },
+      "data": {
+        "group": "Upper Body",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Polo",
+      "sort": 30,
+      "active": true,
+      "label": {
+        "it": "Polo",
+        "en": "Polo"
+      },
+      "data": {
+        "group": "Upper Body",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Hoodie",
+      "sort": 40,
+      "active": true,
+      "label": {
+        "it": "Felpa con cappuccio",
+        "en": "Hoodie"
+      },
+      "data": {
+        "group": "Upper Body",
+        "parent": null,
+        "isNew": false,
+        "hint": "felpa con cappuccio"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Sweatshirt",
+      "sort": 50,
+      "active": true,
+      "label": {
+        "it": "Felpa",
+        "en": "Sweatshirt"
+      },
+      "data": {
+        "group": "Upper Body",
+        "parent": null,
+        "isNew": false,
+        "hint": "felpa senza cappuccio"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Sweater",
+      "sort": 60,
+      "active": true,
+      "label": {
+        "it": "Maglione",
+        "en": "Sweater"
+      },
+      "data": {
+        "group": "Upper Body",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Tank Top",
+      "sort": 70,
+      "active": true,
+      "label": {
+        "it": "Canottiera",
+        "en": "Tank top"
+      },
+      "data": {
+        "group": "Upper Body",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Crop Top",
+      "sort": 80,
+      "active": true,
+      "label": {
+        "it": "Top corto",
+        "en": "Crop top"
+      },
+      "data": {
+        "group": "Upper Body",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Thermal Top",
+      "sort": 90,
+      "active": true,
+      "label": {
+        "it": "Maglia termica",
+        "en": "Thermal top"
+      },
+      "data": {
+        "group": "Upper Body",
+        "parent": "T-Shirt",
+        "isNew": true,
+        "hint": "maglia termica, strato base"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Fleece",
+      "sort": 100,
+      "active": true,
+      "label": {
+        "it": "Pile",
+        "en": "Fleece"
+      },
+      "data": {
+        "group": "Upper Body",
+        "parent": "Sweater",
+        "isNew": true,
+        "hint": "pile"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Jeans",
+      "sort": 110,
+      "active": true,
+      "label": {
+        "it": "Jeans",
+        "en": "Jeans"
+      },
+      "data": {
+        "group": "Lower Body",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Shorts",
+      "sort": 120,
+      "active": true,
+      "label": {
+        "it": "Pantaloncini",
+        "en": "Shorts"
+      },
+      "data": {
+        "group": "Lower Body",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Trousers",
+      "sort": 130,
+      "active": true,
+      "label": {
+        "it": "Pantaloni",
+        "en": "Trousers"
+      },
+      "data": {
+        "group": "Lower Body",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Leggings",
+      "sort": 140,
+      "active": true,
+      "label": {
+        "it": "Leggings",
+        "en": "Leggings"
+      },
+      "data": {
+        "group": "Lower Body",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Skirt",
+      "sort": 150,
+      "active": true,
+      "label": {
+        "it": "Gonna",
+        "en": "Skirt"
+      },
+      "data": {
+        "group": "Lower Body",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Sweatpants",
+      "sort": 160,
+      "active": true,
+      "label": {
+        "it": "Pantaloni della tuta",
+        "en": "Sweatpants"
+      },
+      "data": {
+        "group": "Lower Body",
+        "parent": null,
+        "isNew": false,
+        "hint": "pantaloni della tuta; in italiano 'tuta' e' sempre questo"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Swimwear",
+      "sort": 170,
+      "active": true,
+      "label": {
+        "it": "Costume",
+        "en": "Swimwear"
+      },
+      "data": {
+        "group": "Lower Body",
+        "parent": null,
+        "isNew": false,
+        "hint": "costume da bagno, bikini"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Thermal Bottoms",
+      "sort": 180,
+      "active": true,
+      "label": {
+        "it": "Calzamaglia termica",
+        "en": "Thermal bottoms"
+      },
+      "data": {
+        "group": "Lower Body",
+        "parent": null,
+        "isNew": true,
+        "hint": "calzamaglia o pantaloni termici"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Ski Pants",
+      "sort": 190,
+      "active": true,
+      "label": {
+        "it": "Pantaloni da sci",
+        "en": "Ski pants"
+      },
+      "data": {
+        "group": "Lower Body",
+        "parent": null,
+        "isNew": true,
+        "hint": "pantaloni da sci o salopette"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Wetsuit",
+      "sort": 200,
+      "active": true,
+      "label": {
+        "it": "Muta",
+        "en": "Wetsuit"
+      },
+      "data": {
+        "group": "Lower Body",
+        "parent": null,
+        "isNew": true,
+        "hint": "muta da sub o da surf"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Dress",
+      "sort": 210,
+      "active": true,
+      "label": {
+        "it": "Vestito",
+        "en": "Dress"
+      },
+      "data": {
+        "group": "Full Body",
+        "parent": null,
+        "isNew": true,
+        "hint": "vestito o abito da donna, copre sopra e sotto"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Sneakers",
+      "sort": 220,
+      "active": true,
+      "label": {
+        "it": "Sneakers",
+        "en": "Sneakers"
+      },
+      "data": {
+        "group": "Shoes",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Sandals",
+      "sort": 230,
+      "active": true,
+      "label": {
+        "it": "Sandali",
+        "en": "Sandals"
+      },
+      "data": {
+        "group": "Shoes",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Boots",
+      "sort": 240,
+      "active": true,
+      "label": {
+        "it": "Stivali",
+        "en": "Boots"
+      },
+      "data": {
+        "group": "Shoes",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Flip-Flops",
+      "sort": 250,
+      "active": true,
+      "label": {
+        "it": "Infradito",
+        "en": "Flip-flops"
+      },
+      "data": {
+        "group": "Shoes",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Loafers",
+      "sort": 260,
+      "active": true,
+      "label": {
+        "it": "Mocassini",
+        "en": "Loafers"
+      },
+      "data": {
+        "group": "Shoes",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Dress Shoes",
+      "sort": 270,
+      "active": true,
+      "label": {
+        "it": "Scarpe eleganti",
+        "en": "Dress shoes"
+      },
+      "data": {
+        "group": "Shoes",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Hiking Boots",
+      "sort": 280,
+      "active": true,
+      "label": {
+        "it": "Scarponi da trekking",
+        "en": "Hiking boots"
+      },
+      "data": {
+        "group": "Shoes",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Water Shoes",
+      "sort": 290,
+      "active": true,
+      "label": {
+        "it": "Scarpe da scoglio",
+        "en": "Water shoes"
+      },
+      "data": {
+        "group": "Shoes",
+        "parent": "Sandals",
+        "isNew": true,
+        "hint": "scarpe da acqua o da scoglio"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Snow Boots",
+      "sort": 300,
+      "active": true,
+      "label": {
+        "it": "Doposci",
+        "en": "Snow boots"
+      },
+      "data": {
+        "group": "Shoes",
+        "parent": "Boots",
+        "isNew": true,
+        "hint": "doposci o scarponi da neve"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Coat",
+      "sort": 310,
+      "active": true,
+      "label": {
+        "it": "Cappotto",
+        "en": "Coat"
+      },
+      "data": {
+        "group": "Outerwear",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Rain Jacket",
+      "sort": 320,
+      "active": true,
+      "label": {
+        "it": "Giacca impermeabile",
+        "en": "Rain jacket"
+      },
+      "data": {
+        "group": "Outerwear",
+        "parent": null,
+        "isNew": false,
+        "hint": "giacca antipioggia, guscio impermeabile"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Down Jacket",
+      "sort": 330,
+      "active": true,
+      "label": {
+        "it": "Piumino",
+        "en": "Down jacket"
+      },
+      "data": {
+        "group": "Outerwear",
+        "parent": null,
+        "isNew": false,
+        "hint": "piumino"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Windbreaker",
+      "sort": 340,
+      "active": true,
+      "label": {
+        "it": "Giacca a vento",
+        "en": "Windbreaker"
+      },
+      "data": {
+        "group": "Outerwear",
+        "parent": null,
+        "isNew": false,
+        "hint": "giacca a vento, k-way, softshell"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Blazer",
+      "sort": 350,
+      "active": true,
+      "label": {
+        "it": "Blazer",
+        "en": "Blazer"
+      },
+      "data": {
+        "group": "Outerwear",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Ski Jacket",
+      "sort": 360,
+      "active": true,
+      "label": {
+        "it": "Giacca da sci",
+        "en": "Ski jacket"
+      },
+      "data": {
+        "group": "Outerwear",
+        "parent": "Down Jacket",
+        "isNew": true,
+        "hint": "giacca da sci"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Ski Suit",
+      "sort": 370,
+      "active": true,
+      "label": {
+        "it": "Tuta da sci",
+        "en": "Ski suit"
+      },
+      "data": {
+        "group": "Outerwear",
+        "parent": "Down Jacket",
+        "isNew": true,
+        "hint": "tuta da sci intera, copre anche le gambe"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Casual Jacket",
+      "sort": 380,
+      "active": true,
+      "label": {
+        "it": "Giubbotto",
+        "en": "Casual jacket"
+      },
+      "data": {
+        "group": "Outerwear",
+        "parent": null,
+        "isNew": true,
+        "hint": "giacca casual: di jeans, bomber, giacca camicia"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Vest",
+      "sort": 390,
+      "active": true,
+      "label": {
+        "it": "Gilet",
+        "en": "Vest"
+      },
+      "data": {
+        "group": "Outerwear",
+        "parent": null,
+        "isNew": true,
+        "hint": "gilet o smanicato"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Cap/Hat",
+      "sort": 400,
+      "active": true,
+      "label": {
+        "it": "Cappello",
+        "en": "Hat"
+      },
+      "data": {
+        "group": "Accessory",
+        "parent": null,
+        "isNew": false,
+        "hint": "cappello, berretto, cuffia di lana"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Belt",
+      "sort": 410,
+      "active": true,
+      "label": {
+        "it": "Cintura",
+        "en": "Belt"
+      },
+      "data": {
+        "group": "Accessory",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Bag",
+      "sort": 420,
+      "active": true,
+      "label": {
+        "it": "Borsa",
+        "en": "Bag"
+      },
+      "data": {
+        "group": "Accessory",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Scarf",
+      "sort": 430,
+      "active": true,
+      "label": {
+        "it": "Sciarpa",
+        "en": "Scarf"
+      },
+      "data": {
+        "group": "Accessory",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Sunglasses",
+      "sort": 440,
+      "active": true,
+      "label": {
+        "it": "Occhiali da sole",
+        "en": "Sunglasses"
+      },
+      "data": {
+        "group": "Accessory",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Jewelry",
+      "sort": 450,
+      "active": true,
+      "label": {
+        "it": "Gioielli",
+        "en": "Jewelry"
+      },
+      "data": {
+        "group": "Accessory",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Watch",
+      "sort": 460,
+      "active": true,
+      "label": {
+        "it": "Orologio",
+        "en": "Watch"
+      },
+      "data": {
+        "group": "Accessory",
+        "parent": null,
+        "isNew": false,
+        "hint": null
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Gloves",
+      "sort": 470,
+      "active": true,
+      "label": {
+        "it": "Guanti",
+        "en": "Gloves"
+      },
+      "data": {
+        "group": "Accessory",
+        "parent": null,
+        "isNew": true,
+        "hint": "guanti"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Tie",
+      "sort": 480,
+      "active": true,
+      "label": {
+        "it": "Cravatta",
+        "en": "Tie"
+      },
+      "data": {
+        "group": "Accessory",
+        "parent": null,
+        "isNew": true,
+        "hint": "cravatta o papillon"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Umbrella",
+      "sort": 490,
+      "active": true,
+      "label": {
+        "it": "Ombrello",
+        "en": "Umbrella"
+      },
+      "data": {
+        "group": "Accessory",
+        "parent": null,
+        "isNew": true,
+        "hint": "ombrello"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Underwear",
+      "sort": 500,
+      "active": true,
+      "label": {
+        "it": "Intimo",
+        "en": "Underwear"
+      },
+      "data": {
+        "group": "Essentials",
+        "parent": null,
+        "isNew": true,
+        "hint": "mutande, boxer, reggiseno, canottiera intima"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Socks",
+      "sort": 510,
+      "active": true,
+      "label": {
+        "it": "Calzini",
+        "en": "Socks"
+      },
+      "data": {
+        "group": "Essentials",
+        "parent": null,
+        "isNew": true,
+        "hint": "calze e calzini"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Pajamas",
+      "sort": 520,
+      "active": true,
+      "label": {
+        "it": "Pigiama",
+        "en": "Pajamas"
+      },
+      "data": {
+        "group": "Essentials",
+        "parent": null,
+        "isNew": true,
+        "hint": "pigiama"
+      }
+    },
+    {
+      "domain": "clothing_type",
+      "id": "Other",
+      "sort": 530,
+      "active": true,
+      "label": {
+        "it": "Altro",
+        "en": "Other"
+      },
+      "data": {
+        "group": null,
+        "parent": null,
+        "isNew": false,
+        "hint": null,
+        "everyGroup": true
+      }
+    },
+    {
+      "domain": "use",
+      "id": "Everyday",
+      "sort": 10,
+      "active": true,
+      "label": {
+        "it": "Tutti i giorni",
+        "en": "Everyday"
+      },
+      "data": {
+        "prompt": "worn in town on normal days (NOT for items meant only for the office, elegant evenings, sport, the beach or home)",
+        "promptOrder": 0
+      }
+    },
+    {
+      "domain": "use",
+      "id": "Office",
+      "sort": 20,
+      "active": true,
+      "label": {
+        "it": "Ufficio",
+        "en": "Office"
+      },
+      "data": {
+        "prompt": "fit for an office: polos, chinos, wool sweaters, cotton dress shirts, blazers, tailored trousers, coats and trench coats, loafers, ankle boots, dress shoes, leather belts, watches",
+        "promptOrder": 1
+      }
+    },
+    {
+      "domain": "use",
+      "id": "Beach",
+      "sort": 30,
+      "active": true,
+      "label": {
+        "it": "Mare",
+        "en": "Beach"
+      },
+      "data": {
+        "prompt": "seaside and hot holidays: anything in linen, light cotton summer trousers, bermuda, tank tops, short-sleeve summer shirts, summer dresses, sandals, flip-flops, swimwear",
+        "promptOrder": 3
+      }
+    },
+    {
+      "domain": "use",
+      "id": "Swimming",
+      "sort": 40,
+      "active": true,
+      "label": {
+        "it": "Nuoto",
+        "en": "Swimming"
+      },
+      "data": {
+        "prompt": "worn in the water or at the pool: swimwear, water shoes, pool slides, wetsuits",
+        "promptOrder": 4
+      }
+    },
+    {
+      "domain": "use",
+      "id": "Hiking",
+      "sort": 50,
+      "active": true,
+      "label": {
+        "it": "Montagna",
+        "en": "Hiking"
+      },
+      "data": {
+        "prompt": "trekking and mountains: trekking trousers, hiking boots, trail shoes, technical fleece, base layers, windbreakers, rain jackets, light down jackets, wool or trekking socks",
+        "promptOrder": 5
+      }
+    },
+    {
+      "domain": "use",
+      "id": "Sport",
+      "sort": 60,
+      "active": true,
+      "label": {
+        "it": "Sport",
+        "en": "Sport"
+      },
+      "data": {
+        "prompt": "sport and running: technical t-shirts, running shorts and shoes, sport leggings, base layers, ski clothes",
+        "promptOrder": 6
+      }
+    },
+    {
+      "domain": "use",
+      "id": "Formal",
+      "sort": 70,
+      "active": true,
+      "label": {
+        "it": "Elegante",
+        "en": "Formal"
+      },
+      "data": {
+        "prompt": "elegant evenings and ceremonies: cotton or elegant dress shirts, suits, tailored trousers, wool coats, dress shoes, heels, fine jewelry, evening bags",
+        "promptOrder": 2
+      }
+    },
+    {
+      "domain": "use",
+      "id": "Lounge",
+      "sort": 80,
+      "active": true,
+      "label": {
+        "it": "Casa",
+        "en": "Lounge"
+      },
+      "data": {
+        "prompt": "at home: pajamas, sweatpants, hoodies, robes",
+        "promptOrder": 7
+      }
+    },
+    {
+      "domain": "formality",
+      "id": "Loungewear",
+      "sort": 10,
+      "active": true,
+      "label": {
+        "it": "Da casa",
+        "en": "Loungewear"
+      },
+      "data": {
+        "prompt": "for home and sport, not for going out: pajamas, sweatpants, underwear, pool slides, flip-flops, technical or running t-shirts, sport shorts, sport leggings, base layers, sport swimsuits, running shoes, sport accessories"
+      }
+    },
+    {
+      "domain": "formality",
+      "id": "Casual",
+      "sort": 20,
+      "active": true,
+      "label": {
+        "it": "Casual",
+        "en": "Casual"
+      },
+      "data": {
+        "prompt": "everyday: t-shirts, cotton shorts and bermuda, jeans, cargo and trekking trousers, hoodies, sweatshirts, fleece, parkas, sneakers, sandals, swimwear, caps"
+      }
+    },
+    {
+      "domain": "formality",
+      "id": "Smart Casual",
+      "sort": 30,
+      "active": true,
+      "label": {
+        "it": "Curato",
+        "en": "Smart casual"
+      },
+      "data": {
+        "prompt": "neat but not office: polos, linen shirts, chinos, knit sweaters, cardigans, trench coats, loafers, ankle boots, leather belts, simple watches and jewelry"
+      }
+    },
+    {
+      "domain": "formality",
+      "id": "Business",
+      "sort": 40,
+      "active": true,
+      "label": {
+        "it": "Lavoro",
+        "en": "Business"
+      },
+      "data": {
+        "prompt": "office: cotton dress shirts, tailored trousers, blazers, wool coats, brown dress shoes, work bags"
+      }
+    },
+    {
+      "domain": "formality",
+      "id": "Formal",
+      "sort": 50,
+      "active": true,
+      "label": {
+        "it": "Elegante",
+        "en": "Formal"
+      },
+      "data": {
+        "prompt": "ceremonies and elegant evenings: shirts sold as elegant, suit jackets and trousers, long black coats, black dress shoes, heels, evening bags, fine jewelry"
+      }
+    },
+    {
+      "domain": "color",
+      "id": "Bianco",
+      "sort": 10,
+      "active": true,
+      "label": {
+        "it": "Bianco",
+        "en": "White"
+      },
+      "data": {
+        "synonyms": [
+          "panna",
+          "avorio",
+          "white"
+        ]
+      }
+    },
+    {
+      "domain": "color",
+      "id": "Nero",
+      "sort": 20,
+      "active": true,
+      "label": {
+        "it": "Nero",
+        "en": "Black"
+      },
+      "data": {
+        "synonyms": [
+          "black"
+        ]
+      }
+    },
+    {
+      "domain": "color",
+      "id": "Grigio",
+      "sort": 30,
+      "active": true,
+      "label": {
+        "it": "Grigio",
+        "en": "Grey"
+      },
+      "data": {
+        "synonyms": [
+          "antracite",
+          "grey",
+          "gray"
+        ]
+      }
+    },
+    {
+      "domain": "color",
+      "id": "Blu",
+      "sort": 40,
+      "active": true,
+      "label": {
+        "it": "Blu",
+        "en": "Blue"
+      },
+      "data": {
+        "synonyms": [
+          "denim",
+          "blue"
+        ]
+      }
+    },
+    {
+      "domain": "color",
+      "id": "Marrone",
+      "sort": 50,
+      "active": true,
+      "label": {
+        "it": "Marrone",
+        "en": "Brown"
+      },
+      "data": {
+        "synonyms": [
+          "brown"
+        ]
+      }
+    },
+    {
+      "domain": "color",
+      "id": "Beige",
+      "sort": 60,
+      "active": true,
+      "label": {
+        "it": "Beige",
+        "en": "Beige"
+      },
+      "data": {
+        "synonyms": [
+          "crema",
+          "cammello",
+          "kaki",
+          "cachi",
+          "tortora"
+        ]
+      }
+    },
+    {
+      "domain": "color",
+      "id": "Blu navy",
+      "sort": 70,
+      "active": true,
+      "label": {
+        "it": "Blu navy",
+        "en": "Navy"
+      },
+      "data": {
+        "synonyms": [
+          "blu scuro",
+          "blu notte",
+          "navy",
+          "navy blue"
+        ]
+      }
+    },
+    {
+      "domain": "color",
+      "id": "Azzurro",
+      "sort": 80,
+      "active": true,
+      "label": {
+        "it": "Azzurro",
+        "en": "Light blue"
+      },
+      "data": {
+        "synonyms": [
+          "celeste",
+          "light blue"
+        ]
+      }
+    },
+    {
+      "domain": "color",
+      "id": "Verde",
+      "sort": 90,
+      "active": true,
+      "label": {
+        "it": "Verde",
+        "en": "Green"
+      },
+      "data": {
+        "synonyms": [
+          "green"
+        ]
+      }
+    },
+    {
+      "domain": "color",
+      "id": "Rosso",
+      "sort": 100,
+      "active": true,
+      "label": {
+        "it": "Rosso",
+        "en": "Red"
+      },
+      "data": {
+        "synonyms": [
+          "red"
+        ]
+      }
+    },
+    {
+      "domain": "color",
+      "id": "Bordeaux",
+      "sort": 110,
+      "active": true,
+      "label": {
+        "it": "Bordeaux",
+        "en": "Burgundy"
+      },
+      "data": {
+        "synonyms": [
+          "bordò",
+          "burgundy"
+        ]
+      }
+    },
+    {
+      "domain": "color",
+      "id": "Rosa",
+      "sort": 120,
+      "active": true,
+      "label": {
+        "it": "Rosa",
+        "en": "Pink"
+      },
+      "data": {
+        "synonyms": [
+          "fucsia",
+          "pink"
+        ]
+      }
+    },
+    {
+      "domain": "color",
+      "id": "Giallo",
+      "sort": 130,
+      "active": true,
+      "label": {
+        "it": "Giallo",
+        "en": "Yellow"
+      },
+      "data": {
+        "synonyms": [
+          "yellow"
+        ]
+      }
+    },
+    {
+      "domain": "color",
+      "id": "Arancione",
+      "sort": 140,
+      "active": true,
+      "label": {
+        "it": "Arancione",
+        "en": "Orange"
+      },
+      "data": {
+        "synonyms": [
+          "orange"
+        ]
+      }
+    },
+    {
+      "domain": "color",
+      "id": "Viola",
+      "sort": 150,
+      "active": true,
+      "label": {
+        "it": "Viola",
+        "en": "Purple"
+      },
+      "data": {
+        "synonyms": [
+          "lilla",
+          "porpora",
+          "purple"
+        ]
+      }
+    },
+    {
+      "domain": "color",
+      "id": "Multicolore",
+      "sort": 160,
+      "active": true,
+      "label": {
+        "it": "Multicolore",
+        "en": "Multicolour"
+      },
+      "data": {
+        "synonyms": [
+          "multicolor",
+          "fantasia",
+          "multicolour",
+          "multicolored",
+          "multicoloured"
+        ]
+      }
+    },
+    {
+      "domain": "warmth",
+      "id": "1",
+      "sort": 10,
+      "active": true,
+      "label": {
+        "it": "Molto leggero",
+        "en": "Very light"
+      },
+      "data": {}
+    },
+    {
+      "domain": "warmth",
+      "id": "2",
+      "sort": 20,
+      "active": true,
+      "label": {
+        "it": "Leggero",
+        "en": "Light"
+      },
+      "data": {}
+    },
+    {
+      "domain": "warmth",
+      "id": "3",
+      "sort": 30,
+      "active": true,
+      "label": {
+        "it": "Medio",
+        "en": "Medium"
+      },
+      "data": {}
+    },
+    {
+      "domain": "warmth",
+      "id": "4",
+      "sort": 40,
+      "active": true,
+      "label": {
+        "it": "Caldo",
+        "en": "Warm"
+      },
+      "data": {}
+    },
+    {
+      "domain": "warmth",
+      "id": "5",
+      "sort": 50,
+      "active": true,
+      "label": {
+        "it": "Molto caldo",
+        "en": "Very warm"
+      },
+      "data": {}
+    },
+    {
+      "domain": "water",
+      "id": "0",
+      "sort": 10,
+      "active": true,
+      "label": {
+        "it": "Si bagna",
+        "en": "Not waterproof"
+      },
+      "data": {}
+    },
+    {
+      "domain": "water",
+      "id": "1",
+      "sort": 20,
+      "active": true,
+      "label": {
+        "it": "Pioggia leggera",
+        "en": "Light rain"
+      },
+      "data": {}
+    },
+    {
+      "domain": "water",
+      "id": "2",
+      "sort": 30,
+      "active": true,
+      "label": {
+        "it": "Impermeabile",
+        "en": "Waterproof"
+      },
+      "data": {}
+    },
+    {
+      "domain": "activity",
+      "id": "city",
+      "sort": 10,
+      "active": true,
+      "label": {
+        "it": "Città e musei",
+        "en": "Cities and museums"
+      },
+      "data": {
+        "generator": [
+          "visite in citta"
+        ],
+        "alias": [
+          "citta",
+          "città",
+          "musei",
+          "museo",
+          "city",
+          "museums",
+          "sightseeing"
+        ]
+      }
+    },
+    {
+      "domain": "activity",
+      "id": "walks",
+      "sort": 20,
+      "active": true,
+      "label": {
+        "it": "Passeggiate nella natura",
+        "en": "Nature walks"
+      },
+      "data": {
+        "generator": [
+          "escursioni leggere"
+        ],
+        "alias": [
+          "passeggiata",
+          "passeggiate",
+          "natura",
+          "walk",
+          "walks",
+          "nature"
+        ]
+      }
+    },
+    {
+      "domain": "activity",
+      "id": "trekking",
+      "sort": 30,
+      "active": true,
+      "label": {
+        "it": "Trekking",
+        "en": "Trekking"
+      },
+      "data": {
+        "generator": [
+          "trekking"
+        ],
+        "alias": [
+          "trekking",
+          "montagna",
+          "hiking",
+          "escursion",
+          "mountain"
+        ]
+      }
+    },
+    {
+      "domain": "activity",
+      "id": "cammino",
+      "sort": 40,
+      "active": true,
+      "label": {
+        "it": "Cammino di più giorni",
+        "en": "Multi-day walk"
+      },
+      "data": {
+        "generator": [
+          "cammino"
+        ],
+        "alias": [
+          "cammino",
+          "camino",
+          "pellegrinaggio",
+          "pilgrimage"
+        ]
+      }
+    },
+    {
+      "domain": "activity",
+      "id": "sea",
+      "sort": 50,
+      "active": true,
+      "label": {
+        "it": "Mare",
+        "en": "Sea"
+      },
+      "data": {
+        "generator": [
+          "mare"
+        ],
+        "alias": [
+          "mare",
+          "spiaggia",
+          "beach",
+          "sea"
+        ]
+      }
+    },
+    {
+      "domain": "activity",
+      "id": "diving",
+      "sort": 60,
+      "active": true,
+      "label": {
+        "it": "Immersioni e snorkeling",
+        "en": "Diving and snorkeling"
+      },
+      "data": {
+        "generator": [
+          "immersioni",
+          "mare"
+        ],
+        "alias": [
+          "immersioni",
+          "immersione",
+          "snorkeling",
+          "sub",
+          "diving"
+        ]
+      }
+    },
+    {
+      "domain": "activity",
+      "id": "ski",
+      "sort": 70,
+      "active": true,
+      "label": {
+        "it": "Sci e neve",
+        "en": "Skiing and snow"
+      },
+      "data": {
+        "generator": [
+          "sci"
+        ],
+        "alias": [
+          "sci",
+          "ski",
+          "neve",
+          "snow",
+          "settimana bianca"
+        ]
+      }
+    },
+    {
+      "domain": "activity",
+      "id": "camping",
+      "sort": 80,
+      "active": true,
+      "label": {
+        "it": "Campeggio",
+        "en": "Camping"
+      },
+      "data": {
+        "generator": [
+          "campeggio"
+        ],
+        "alias": [
+          "campeggio",
+          "tenda",
+          "camping",
+          "tent"
+        ]
+      }
+    },
+    {
+      "domain": "activity",
+      "id": "work",
+      "sort": 90,
+      "active": true,
+      "label": {
+        "it": "Lavoro",
+        "en": "Work"
+      },
+      "data": {
+        "generator": [
+          "riunioni di lavoro"
+        ],
+        "alias": [
+          "lavoro",
+          "riunioni",
+          "work",
+          "business"
+        ]
+      }
+    },
+    {
+      "domain": "activity",
+      "id": "evenings",
+      "sort": 100,
+      "active": true,
+      "label": {
+        "it": "Cene e serate",
+        "en": "Dinners and evenings out"
+      },
+      "data": {
+        "generator": [
+          "cene al ristorante",
+          "vita notturna"
+        ],
+        "alias": [
+          "cene",
+          "cena",
+          "serate",
+          "serata",
+          "dinner",
+          "evening"
+        ]
+      }
+    },
+    {
+      "domain": "activity",
+      "id": "wedding",
+      "sort": 110,
+      "active": true,
+      "label": {
+        "it": "Matrimoni e cerimonie",
+        "en": "Weddings and ceremonies"
+      },
+      "data": {
+        "generator": [
+          "matrimonio"
+        ],
+        "alias": [
+          "matrimonio",
+          "matrimoni",
+          "cerimonia",
+          "cerimonie",
+          "wedding",
+          "ceremony"
+        ]
+      }
+    },
+    {
+      "domain": "activity",
+      "id": "worship",
+      "sort": 120,
+      "active": true,
+      "label": {
+        "it": "Luoghi di culto",
+        "en": "Places of worship"
+      },
+      "data": {
+        "generator": [
+          "visite a siti religiosi"
+        ],
+        "alias": [
+          "culto",
+          "chiesa",
+          "chiese",
+          "worship",
+          "church"
+        ]
+      }
+    },
+    {
+      "domain": "activity",
+      "id": "spa",
+      "sort": 130,
+      "active": true,
+      "label": {
+        "it": "Terme",
+        "en": "Spa"
+      },
+      "data": {
+        "generator": [
+          "terme"
+        ],
+        "alias": [
+          "terme",
+          "spa",
+          "benessere",
+          "wellness"
+        ]
+      }
+    },
+    {
+      "domain": "activity",
+      "id": "high_mountain",
+      "sort": 140,
+      "active": false,
+      "label": {
+        "it": "Alta montagna",
+        "en": "High mountains"
+      },
+      "data": {
+        "generator": [
+          "escursioni in quota"
+        ]
+      }
+    },
+    {
+      "domain": "activity",
+      "id": "formal_dinner",
+      "sort": 150,
+      "active": false,
+      "label": {
+        "it": "Cena elegante",
+        "en": "Elegant dinner"
+      },
+      "data": {
+        "generator": [
+          "cena formale"
+        ]
+      }
+    },
+    {
+      "domain": "activity",
+      "id": "nightlife",
+      "sort": 160,
+      "active": false,
+      "label": {
+        "it": "Serate e locali",
+        "en": "Nightlife"
+      },
+      "data": {
+        "generator": [
+          "vita notturna"
+        ]
+      }
+    },
+    {
+      "domain": "activity",
+      "id": "cycling",
+      "sort": 170,
+      "active": false,
+      "label": {
+        "it": "Bicicletta",
+        "en": "Cycling"
+      },
+      "data": {
+        "generator": [
+          "bicicletta"
+        ]
+      }
+    },
+    {
+      "domain": "stay",
+      "id": "hotel",
+      "sort": 10,
+      "active": true,
+      "label": {
+        "it": "Hotel",
+        "en": "Hotel"
+      },
+      "data": {
+        "generator": "hotel"
+      }
+    },
+    {
+      "domain": "stay",
+      "id": "apartment",
+      "sort": 20,
+      "active": true,
+      "label": {
+        "it": "Appartamento",
+        "en": "Apartment"
+      },
+      "data": {
+        "generator": "appartamento"
+      }
+    },
+    {
+      "domain": "stay",
+      "id": "hostel",
+      "sort": 30,
+      "active": true,
+      "label": {
+        "it": "Ostello",
+        "en": "Hostel"
+      },
+      "data": {
+        "generator": "ostello"
+      }
+    },
+    {
+      "domain": "stay",
+      "id": "camping",
+      "sort": 40,
+      "active": true,
+      "label": {
+        "it": "Campeggio",
+        "en": "Campsite"
+      },
+      "data": {
+        "generator": "campeggio"
+      }
+    },
+    {
+      "domain": "stay",
+      "id": "friends",
+      "sort": 50,
+      "active": true,
+      "label": {
+        "it": "Da amici o parenti",
+        "en": "Friends or family"
+      },
+      "data": {
+        "generator": "da amici o parenti"
+      }
+    },
+    {
+      "domain": "transport",
+      "id": "plane",
+      "sort": 10,
+      "active": true,
+      "label": {
+        "it": "Aereo",
+        "en": "Plane"
+      },
+      "data": {
+        "alias": [
+          "aereo",
+          "volo",
+          "flight",
+          "plane",
+          "airplane"
+        ]
+      }
+    },
+    {
+      "domain": "transport",
+      "id": "train",
+      "sort": 20,
+      "active": true,
+      "label": {
+        "it": "Treno",
+        "en": "Train"
+      },
+      "data": {
+        "alias": [
+          "treno",
+          "train",
+          "rail"
+        ]
+      }
+    },
+    {
+      "domain": "transport",
+      "id": "car",
+      "sort": 30,
+      "active": true,
+      "label": {
+        "it": "Auto",
+        "en": "Car"
+      },
+      "data": {
+        "alias": [
+          "auto",
+          "macchina",
+          "automobile",
+          "car",
+          "road trip"
+        ]
+      }
+    },
+    {
+      "domain": "transport",
+      "id": "ship",
+      "sort": 40,
+      "active": true,
+      "label": {
+        "it": "Nave",
+        "en": "Ship"
+      },
+      "data": {
+        "alias": [
+          "nave",
+          "traghetto",
+          "crociera",
+          "ship",
+          "ferry",
+          "cruise"
+        ]
+      }
+    },
+    {
+      "domain": "transport",
+      "id": "bus",
+      "sort": 50,
+      "active": true,
+      "label": {
+        "it": "Bus",
+        "en": "Bus"
+      },
+      "data": {
+        "alias": [
+          "bus",
+          "pullman",
+          "autobus",
+          "coach"
+        ]
+      }
+    }
+  ]
+}

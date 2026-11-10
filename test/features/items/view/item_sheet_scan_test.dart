@@ -14,7 +14,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../helpers/memory_asset_loader.dart';
 
+import '../../../helpers/catalogo_di_prova.dart';
+
 void main() {
+  setUp(() => caricaCatalogoDelRepo());
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
     await EasyLocalization.ensureInitialized();

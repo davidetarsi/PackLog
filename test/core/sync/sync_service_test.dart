@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/database/database.dart';
+import 'package:pack_log/features/trips/model/suitcase_edit.dart';
 import 'package:pack_log/core/database/tables/mixins/syncable_table.dart';
 import 'package:pack_log/core/monitoring/monitoring_service.dart';
 import 'package:pack_log/core/sync/supabase_repository.dart';
@@ -10,6 +11,7 @@ import 'package:pack_log/core/sync/sync_service.dart';
 import 'package:pack_log/core/sync/tombstone_config_service.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/luggages/model/luggage_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../../helpers/test_database_setup.dart';
 
 class MockSupabaseRepository extends Mock implements SupabaseRepository {}
@@ -46,12 +48,23 @@ void main() {
       () => mockTombstoneConfig.getRetentionDays(),
     ).thenAnswer((_) async => 15);
 
+    // Default: nessun kit sul server. I test dei kit lo sostituiscono.
+    when(
+      () => mockRemote.fetchAllKitsByUserId(any()),
+    ).thenAnswer((_) async => []);
+    when(
+      () => mockRemote.fetchAllKitItemsByUserId(any()),
+    ).thenAnswer((_) async => []);
+
     syncService = SyncService(
       housesDao: database.housesDao,
       itemsDao: database.itemsDao,
       spacesDao: database.spacesDao,
       luggagesDao: database.luggagesDao,
+      kitsDao: database.kitsDao,
+      kitItemsDao: database.kitItemsDao,
       tripsDao: database.tripsDao,
+      suitcaseEditsDao: database.suitcaseEditsDao,
       remote: mockRemote,
       monitoring: mockMonitoring,
       tombstoneConfig: mockTombstoneConfig,
@@ -1116,16 +1129,21 @@ void main() {
     }
 
     void stubViaggi(List<Map<String, dynamic>> trips) {
-      when(() => mockRemote.fetchAllHousesByUserId(any()))
-          .thenAnswer((_) async => []);
-      when(() => mockRemote.fetchAllSpacesByUserId(any()))
-          .thenAnswer((_) async => []);
-      when(() => mockRemote.fetchAllLuggagesByUserId(any()))
-          .thenAnswer((_) async => []);
-      when(() => mockRemote.fetchAllItemsByUserId(any()))
-          .thenAnswer((_) async => []);
-      when(() => mockRemote.fetchAllTripsByUserId(any()))
-          .thenAnswer((_) async => trips);
+      when(
+        () => mockRemote.fetchAllHousesByUserId(any()),
+      ).thenAnswer((_) async => []);
+      when(
+        () => mockRemote.fetchAllSpacesByUserId(any()),
+      ).thenAnswer((_) async => []);
+      when(
+        () => mockRemote.fetchAllLuggagesByUserId(any()),
+      ).thenAnswer((_) async => []);
+      when(
+        () => mockRemote.fetchAllItemsByUserId(any()),
+      ).thenAnswer((_) async => []);
+      when(
+        () => mockRemote.fetchAllTripsByUserId(any()),
+      ).thenAnswer((_) async => trips);
     }
 
     test(
@@ -1163,37 +1181,30 @@ void main() {
       },
     );
 
-    test(
-      'non sovrascrive un risultato AI gia presente in locale',
-      () async {
-        final remoto = DateTime(2026, 5, 1, 8, 0).toUtc();
-        final locale = DateTime(2026, 5, 1, 14, 0).toUtc();
-        await database.tripsDao.insertTrip(
-          TripsCompanion.insert(
-            id: 't-ai',
-            name: 'Nome locale',
-            createdAt: remoto,
-            updatedAt: locale,
-            aiPackingResult: const Value('{"locale":true}'),
-            syncStatus: const Value(SyncStatus.synced),
-          ),
-        );
-        stubViaggi([
-          viaggioRemoto(
-            remoto,
-            setup: {'giorni': 3},
-            result: {'remoto': true},
-          ),
-        ]);
+    test('non sovrascrive un risultato AI gia presente in locale', () async {
+      final remoto = DateTime(2026, 5, 1, 8, 0).toUtc();
+      final locale = DateTime(2026, 5, 1, 14, 0).toUtc();
+      await database.tripsDao.insertTrip(
+        TripsCompanion.insert(
+          id: 't-ai',
+          name: 'Nome locale',
+          createdAt: remoto,
+          updatedAt: locale,
+          aiPackingResult: const Value('{"locale":true}'),
+          syncStatus: const Value(SyncStatus.synced),
+        ),
+      );
+      stubViaggi([
+        viaggioRemoto(remoto, setup: {'giorni': 3}, result: {'remoto': true}),
+      ]);
 
-        await syncService.fullPull('user-1');
+      await syncService.fullPull('user-1');
 
-        final trip = await database.tripsDao.findTripById('t-ai');
-        expect(trip!.aiPackingResult, equals('{"locale":true}'));
-        // Il setup mancava in locale: quello sì arriva.
-        expect(trip.aiPackingSetup, contains('"giorni":3'));
-      },
-    );
+      final trip = await database.tripsDao.findTripById('t-ai');
+      expect(trip!.aiPackingResult, equals('{"locale":true}'));
+      // Il setup mancava in locale: quello sì arriva.
+      expect(trip.aiPackingSetup, contains('"giorni":3'));
+    });
   });
 
   group('SyncService - account lifecycle', () {
@@ -1247,8 +1258,22 @@ void main() {
           ),
         );
 
+        await database.suitcaseEditsDao.enqueue([
+          SuitcaseEdit(
+            id: 'e-wipe',
+            tripId: 't-wipe',
+            itemKey: 'k',
+            userId: 'u1',
+            at: now,
+            action: SuitcaseEditAction.removed,
+            origin: SuitcaseEditOrigin.proposal,
+            analysisAllowed: true,
+          ),
+        ]);
+
         await syncService.wipeAllUserData();
 
+        expect(await database.suitcaseEditsDao.pending(), isEmpty);
         expect(await database.select(database.houses).get(), isEmpty);
         expect(await database.select(database.spaces).get(), isEmpty);
         expect(await database.select(database.luggages).get(), isEmpty);
@@ -1701,7 +1726,10 @@ void main() {
           itemsDao: database.itemsDao,
           spacesDao: database.spacesDao,
           luggagesDao: database.luggagesDao,
+          kitsDao: database.kitsDao,
+          kitItemsDao: database.kitItemsDao,
           tripsDao: database.tripsDao,
+          suitcaseEditsDao: database.suitcaseEditsDao,
           remote: mockRemote,
           monitoring: mockMonitoring,
           tombstoneConfig: mockTombstoneConfig,
@@ -1968,5 +1996,656 @@ void main() {
         expect(breakdown.single.entityLabelKey, 'houses.title');
       },
     );
+  });
+
+  group('SyncService - kit sync', () {
+    final t1 = DateTime(2026, 11, 1, 8).toUtc();
+
+    Map<String, dynamic> kitJson(
+      String id, {
+      DateTime? updatedAt,
+      bool isDeleted = false,
+      String name = 'Sci',
+    }) => {
+      'id': id,
+      'user_id': null,
+      'house_id': 'h-parent',
+      'name': name,
+      'activities': ['ski'],
+      'transports': <String>[],
+      'learned': {
+        'yes': {'trekking': 2},
+        'no': <String>[],
+      },
+      'created_at': t1.toIso8601String(),
+      'updated_at': (updatedAt ?? t1).toIso8601String(),
+      'is_deleted': isDeleted,
+    };
+
+    Map<String, dynamic> rowJson(
+      String id,
+      String kitId,
+      String itemId, {
+      int copies = 1,
+    }) => {
+      'id': id,
+      'user_id': null,
+      'kit_id': kitId,
+      'item_id': itemId,
+      'copies': copies,
+      'created_at': t1.toIso8601String(),
+      'updated_at': t1.toIso8601String(),
+      'is_deleted': false,
+    };
+
+    void stubFetchAll({
+      List<Map<String, dynamic>> kits = const [],
+      List<Map<String, dynamic>> kitItems = const [],
+    }) {
+      for (final f in [
+        () => mockRemote.fetchAllHousesByUserId(any()),
+        () => mockRemote.fetchAllSpacesByUserId(any()),
+        () => mockRemote.fetchAllLuggagesByUserId(any()),
+        () => mockRemote.fetchAllItemsByUserId(any()),
+        () => mockRemote.fetchAllTripsByUserId(any()),
+      ]) {
+        when(f).thenAnswer((_) async => <Map<String, dynamic>>[]);
+      }
+      when(
+        () => mockRemote.fetchAllKitsByUserId(any()),
+      ).thenAnswer((_) async => kits);
+      when(
+        () => mockRemote.fetchAllKitItemsByUserId(any()),
+      ).thenAnswer((_) async => kitItems);
+    }
+
+    Future<void> seedHouseAndItem() async {
+      await insertHouse('h-parent', updatedAt: t1);
+      await insertItem('i-1', 'h-parent', updatedAt: t1);
+    }
+
+    test('fullPull inserisce un kit e le sue righe dopo gli oggetti', () async {
+      await seedHouseAndItem();
+      stubFetchAll(
+        kits: [kitJson('k-1')],
+        kitItems: [rowJson('r-1', 'k-1', 'i-1', copies: 2)],
+      );
+
+      await syncService.fullPull('user-1');
+
+      final kit = await database.kitsDao.findKitById('k-1');
+      expect(kit, isNotNull);
+      expect(kit!.activities, '["ski"]');
+      expect(kit.syncStatus, SyncStatus.synced);
+      final row = await database.kitItemsDao.findKitItemById('r-1');
+      expect(row!.copies, 2);
+      expect(row.itemId, 'i-1');
+    });
+
+    test('fullPull salta una riga il cui oggetto o kit non esiste, senza '
+        'errori in Sentry', () async {
+      await seedHouseAndItem();
+      stubFetchAll(
+        kits: [kitJson('k-1')],
+        kitItems: [
+          rowJson('r-1', 'k-1', 'oggetto-assente'),
+          rowJson('r-2', 'kit-assente', 'i-1'),
+        ],
+      );
+
+      await syncService.fullPull('user-1');
+
+      expect(await database.kitsDao.findKitById('k-1'), isNotNull);
+      expect(await database.kitItemsDao.findKitItemById('r-1'), isNull);
+      expect(await database.kitItemsDao.findKitItemById('r-2'), isNull);
+      verifyNever(
+        () => mockMonitoring.captureException(
+          any<Object>(),
+          stackTrace: any(named: 'stackTrace'),
+          tags: any(named: 'tags'),
+        ),
+      );
+    });
+
+    test('fullPull: stessa coppia con un altro id, vince il remoto', () async {
+      await seedHouseAndItem();
+      await database.kitsDao.upsertKit(
+        KitsCompanion.insert(
+          id: 'k-1',
+          houseId: 'h-parent',
+          name: 'Sci',
+          createdAt: t1,
+          updatedAt: t1,
+          syncStatus: const Value(SyncStatus.synced),
+        ),
+      );
+      await database.kitsDao.upsertKitItem(
+        KitItemsCompanion.insert(
+          id: 'locale',
+          kitId: 'k-1',
+          itemId: 'i-1',
+          createdAt: t1,
+          updatedAt: t1,
+        ),
+      );
+      stubFetchAll(
+        kits: [kitJson('k-1')],
+        kitItems: [rowJson('remota', 'k-1', 'i-1', copies: 3)],
+      );
+
+      await syncService.fullPull('user-1');
+
+      expect(await database.kitItemsDao.findKitItemById('locale'), isNull);
+      expect((await database.kitItemsDao.findKitItemById('remota'))!.copies, 3);
+    });
+
+    test(
+      'fullPull: la coppia con un altro id non cancella modifiche non spedite',
+      () async {
+        await seedHouseAndItem();
+        await database.kitsDao.upsertKit(
+          KitsCompanion.insert(
+            id: 'k-1',
+            houseId: 'h-parent',
+            name: 'Sci',
+            createdAt: t1,
+            updatedAt: t1,
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
+        final later = t1.add(const Duration(hours: 2));
+        await database.kitsDao.upsertKitItem(
+          KitItemsCompanion.insert(
+            id: 'locale',
+            kitId: 'k-1',
+            itemId: 'i-1',
+            copies: const Value(5),
+            createdAt: t1,
+            updatedAt: later,
+          ),
+        );
+        stubFetchAll(
+          kits: [kitJson('k-1')],
+          kitItems: [rowJson('remota', 'k-1', 'i-1', copies: 3)],
+        );
+
+        await syncService.fullPull('user-1');
+
+        // La riga locale è più recente e non ancora spedita: resta, e la
+        // riga remota non viene inserita (violerebbe l'unicità).
+        final local = await database.kitItemsDao.findKitItemById('locale');
+        expect(local, isNotNull);
+        expect(local!.copies, 5);
+        expect(local.syncStatus, SyncStatus.pendingCreate);
+        expect(await database.kitItemsDao.findKitItemById('remota'), isNull);
+      },
+    );
+
+    test(
+      'fullPull: la coppia locale non spedita ma più vecchia cede al remoto',
+      () async {
+        await seedHouseAndItem();
+        await database.kitsDao.upsertKit(
+          KitsCompanion.insert(
+            id: 'k-1',
+            houseId: 'h-parent',
+            name: 'Sci',
+            createdAt: t1,
+            updatedAt: t1,
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
+        await database.kitsDao.upsertKitItem(
+          KitItemsCompanion.insert(
+            id: 'locale',
+            kitId: 'k-1',
+            itemId: 'i-1',
+            createdAt: t1.subtract(const Duration(hours: 2)),
+            updatedAt: t1.subtract(const Duration(hours: 1)),
+          ),
+        );
+        stubFetchAll(
+          kits: [kitJson('k-1')],
+          kitItems: [rowJson('remota', 'k-1', 'i-1', copies: 3)],
+        );
+
+        await syncService.fullPull('user-1');
+
+        expect(await database.kitItemsDao.findKitItemById('locale'), isNull);
+        expect(
+          (await database.kitItemsDao.findKitItemById('remota'))!.copies,
+          3,
+        );
+      },
+    );
+
+    test(
+      'fullPull: coppia cancellata qui e ricreata altrove con un altro id',
+      () async {
+        await seedHouseAndItem();
+        await database.kitsDao.upsertKit(
+          KitsCompanion.insert(
+            id: 'k-1',
+            houseId: 'h-parent',
+            name: 'Sci',
+            createdAt: t1,
+            updatedAt: t1,
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
+        await database.kitsDao.upsertKitItem(
+          KitItemsCompanion.insert(
+            id: 'id1',
+            kitId: 'k-1',
+            itemId: 'i-1',
+            createdAt: t1,
+            updatedAt: t1,
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
+        await database.kitsDao.softDeleteKitItem('k-1', 'i-1');
+        await database.kitItemsDao.markAsSynced(
+          'id1',
+          t1,
+          localUpdatedAt: (await database.kitItemsDao.findKitItemById(
+            'id1',
+          ))!.updatedAt,
+        );
+        // Dopo il push dell'altro dispositivo (upsert su kit_id,item_id) la
+        // riga del server ha l'id nuovo ed è viva.
+        stubFetchAll(
+          kits: [kitJson('k-1')],
+          kitItems: [rowJson('id2', 'k-1', 'i-1', copies: 2)],
+        );
+
+        await syncService.fullPull('user-1');
+
+        final rows = await database
+            .customSelect('SELECT id FROM kit_items WHERE is_deleted = 0')
+            .get();
+        expect(rows.map((r) => r.read<String>('id')), ['id2']);
+      },
+    );
+
+    test('fullPull: un tombstone remoto cancella il kit locale', () async {
+      await seedHouseAndItem();
+      await database.kitsDao.upsertKit(
+        KitsCompanion.insert(
+          id: 'k-1',
+          houseId: 'h-parent',
+          name: 'Sci',
+          createdAt: t1,
+          updatedAt: t1,
+          syncStatus: const Value(SyncStatus.synced),
+        ),
+      );
+      stubFetchAll(
+        kits: [
+          kitJson(
+            'k-1',
+            isDeleted: true,
+            updatedAt: t1.add(const Duration(hours: 1)),
+          ),
+        ],
+      );
+
+      await syncService.fullPull('user-1');
+
+      expect((await database.kitsDao.findKitById('k-1'))!.isDeleted, isTrue);
+    });
+
+    test('processQueue spinge un kit pending e poi le sue righe', () async {
+      await seedHouseAndItem();
+      await database.kitsDao.upsertKit(
+        KitsCompanion.insert(
+          id: 'k-push',
+          houseId: 'h-parent',
+          name: 'Mare',
+          activities: const Value('["sea"]'),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+      await database.kitsDao.upsertKitItem(
+        KitItemsCompanion.insert(
+          id: 'r-push',
+          kitId: 'k-push',
+          itemId: 'i-1',
+          copies: const Value(2),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+      await database.housesDao.markAsSynced('h-parent', t1, localUpdatedAt: t1);
+      await database.itemsDao.markAsSynced('i-1', t1, localUpdatedAt: t1);
+
+      final order = <String>[];
+      Map<String, dynamic>? kitPayload;
+      Map<String, dynamic>? rowPayload;
+      when(
+        () => mockRemote.fetchKitById(
+          any(),
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenAnswer((_) async {
+        order.add('kit');
+        return null;
+      });
+      when(
+        () =>
+            mockRemote.upsertKit(any(), sentryTrace: any(named: 'sentryTrace')),
+      ).thenAnswer((inv) async {
+        kitPayload = inv.positionalArguments[0] as Map<String, dynamic>;
+        return DateTime.utc(2026, 11, 3);
+      });
+      when(
+        () => mockRemote.fetchKitItemById(
+          any(),
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenAnswer((_) async {
+        order.add('kit_item');
+        return null;
+      });
+      when(
+        () => mockRemote.upsertKitItem(
+          any(),
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenAnswer((inv) async {
+        rowPayload = inv.positionalArguments[0] as Map<String, dynamic>;
+        return DateTime.utc(2026, 11, 3);
+      });
+
+      await syncService.processQueue();
+
+      expect(order, ['kit', 'kit_item']);
+      expect(kitPayload!['activities'], ['sea']);
+      expect(kitPayload!['house_id'], 'h-parent');
+      expect(rowPayload!['copies'], 2);
+      expect(rowPayload!['kit_id'], 'k-push');
+      expect(
+        (await database.kitsDao.findKitById('k-push'))!.syncStatus,
+        SyncStatus.synced,
+      );
+    });
+
+    test('wipeAllUserData svuota anche i kit', () async {
+      await seedHouseAndItem();
+      await database.kitsDao.upsertKit(
+        KitsCompanion.insert(
+          id: 'k-1',
+          houseId: 'h-parent',
+          name: 'Sci',
+          createdAt: t1,
+          updatedAt: t1,
+        ),
+      );
+      await database.kitsDao.upsertKitItem(
+        KitItemsCompanion.insert(
+          id: 'r-1',
+          kitId: 'k-1',
+          itemId: 'i-1',
+          createdAt: t1,
+          updatedAt: t1,
+        ),
+      );
+
+      await syncService.wipeAllUserData();
+
+      expect(await database.select(database.kits).get(), isEmpty);
+      expect(await database.select(database.kitItems).get(), isEmpty);
+    });
+
+    test('i kit non sincronizzati contano e compaiono nel dettaglio', () async {
+      await seedHouseAndItem();
+      await database.housesDao.markAsSynced('h-parent', t1, localUpdatedAt: t1);
+      await database.itemsDao.markAsSynced('i-1', t1, localUpdatedAt: t1);
+      await database.kitsDao.upsertKit(
+        KitsCompanion.insert(
+          id: 'k-1',
+          houseId: 'h-parent',
+          name: 'Sci',
+          createdAt: t1,
+          updatedAt: t1,
+        ),
+      );
+      await database.kitsDao.upsertKitItem(
+        KitItemsCompanion.insert(
+          id: 'r-1',
+          kitId: 'k-1',
+          itemId: 'i-1',
+          createdAt: t1,
+          updatedAt: t1,
+        ),
+      );
+
+      expect(await syncService.countAllUnsyncedChanges(), 2);
+      expect(await syncService.countPendingChanges(), 2);
+      final breakdown = await syncService.getUnsyncedBreakdown();
+      expect(breakdown.map((b) => b.entityLabelKey), [
+        'profile.sync_entity_kits',
+        'profile.sync_entity_kit_items',
+      ]);
+    });
+  });
+  group('SyncService - modifiche alla valigia', () {
+    SuitcaseEdit edit(String id, {int minute = 0}) => SuitcaseEdit(
+      id: id,
+      tripId: 't-1',
+      itemKey: 'k-$id',
+      userId: 'u1',
+      at: DateTime.utc(2026, 11, 8, 10, minute),
+      action: SuitcaseEditAction.removed,
+      origin: SuitcaseEditOrigin.proposal,
+      card: const {'category': 'abbigliamento'},
+      analysisAllowed: true,
+    );
+
+    test(
+      'tre eventi in coda: un solo insert con tre righe, coda vuota',
+      () async {
+        when(
+          () => mockRemote.insertSuitcaseEdits(any()),
+        ).thenAnswer((_) async {});
+        await database.suitcaseEditsDao.enqueue([
+          edit('e1'),
+          edit('e2', minute: 1),
+          edit('e3', minute: 2),
+        ]);
+
+        await syncService.processQueue();
+
+        final rows =
+            verify(
+                  () => mockRemote.insertSuitcaseEdits(captureAny()),
+                ).captured.single
+                as List<Map<String, dynamic>>;
+        expect(rows.map((r) => r['id']), ['e1', 'e2', 'e3']);
+        expect(rows.first['azione'], 'tolto');
+        expect(rows.first['origine'], 'proposta');
+        expect(rows.first['analisi_consentita'], true);
+        expect(rows.first['user_id'], 'u1');
+        expect(rows.first['chiave_oggetto'], 'k-e1');
+        expect(await database.suitcaseEditsDao.pending(), isEmpty);
+      },
+    );
+
+    test(
+      'insert che fallisce: coda intatta e processQueue non lancia',
+      () async {
+        when(
+          () => mockRemote.insertSuitcaseEdits(any()),
+        ).thenThrow(Exception('offline'));
+        when(
+          () => mockMonitoring.captureException(
+            any<Object>(),
+            stackTrace: any(named: 'stackTrace'),
+            tags: any(named: 'tags'),
+          ),
+        ).thenAnswer((_) async {});
+        await database.suitcaseEditsDao.enqueue([edit('e1'), edit('e2')]);
+
+        await syncService.processQueue();
+
+        expect((await database.suitcaseEditsDao.pending()).map((e) => e.id), [
+          'e1',
+          'e2',
+        ]);
+      },
+    );
+
+    test('piu di 200 eventi: blocchi da 200', () async {
+      when(
+        () => mockRemote.insertSuitcaseEdits(any()),
+      ).thenAnswer((_) async {});
+      await database.suitcaseEditsDao.enqueue([
+        for (var i = 0; i < 250; i++) edit('e$i', minute: i % 60),
+      ]);
+
+      await syncService.processQueue();
+
+      final calls = verify(
+        () => mockRemote.insertSuitcaseEdits(captureAny()),
+      ).captured.cast<List<Map<String, dynamic>>>();
+      expect(calls.map((c) => c.length), [200, 50]);
+      expect(await database.suitcaseEditsDao.pending(limit: 1000), isEmpty);
+    });
+
+    test(
+      'invio ripetuto con gli stessi id: stesse righe, id invariati',
+      () async {
+        when(
+          () => mockRemote.insertSuitcaseEdits(any()),
+        ).thenThrow(Exception('timeout dopo la scrittura'));
+        when(
+          () => mockMonitoring.captureException(
+            any<Object>(),
+            stackTrace: any(named: 'stackTrace'),
+            tags: any(named: 'tags'),
+          ),
+        ).thenAnswer((_) async {});
+        await database.suitcaseEditsDao.enqueue([edit('e1')]);
+        await syncService.processQueue();
+
+        when(
+          () => mockRemote.insertSuitcaseEdits(any()),
+        ).thenAnswer((_) async {});
+        await syncService.processQueue();
+
+        final calls = verify(
+          () => mockRemote.insertSuitcaseEdits(captureAny()),
+        ).captured.cast<List<Map<String, dynamic>>>();
+        expect(calls.map((c) => c.single['id']), ['e1', 'e1']);
+        expect(await database.suitcaseEditsDao.pending(), isEmpty);
+      },
+    );
+
+    void stubMonitoring() => when(
+      () => mockMonitoring.captureException(
+        any<Object>(),
+        stackTrace: any(named: 'stackTrace'),
+        tags: any(named: 'tags'),
+      ),
+    ).thenAnswer((_) async {});
+
+    /// Insert che rifiuta ogni blocco con più righe e, riga per riga, lancia
+    /// [errors[id]] per gli id indicati.
+    void stubRows(Map<String, Object> errors) {
+      when(() => mockRemote.insertSuitcaseEdits(any())).thenAnswer((inv) async {
+        final rows =
+            inv.positionalArguments.first as List<Map<String, dynamic>>;
+        if (rows.length > 1) {
+          throw PostgrestException(message: 'bad', code: '23514');
+        }
+        final err = errors[rows.single['id']];
+        if (err != null) throw err;
+      });
+    }
+
+    test('riga avvelenata (23): il blocco si rimanda una riga alla volta, '
+        'le altre arrivano, quella rifiutata si toglie', () async {
+      stubMonitoring();
+      stubRows({'e2': PostgrestException(message: 'bad', code: '23514')});
+      await database.suitcaseEditsDao.enqueue([
+        edit('e1'),
+        edit('e2', minute: 1),
+        edit('e3', minute: 2),
+      ]);
+
+      await syncService.processQueue();
+
+      expect(await database.suitcaseEditsDao.pending(), isEmpty);
+      verify(
+        () => mockMonitoring.captureException(
+          any<Object>(),
+          stackTrace: any(named: 'stackTrace'),
+          tags: any(named: 'tags'),
+        ),
+      ).called(1);
+    });
+
+    test('riga rifiutata con 22 (dati non validi): tolta', () async {
+      stubMonitoring();
+      stubRows({'e1': PostgrestException(message: 'bad', code: '22P02')});
+      await database.suitcaseEditsDao.enqueue([
+        edit('e1'),
+        edit('e2', minute: 1),
+      ]);
+      await syncService.processQueue();
+      expect(await database.suitcaseEditsDao.pending(), isEmpty);
+    });
+
+    test(
+      'errore di rete nel rimando riga per riga: la riga resta in coda',
+      () async {
+        stubMonitoring();
+        stubRows({
+          'e1': PostgrestException(message: 'bad', code: '23514'),
+          'e2': Exception('offline'),
+        });
+        await database.suitcaseEditsDao.enqueue([
+          edit('e1'),
+          edit('e2', minute: 1),
+          edit('e3', minute: 2),
+        ]);
+
+        await syncService.processQueue();
+
+        expect((await database.suitcaseEditsDao.pending()).map((e) => e.id), [
+          'e2',
+        ]);
+      },
+    );
+
+    test(
+      'utente diverso (RLS 42501): le righe si tolgono, non si riprova per sempre',
+      () async {
+        stubMonitoring();
+        when(
+          () => mockRemote.insertSuitcaseEdits(any()),
+        ).thenThrow(PostgrestException(message: 'rls', code: '42501'));
+        await database.suitcaseEditsDao.enqueue([
+          edit('e1'),
+          edit('e2', minute: 1),
+        ]);
+
+        await syncService.processQueue();
+
+        expect(await database.suitcaseEditsDao.pending(), isEmpty);
+      },
+    );
+
+    test('errore Postgrest non di dati (es. 500): la coda resta', () async {
+      stubMonitoring();
+      when(
+        () => mockRemote.insertSuitcaseEdits(any()),
+      ).thenThrow(PostgrestException(message: 'down', code: '503'));
+      await database.suitcaseEditsDao.enqueue([edit('e1')]);
+      await syncService.processQueue();
+      expect((await database.suitcaseEditsDao.pending()).map((e) => e.id), [
+        'e1',
+      ]);
+    });
   });
 }

@@ -75,4 +75,9 @@ class AppConstants {
 
   /// Altezza dei segmenti di avanzamento (es. le tappe del foglio AI).
   static const double progressSegmentHeight = 4.0;
+
+  /// Larghezza massima della card di un kit nella riga della casa, in parti
+  /// della larghezza dello schermo: lascia intravedere la card seguente, così
+  /// si capisce che la riga scorre.
+  static const double kitCardMaxWidthFactor = 0.55;
 }

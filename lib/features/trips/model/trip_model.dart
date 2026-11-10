@@ -72,6 +72,10 @@ class TripModel with _$TripModel {
     /// Tappe intermedie. Ordine di inserimento, nessun riordino automatico.
     @Default([]) List<TripLeg> legs,
 
+    /// Mezzi del viaggio (id del dominio `transport` del catalogo). Vuota =
+    /// nessun mezzo scelto.
+    @Default(<String>[]) List<String> transports,
+
     /// Risposte del foglio della valigia AI. `null` = nessuna informazione.
     AiPackingSetup? aiSetup,
 
@@ -97,6 +101,15 @@ class TripModel with _$TripModel {
   /// Restituisce il nome della destinazione
   String? get destinationDisplayName {
     return destinationLocation?.displayName;
+  }
+
+  /// Prima della partenza (senza data di partenza vale come non partito).
+  bool get notDeparted => notDepartedAt(DateTime.now());
+
+  /// Come [notDeparted], con l'istante [now] deciso da chi chiama.
+  bool notDepartedAt(DateTime now) {
+    final departure = departureDateTime;
+    return departure == null || now.isBefore(departure);
   }
 
   /// Determina lo stato attuale del viaggio

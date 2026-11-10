@@ -36,6 +36,7 @@ Future<ProfileLogoutChoice?> showProfileLogoutDialog(
     title: 'profile.logout_confirm_title'.tr(),
     message: 'profile.logout_confirm_body'.tr(),
     confirmLabel: 'profile.logout_force'.tr(),
+    confirmAsText: true,
   );
   return confirmed
       ? ProfileLogoutChoice.forceLogout

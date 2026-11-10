@@ -1,4 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +9,7 @@ import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/model/trip_weather.dart';
 import 'package:pack_log/features/trips/providers/trip_weather_provider.dart';
 import 'package:pack_log/features/trips/view/widgets/pack/pack_weather.dart';
+import 'package:pack_log/shared/widgets/packlog_gradient.dart';
 
 import '../../../../helpers/memory_asset_loader.dart';
 
@@ -59,6 +62,55 @@ class _FreshWeather extends TripWeatherNotifier {
 
   @override
   Future<bool> refresh() async => false;
+}
+
+TripWeather _meteo(WeatherSource source, {DateTime? fetchedAt}) => TripWeather(
+  signature: 's',
+  fetchedAt: fetchedAt ?? DateTime.now(),
+  stops: [
+    StopWeather(
+      name: 'Seul',
+      from: DateTime.now(),
+      to: DateTime.now().add(const Duration(days: 2)),
+      source: source,
+      years: source == WeatherSource.climate ? 5 : null,
+      tempMin: -7,
+      tempMax: 1,
+    ),
+  ],
+);
+
+/// Meteo pronto subito, con la fonte data.
+class _ReadyWeather extends TripWeatherNotifier {
+  _ReadyWeather(this.source);
+  final WeatherSource source;
+
+  @override
+  Future<TripWeatherState> build(String tripId) async => TripWeatherReady(
+    // Preso un'ora fa: è la copia in cache.
+    _meteo(
+      source,
+      fetchedAt: DateTime.now().subtract(const Duration(hours: 1)),
+    ),
+  );
+}
+
+/// Meteo con uno stato fisso.
+class _FixedWeather extends TripWeatherNotifier {
+  _FixedWeather(this.fixed);
+  final TripWeatherState fixed;
+
+  @override
+  Future<TripWeatherState> build(String tripId) async => fixed;
+}
+
+/// Meteo che arriva quando il test completa [reply].
+class _SlowWeather extends TripWeatherNotifier {
+  _SlowWeather(this.reply);
+  final Completer<TripWeatherState> reply;
+
+  @override
+  Future<TripWeatherState> build(String tripId) => reply.future;
 }
 
 void main() {
@@ -136,11 +188,12 @@ void main() {
       Widget child = const SizedBox(),
       Locale locale = it,
       List<Override> overrides = const [],
+      ProviderContainer? container,
     }) async {
       late BuildContext contesto;
       await tester.pumpWidget(
-        ProviderScope(
-          overrides: overrides,
+        UncontrolledProviderScope(
+          container: container ?? ProviderContainer(overrides: overrides),
           child: EasyLocalization(
             supportedLocales: const [it, en],
             path: 'assets/translations',
@@ -167,6 +220,225 @@ void main() {
       await tester.pumpAndSettle();
       return contesto;
     }
+
+    group('gradiente PackLog', () {
+      late TripModel trip;
+
+      setUp(() {
+        final now = DateTime.now();
+        trip = _viaggio(
+          departure: now.add(const Duration(days: 1)),
+          returnAt: now.add(const Duration(days: 3)),
+        );
+      });
+
+      PackLogGradientBorder border(WidgetTester tester) => tester
+          .widget<PackLogGradientBorder>(find.byType(PackLogGradientBorder));
+
+      testWidgets('dal clima: "Stima" con la scintilla', (tester) async {
+        await pumpLocalized(
+          tester,
+          overrides: [
+            tripWeatherNotifierProvider(
+              trip.id,
+            ).overrideWith(() => _ReadyWeather(WeatherSource.climate)),
+          ],
+          child: PackWeatherSection(trip: trip),
+        );
+        expect(find.text('Stima'), findsOneWidget);
+        expect(find.text('Previsione'), findsNothing);
+        expect(find.byType(PackLogSparkle), findsOneWidget);
+        expect(find.byType(PackLogGradientBorder), findsOneWidget);
+      });
+
+      testWidgets('la stima si apre solo se ha il giorno per giorno', (
+        tester,
+      ) async {
+        Future<void> pumpStop(StopWeather stop) => pumpLocalized(
+          tester,
+          overrides: [
+            tripWeatherNotifierProvider(trip.id).overrideWith(
+              () => _FixedWeather(
+                TripWeatherReady(
+                  TripWeather(
+                    signature: 's',
+                    fetchedAt: DateTime.now(),
+                    stops: [stop],
+                  ),
+                ),
+              ),
+            ),
+          ],
+          child: PackWeatherSection(trip: trip),
+        );
+        final base = _meteo(WeatherSource.climate).stops.single;
+
+        await pumpStop(base);
+        expect(find.byIcon(Icons.chevron_right), findsNothing);
+
+        await pumpStop(
+          StopWeather(
+            name: base.name,
+            from: base.from,
+            to: base.to,
+            source: base.source,
+            years: base.years,
+            tempMin: base.tempMin,
+            tempMax: base.tempMax,
+            historicalDays: [
+              HistoricalDayWeather(date: base.from, dataYears: 5),
+            ],
+          ),
+        );
+        expect(find.byIcon(Icons.chevron_right), findsOneWidget);
+      });
+
+      testWidgets('dalla previsione, in inglese: "Forecast"', (tester) async {
+        await pumpLocalized(
+          tester,
+          locale: en,
+          overrides: [
+            tripWeatherNotifierProvider(
+              trip.id,
+            ).overrideWith(() => _ReadyWeather(WeatherSource.forecast)),
+          ],
+          child: PackWeatherSection(trip: trip),
+        );
+        expect(find.text('Forecast'), findsOneWidget);
+        expect(find.text('Estimate'), findsNothing);
+      });
+
+      testWidgets('misto (fonti diverse): "Stima"', (tester) async {
+        final mixed = TripWeather(
+          signature: 's',
+          fetchedAt: DateTime.now(),
+          stops: [
+            _meteo(WeatherSource.forecast).stops.single,
+            _meteo(WeatherSource.climate).stops.single,
+          ],
+        );
+        expect(mixed.source, isNull);
+        await pumpLocalized(
+          tester,
+          overrides: [
+            tripWeatherNotifierProvider(
+              trip.id,
+            ).overrideWith(() => _FixedWeather(TripWeatherReady(mixed))),
+          ],
+          child: PackWeatherSection(trip: trip),
+        );
+        expect(find.text('Stima'), findsOneWidget);
+      });
+
+      testWidgets('dalla previsione: "Previsione"', (tester) async {
+        await pumpLocalized(
+          tester,
+          overrides: [
+            tripWeatherNotifierProvider(
+              trip.id,
+            ).overrideWith(() => _ReadyWeather(WeatherSource.forecast)),
+          ],
+          child: PackWeatherSection(trip: trip),
+        );
+        // Il titolo di riga e la riga della fonte dicono "Previsione".
+        expect(find.text('Previsione'), findsOneWidget);
+        expect(find.text('Stima'), findsNothing);
+      });
+
+      testWidgets('aperto con il meteo già pronto: bordo fermo', (
+        tester,
+      ) async {
+        // Il meteo è già in memoria (o in cache) prima che la pagina si apra.
+        final container = ProviderContainer(
+          overrides: [
+            tripWeatherNotifierProvider(
+              trip.id,
+            ).overrideWith(() => _ReadyWeather(WeatherSource.climate)),
+          ],
+        );
+        addTearDown(container.dispose);
+        await container.read(tripWeatherNotifierProvider(trip.id).future);
+
+        await pumpLocalized(
+          tester,
+          container: container,
+          child: PackWeatherSection(trip: trip),
+        );
+        expect(border(tester).loops, 0);
+      });
+
+      /// Monta la sezione con il meteo che arriva quando si completa [reply].
+      Future<void> pumpSlow(
+        WidgetTester tester,
+        Completer<TripWeatherState> reply,
+      ) async {
+        await tester.binding.setSurfaceSize(const Size(400, 800));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              tripWeatherNotifierProvider(
+                trip.id,
+              ).overrideWith(() => _SlowWeather(reply)),
+            ],
+            child: EasyLocalization(
+              supportedLocales: const [it, en],
+              path: 'assets/translations',
+              assetLoader: MemoryAssetLoader(readAppTranslations()),
+              fallbackLocale: en,
+              startLocale: it,
+              saveLocale: false,
+              child: Builder(
+                builder: (context) => MaterialApp(
+                  locale: context.locale,
+                  supportedLocales: context.supportedLocales,
+                  localizationsDelegates: context.localizationDelegates,
+                  home: Scaffold(body: PackWeatherSection(trip: trip)),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+        expect(find.byType(PackLogGradientBorder), findsNothing);
+      }
+
+      testWidgets('da caricamento a pronto con stima nuova: 2 giri', (
+        tester,
+      ) async {
+        final reply = Completer<TripWeatherState>();
+        await pumpSlow(tester, reply);
+
+        // Presa dopo l'apertura della pagina.
+        reply.complete(TripWeatherReady(_meteo(WeatherSource.climate)));
+        await tester.pump();
+        await tester.pump();
+        expect(border(tester).loops, 2);
+        expect(find.text('Stima'), findsOneWidget);
+      });
+
+      testWidgets('da caricamento a pronto con una copia vecchia: fermo', (
+        tester,
+      ) async {
+        final reply = Completer<TripWeatherState>();
+        await pumpSlow(tester, reply);
+
+        // La prima lettura passa dal caricamento, ma il meteo è quello in
+        // cache, preso prima che la pagina si aprisse.
+        reply.complete(
+          TripWeatherReady(
+            _meteo(
+              WeatherSource.climate,
+              fetchedAt: DateTime.now().subtract(const Duration(hours: 2)),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+        expect(border(tester).loops, 0);
+        expect(find.text('Stima'), findsOneWidget);
+      });
+    });
 
     testWidgets('Aggiorna con meteo già aggiornato lo dice', (tester) async {
       final now = DateTime.now();

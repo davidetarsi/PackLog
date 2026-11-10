@@ -58,6 +58,8 @@ class TripDraft {
     this.name = '',
     this.nameEdited = false,
     this.pendingEnd,
+    this.transports = const [],
+    this.pendingStops = const [],
   });
 
   const TripDraft.empty() : this._();
@@ -67,19 +69,9 @@ class TripDraft {
   ///
   /// La catena delle tappe si ricostruisce dalle date salvate: la meta finisce
   /// dove parte la prima tappa, ogni tappa dove parte la successiva, l'ultima
-  /// al ritorno. Se mancano date (es. la copia di "Riusa") restano meta e nome
-  /// senza tappe.
+  /// al ritorno. Se mancano date restano meta e nome senza tappe.
   factory TripDraft.fromTrip(TripModel trip, {String? houseName}) {
-    final houseId = trip.destinationHouseId;
-    final loc = trip.destinationLocation;
-    final DraftPlace? destination = houseId != null
-        ? DraftPlace.house(
-            id: houseId,
-            name: houseName ?? loc?.displayName ?? trip.name,
-          )
-        : loc != null && loc.displayName.trim().isNotEmpty
-        ? DraftPlace.location(loc)
-        : null;
+    final destination = _destinationOf(trip, houseName);
 
     final departure = trip.departureDateTime == null
         ? null
@@ -130,6 +122,30 @@ class TripDraft {
           trip.name.trim().isNotEmpty &&
           trip.name.trim() != destination?.shortName,
       pendingEnd: pendingEnd,
+      transports: List.unmodifiable(trip.transports),
+    );
+  }
+
+  /// Bozza di "Riusa": meta, mezzi e nome del viaggio passato, e i posti delle
+  /// sue tappe senza date ([pendingStops]). Le date non si portano dietro: si
+  /// scelgono da capo.
+  factory TripDraft.reuseOf(TripModel trip, {String? houseName}) {
+    final destination = _destinationOf(trip, houseName);
+    final legs = [...trip.legs]
+      ..sort(
+        (a, b) =>
+            (a.from ?? DateTime(9999)).compareTo(b.from ?? DateTime(9999)),
+      );
+    return TripDraft._(
+      destination: destination,
+      name: trip.name,
+      nameEdited:
+          trip.name.trim().isNotEmpty &&
+          trip.name.trim() != destination?.shortName,
+      transports: List.unmodifiable(trip.transports),
+      pendingStops: destination == null
+          ? const []
+          : List.unmodifiable(legs.map(_placeOfLeg)),
     );
   }
 
@@ -150,6 +166,13 @@ class TripDraft {
 
   /// Fine delle date scelte prima della meta. Vale solo finché [stops] è vuoto.
   final DateTime? pendingEnd;
+
+  /// Mezzi scelti (id del dominio `transport`), nell'ordine dei tocchi.
+  final List<String> transports;
+
+  /// Tappe di un viaggio riusato, ancora senza date: diventano tappe vere
+  /// quando si scelgono le date della meta. Vale solo finché [stops] è vuoto.
+  final List<DraftPlace> pendingStops;
 
   /// Fine dell'ultima tappa, o null senza meta con date.
   DateTime? get lastEnd => stops.isEmpty ? null : stops.last.end;
@@ -211,6 +234,7 @@ class TripDraft {
       name: nameEdited ? name : '',
       stops: const [],
       pendingEnd: keptEnd,
+      pendingStops: const [],
     );
   }
 
@@ -231,16 +255,48 @@ class TripDraft {
     if (dest == null) {
       return _copy(departure: s, pendingEnd: e);
     }
+    // Le tappe di "Riusa" nascono con la fine uguale all'inizio: zero notti,
+    // segnalate sotto la tappa finché l'utente non ne sceglie le date.
     return _copy(
       departure: s,
-      stops: [DraftStop(place: dest, end: e)],
+      stops: [
+        DraftStop(place: dest, end: e),
+        for (final place in pendingStops) DraftStop(place: place, end: e),
+      ],
       clearPendingEnd: true,
+      pendingStops: const [],
+    );
+  }
+
+  /// Imposta partenza e ritorno di tutto il viaggio ("Quando?").
+  ///
+  /// Con una sola tappa (o con le tappe di "Riusa" ancora in attesa, che non
+  /// sono tappe vere) è [withFirstDates]. Con più tappe cambia la partenza e la
+  /// fine dell'ultima; le fine intermedie restano. Null se le date tagliano
+  /// fuori una tappa: partenza non prima della fine della prima, o ritorno non
+  /// dopo l'inizio dell'ultima.
+  TripDraft? withTripDates(DateTime departure, DateTime returnDate) {
+    if (stops.length < 2) return withFirstDates(departure, returnDate);
+    final s = _dayOf(departure);
+    final e = _dayOf(returnDate);
+    if (!s.isBefore(stops.first.end)) return null;
+    if (!e.isAfter(stopStart(stops.length - 1)!)) return null;
+    return _copy(
+      departure: s,
+      stops: [
+        ...stops.take(stops.length - 1),
+        DraftStop(place: stops.last.place, end: e),
+      ],
     );
   }
 
   /// Nome del campo. Vuoto o solo spazi: torna a seguire la meta.
   TripDraft withName(String text) =>
       _copy(name: text, nameEdited: text.trim().isNotEmpty);
+
+  /// Sceglie i mezzi del viaggio. Non conta come modulo compilato.
+  TripDraft withTransports(List<String> ids) =>
+      _copy(transports: List.unmodifiable(ids));
 
   /// Aggiunge una tappa in coda. Richiede la meta con le date.
   TripDraft addStop(DraftPlace place, DateTime end) {
@@ -252,6 +308,18 @@ class TripDraft {
       stops: [
         ...stops,
         DraftStop(place: place, end: _dayOf(end)),
+      ],
+    );
+  }
+
+  /// Cambia la fine della meta (la prima tappa): sposta solo l'inizio della
+  /// seconda. Il luogo non cambia: si cambia da "Dove vai?".
+  TripDraft withDestinationEnd(DateTime end) {
+    assert(stops.isNotEmpty);
+    return _copy(
+      stops: [
+        DraftStop(place: stops.first.place, end: _dayOf(end)),
+        ...stops.skip(1),
       ],
     );
   }
@@ -313,6 +381,7 @@ class TripDraft {
           ? LocationSuggestionModel(placeId: '', displayName: dest.name)
           : dest.location,
       legs: legs,
+      transports: transports,
       createdAt: now,
       updatedAt: now,
     );
@@ -325,6 +394,8 @@ class TripDraft {
     String? name,
     bool? nameEdited,
     DateTime? pendingEnd,
+    List<String>? transports,
+    List<DraftPlace>? pendingStops,
     bool clearPendingEnd = false,
     bool clearDestinationPlace = false,
   }) {
@@ -337,8 +408,27 @@ class TripDraft {
       name: name ?? this.name,
       nameEdited: nameEdited ?? this.nameEdited,
       pendingEnd: clearPendingEnd ? null : (pendingEnd ?? this.pendingEnd),
+      transports: transports ?? this.transports,
+      pendingStops: List.unmodifiable(pendingStops ?? this.pendingStops),
     );
   }
+}
+
+/// La meta di [trip] come posto della bozza: la casa, il luogo della ricerca
+/// o niente.
+DraftPlace? _destinationOf(TripModel trip, String? houseName) {
+  final houseId = trip.destinationHouseId;
+  final loc = trip.destinationLocation;
+  if (houseId != null) {
+    return DraftPlace.house(
+      id: houseId,
+      name: houseName ?? loc?.displayName ?? trip.name,
+    );
+  }
+  if (loc != null && loc.displayName.trim().isNotEmpty) {
+    return DraftPlace.location(loc);
+  }
+  return null;
 }
 
 DateTime _dayOf(DateTime value) => DateTime(value.year, value.month, value.day);

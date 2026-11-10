@@ -79,6 +79,13 @@ class Trips extends Table with SyncableTable {
   /// `AiPackingResult`. Stesse regole di [aiPackingSetup].
   TextColumn get aiPackingResult => text().nullable()();
 
+  /// Mezzi del viaggio (id del dominio `transport` del catalogo), lista JSON.
+  ///
+  /// Stessa semantica di [legs]: `NULL` è "nessuna informazione" (riga creata
+  /// prima dello schema 13 o da un client vecchio) e il sync non la scrive sul
+  /// server né la cancella dal pull; `'[]'` è "nessun mezzo scelto".
+  TextColumn get transports => text().nullable()();
+
   /// Data di creazione
   DateTimeColumn get createdAt => dateTime()();
 

@@ -2,7 +2,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  alloggioDaTappe, GIORNI_MAX_SENZA_LAVATRICE, IngressoNonValido, lavatriceDaTappe, validaViaggio,
+  alloggioDaTappe, armadioVuotoAmmesso, GIORNI_MAX_SENZA_LAVATRICE, IngressoNonValido, lavatriceDaTappe, validaViaggio,
+  attivitaGrezze, MAX_KIT, MAX_OGGETTI_KIT, validaKit, validaMezzi,
 } from "../ingresso.ts";
 import { conRiprova } from "../genera.ts";
 
@@ -83,4 +84,44 @@ test("tappe con alloggio e lavatrice", () => {
   // il formato vecchio vince
   assert.equal(validaViaggio({ data_inizio: "2026-11-02", lavatrice: false, tappe: [{ ...luogo, giorni: 3, lavatrice: true }] }, OGGI).lavatrice, false);
   rifiuta({ data_inizio: "2026-11-02", tappe: [{ ...luogo, giorni: 3, lavatrice: "si" }] }, /lavatrice/);
+});
+
+test("armadio vuoto ammesso solo con posti: true", () => {
+  assert.equal(armadioVuotoAmmesso({ house_id: "x", posti: true }), true);
+  assert.equal(armadioVuotoAmmesso({ house_id: "x" }), false);
+  assert.equal(armadioVuotoAmmesso({ house_id: "x", posti: "true" }), false);
+  assert.equal(armadioVuotoAmmesso({ house_id: "x", posti: 1 }), false);
+  assert.equal(armadioVuotoAmmesso({ house_id: "x", posti: false }), false);
+});
+
+const kitOk = { id: "k1", attivita: ["ski"], mezzi: ["plane"], oggetti: [{ item_id: "a", copie: 2 }] };
+
+test("kit validi: corpo senza kit invariato", () => {
+  assert.equal(validaKit(undefined), null);
+  assert.equal(validaKit(null), null);
+  assert.deepEqual(validaKit([kitOk]), [kitOk]);
+  assert.deepEqual(validaKit([{ id: "k2", oggetti: [] }]), [{ id: "k2", attivita: [], mezzi: [], oggetti: [] }]);
+  assert.deepEqual(validaMezzi(undefined), []);
+  assert.deepEqual(validaMezzi([" plane "]), ["plane"]);
+});
+
+test("kit oltre 50 rifiutato", () => {
+  const rifiutaKit = (x: unknown, msg: RegExp) =>
+    assert.throws(() => validaKit(x), (e: unknown) => e instanceof IngressoNonValido && msg.test((e as Error).message));
+  assert.equal(MAX_KIT, 50);
+  assert.equal(MAX_OGGETTI_KIT, 50);
+  rifiutaKit(Array.from({ length: 51 }, (_, i) => ({ ...kitOk, id: `k${i}` })), /al massimo 50 kit/);
+  rifiutaKit([{ ...kitOk, oggetti: Array.from({ length: 51 }, (_, i) => ({ item_id: `i${i}`, copie: 1 })) }], /al massimo 50 oggetti/);
+  assert.equal(validaKit(Array.from({ length: 50 }, (_, i) => ({ ...kitOk, id: `k${i}` })))!.length, 50);
+  rifiutaKit("x", /elenco/);
+  rifiutaKit([{ ...kitOk, id: 3 }], /testo/);
+  rifiutaKit([{ ...kitOk, oggetti: [{ item_id: "a", copie: 0 }] }], /copie/);
+  rifiutaKit([{ ...kitOk, oggetti: [{ item_id: 1, copie: 1 }] }], /testo/);
+});
+
+test("attivita' grezze: unione di viaggio e tappe, prima della traduzione", () => {
+  assert.deepEqual(attivitaGrezze({ attivita: ["city"], tappe: [{ attivita: ["ski", "city"] }, { attivita: ["wine"] }] }).sort(),
+    ["city", "ski", "wine"]);
+  assert.deepEqual(attivitaGrezze({ attivita: 3, tappe: "x" }), []);
+  assert.deepEqual(attivitaGrezze(null), []);
 });

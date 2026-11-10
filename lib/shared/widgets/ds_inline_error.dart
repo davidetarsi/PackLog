@@ -5,13 +5,9 @@ import 'ds_link_button.dart';
 
 /// Errore recuperabile in una sezione: il resto della schermata resta usabile.
 class DsInlineError extends StatelessWidget {
-  const DsInlineError({
-    super.key,
-    required this.message,
-    required this.onRetry,
-  });
+  const DsInlineError({super.key, required this.message, this.onRetry});
   final String message;
-  final VoidCallback onRetry;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -39,11 +35,12 @@ class DsInlineError extends StatelessWidget {
             ),
           ),
         ),
-        DsLinkButton(
-          label: 'common.retry'.tr(),
-          icon: Icons.refresh,
-          onPressed: onRetry,
-        ),
+        if (onRetry != null)
+          DsLinkButton(
+            label: 'common.retry'.tr(),
+            icon: Icons.refresh,
+            onPressed: onRetry,
+          ),
       ],
     ),
   );

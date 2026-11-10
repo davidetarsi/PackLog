@@ -228,6 +228,37 @@ void main() {
       expect(plan.stops.last.lat, 45.8);
     });
 
+    test('la casa della tappa: meta e tratte, e non entra nella firma', () {
+      final trip = _trip(
+        departure: DateTime(2026, 10, 25),
+        returnAt: DateTime(2026, 10, 28),
+        destination: _place('Lisbona'),
+        destinationHouseId: 'h1',
+        legs: [
+          _leg(
+            'Baita',
+            DateTime(2026, 10, 27),
+            DateTime(2026, 10, 28),
+            houseId: 'h2',
+          ),
+          _leg('Hotel', DateTime(2026, 10, 26), DateTime(2026, 10, 27)),
+        ],
+      );
+      final plan = _request(
+        planTripWeather(
+          trip,
+          houses: [_house('h1', 'Casa'), _house('h2', 'Baita')],
+          today: _today,
+        ),
+      );
+
+      expect(plan.stops.map((s) => s.houseId), ['h1', null, 'h2']);
+
+      expect(plan.signature, isNot(contains('h1')));
+      expect(plan.signature, isNot(contains('h2')));
+      expect(plan.stops.first.toJson().containsKey('houseId'), isFalse);
+    });
+
     test('motivi per cui non si chiede', () {
       WeatherUnavailable reasonFor(TripModel trip) =>
           _reason(planTripWeather(trip, houses: const [], today: _today));
@@ -568,6 +599,56 @@ void main() {
         jsonDecode(jsonEncode(weather.toJson())) as Map<String, dynamic>,
       );
       expect(back.toJson(), weather.toJson());
+    });
+
+    test('legge i giorni dello storico; senza il campo la lista e vuota', () {
+      final conStorico =
+          jsonDecode(jsonEncode(response)) as Map<String, dynamic>;
+      ((conStorico['geo'] as Map)['per_tappa'] as List)[1]['giorni_storici'] = [
+        {
+          'data': '2026-11-02',
+          'temp_max': 19.4,
+          'temp_min': 12.8,
+          'vento_max_kmh': 24.0,
+          'anni_pioggia': 2,
+          'anni_con_dato': 5,
+        },
+        {'data': '2026-11-03', 'temp_max': null, 'temp_min': null},
+      ];
+      final weather = TripWeather.fromResponse(
+        conStorico,
+        request: request,
+        fetchedAt: DateTime(2026, 10, 20, 9, 30),
+      );
+      final sintra = weather.stops[1];
+      expect(sintra.historicalDays, hasLength(2));
+      final day = sintra.historicalDays.first;
+      expect(day.date, DateTime(2026, 11, 2));
+      expect((day.tempMax, day.tempMin, day.windMaxKmh), (19.4, 12.8, 24.0));
+      expect((day.rainYears, day.dataYears), (2, 5));
+      expect(sintra.historicalDays[1].tempMax, isNull);
+      expect(sintra.historicalDays[1].dataYears, 0);
+      expect(sintra.hasDailyDetail, isTrue);
+
+      // Una risposta di prima: nessun campo, nessun dettaglio.
+      final vecchia = TripWeather.fromResponse(
+        response,
+        request: request,
+        fetchedAt: DateTime(2026, 10, 20, 9, 30),
+      );
+      expect(vecchia.stops[1].historicalDays, isEmpty);
+      expect(vecchia.stops[1].hasDailyDetail, isFalse);
+
+      final back = TripWeather.fromJson(
+        jsonDecode(jsonEncode(weather.toJson())) as Map<String, dynamic>,
+      );
+      expect(back.toJson(), weather.toJson());
+      // Una cache scritta prima del campo si legge ancora.
+      final old = weather.toJson();
+      for (final stop in old['stops'] as List) {
+        (stop as Map).remove('historical_days');
+      }
+      expect(TripWeather.fromJson(old).stops[1].historicalDays, isEmpty);
     });
 
     test('tappe diverse dalla richiesta: errore', () {

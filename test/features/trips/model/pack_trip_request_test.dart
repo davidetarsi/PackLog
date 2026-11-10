@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/features/kits/model/kit_model.dart';
 import 'package:pack_log/features/luggages/model/luggage_model.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/pack_trip_request.dart';
@@ -54,6 +55,140 @@ void main() {
   final cabin = _luggage();
 
   group('packTripBody', () {
+    test('kit nel corpo: id, attivita, mezzi e oggetti con le copie', () {
+      final kit = KitModel(
+        id: 'k1',
+        houseId: 'h1',
+        name: 'Sci',
+        activities: const ['ski'],
+        transports: const ['car'],
+        items: const [
+          KitItem(id: 'r1', kitId: 'k1', itemId: 'i1', copies: 2),
+          KitItem(id: 'r2', kitId: 'k1', itemId: 'i2'),
+        ],
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+
+      final body = packTripBody(
+        plan: _onePlacePlan,
+        setup: const AiPackingSetup(),
+        houseId: 'h1',
+        language: 'it',
+        kits: [kit],
+      );
+
+      expect(body['kit'], [
+        {
+          'id': 'k1',
+          'attivita': ['ski'],
+          'mezzi': ['car'],
+          'oggetti': [
+            {'item_id': 'i1', 'copie': 2},
+            {'item_id': 'i2', 'copie': 1},
+          ],
+        },
+      ]);
+    });
+
+    test('kit: le copie oltre 99 si portano a 99', () {
+      final kit = KitModel(
+        id: 'k1',
+        houseId: 'h1',
+        name: 'Scorte',
+        items: const [
+          KitItem(id: 'r1', kitId: 'k1', itemId: 'i1', copies: 150),
+          KitItem(id: 'r2', kitId: 'k1', itemId: 'i2', copies: 99),
+        ],
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+
+      final body = packTripBody(
+        plan: _onePlacePlan,
+        setup: const AiPackingSetup(),
+        houseId: 'h1',
+        language: 'it',
+        kits: [kit],
+      );
+
+      expect(body['kit'], [
+        {
+          'id': 'k1',
+          'attivita': <String>[],
+          'mezzi': <String>[],
+          'oggetti': [
+            {'item_id': 'i1', 'copie': 99},
+            {'item_id': 'i2', 'copie': 99},
+          ],
+        },
+      ]);
+    });
+
+    test('kit: al massimo 50 kit e 50 oggetti per kit, i primi', () {
+      final kits = [
+        for (var k = 0; k < 55; k++)
+          KitModel(
+            id: 'k$k',
+            houseId: 'h1',
+            name: 'Kit $k',
+            items: [
+              for (var i = 0; i < 60; i++)
+                KitItem(id: 'r$k-$i', kitId: 'k$k', itemId: 'i$i'),
+            ],
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+          ),
+      ];
+
+      final body = packTripBody(
+        plan: _onePlacePlan,
+        setup: const AiPackingSetup(),
+        houseId: 'h1',
+        language: 'it',
+        kits: kits,
+      );
+
+      final sent = body['kit'] as List;
+      expect(sent, hasLength(50));
+      expect((sent.first as Map)['id'], 'k0');
+      expect((sent.last as Map)['id'], 'k49');
+      final items = (sent.first as Map)['oggetti'] as List;
+      expect(items, hasLength(50));
+      expect((items.last as Map)['item_id'], 'i49');
+    });
+
+    test('senza kit niente campo kit', () {
+      final body = packTripBody(
+        plan: _onePlacePlan,
+        setup: const AiPackingSetup(),
+        houseId: 'h1',
+        language: 'it',
+      );
+      expect(body.containsKey('kit'), isFalse);
+    });
+
+    test('packTripBody mette mezzi', () {
+      final body = packTripBody(
+        plan: _onePlacePlan,
+        setup: const AiPackingSetup(),
+        houseId: 'h1',
+        language: 'it',
+        transports: const ['plane', 'train'],
+      );
+      expect((body['trip'] as Map)['mezzi'], ['plane', 'train']);
+    });
+
+    test('senza mezzi niente campo', () {
+      final body = packTripBody(
+        plan: _onePlacePlan,
+        setup: const AiPackingSetup(),
+        houseId: 'h1',
+        language: 'it',
+      );
+      expect((body['trip'] as Map).containsKey('mezzi'), isFalse);
+    });
+
     test('la lingua: italiano o inglese, le altre diventano inglese', () {
       String? lang(String language) => packTripBody(
         plan: _onePlacePlan,
@@ -72,8 +207,8 @@ void main() {
         setup: AiPackingSetup(
           stops: {
             kMainStopKey: const AiStopAnswers(
-              activities: [AiActivity.diving, AiActivity.sea],
-              stay: AiStay.hotel,
+              activities: ['diving', 'sea'],
+              stay: 'hotel',
               washer: true,
             ),
           },
@@ -84,6 +219,7 @@ void main() {
       );
       expect(body['house_id'], 'h1');
       expect(body['lang'], 'it');
+      expect(body['posti'], isTrue);
       final trip = body['trip'] as Map<String, dynamic>;
       expect(trip.containsKey('tappe'), isFalse);
       expect(trip['data_inizio'], '2026-10-30');
@@ -94,7 +230,8 @@ void main() {
         'lat': 38.7,
         'lon': -9.1,
       });
-      expect(trip['attivita'], ['immersioni', 'mare']);
+      // Id del catalogo: la funzione li traduce nei testi del generatore.
+      expect(trip['attivita'], ['diving', 'sea']);
       expect(trip['alloggio'], 'hotel');
       expect(trip['lavatrice'], true);
       expect(trip['bagaglio'], 'trolley cabina');
@@ -120,13 +257,13 @@ void main() {
         setup: const AiPackingSetup(
           stops: {
             kMainStopKey: AiStopAnswers(
-              activities: [AiActivity.sea],
-              stay: AiStay.hotel,
+              activities: ['sea'],
+              stay: 'hotel',
               washer: false,
             ),
             'leg1': AiStopAnswers(
-              activities: [AiActivity.city],
-              stay: AiStay.apartment,
+              activities: ['city'],
+              stay: 'apartment',
               washer: true,
             ),
           },
@@ -149,12 +286,12 @@ void main() {
         'lat': 38.7,
         'lon': -9.1,
         'giorni': 3,
-        'attivita': ['mare'],
+        'attivita': ['sea'],
         'alloggio': 'hotel',
         'lavatrice': false,
       });
-      expect(tappe[1]['attivita'], ['visite in citta']);
-      expect(tappe[1]['alloggio'], 'appartamento');
+      expect(tappe[1]['attivita'], ['city']);
+      expect(tappe[1]['alloggio'], 'apartment');
       expect(tappe[1]['lavatrice'], true);
     });
 
@@ -164,10 +301,7 @@ void main() {
         plan: _abaPlan,
         setup: const AiPackingSetup(
           stops: {
-            kMainStopKey: AiStopAnswers(
-              activities: [AiActivity.city],
-              stay: AiStay.hotel,
-            ),
+            kMainStopKey: AiStopAnswers(activities: ['city'], stay: 'hotel'),
           },
         ),
         houseId: 'h1',
@@ -175,7 +309,7 @@ void main() {
       );
       final tappe = (body['trip'] as Map<String, dynamic>)['tappe'] as List;
       expect(tappe.map((t) => (t as Map)['giorni']), [2, 2, 2]);
-      expect(tappe[2]['attivita'], ['visite in citta']);
+      expect(tappe[2]['attivita'], ['city']);
       expect(tappe[2]['alloggio'], 'hotel');
     });
 
@@ -189,12 +323,8 @@ void main() {
         setup: const AiPackingSetup(
           stops: {
             kMainStopKey: AiStopAnswers(
-              activities: [
-                AiActivity.diving,
-                AiActivity.sea,
-                AiActivity.diving,
-              ],
-              stay: AiStay.hotel,
+              activities: ['diving', 'sea', 'diving'],
+              stay: 'hotel',
             ),
           },
         ),
@@ -202,8 +332,30 @@ void main() {
         language: 'it',
       );
       final trip = body['trip'] as Map<String, dynamic>;
-      expect(trip['attivita'], ['immersioni', 'mare']);
+      expect(trip['attivita'], ['diving', 'sea']);
     });
+
+    test(
+      'attività e alloggi come id, anche quelli disattivati nel catalogo',
+      () {
+        final body = packTripBody(
+          plan: _onePlacePlan,
+          setup: const AiPackingSetup(
+            stops: {
+              kMainStopKey: AiStopAnswers(
+                activities: ['city', 'evenings', 'formal_dinner'],
+                stay: 'friends',
+              ),
+            },
+          ),
+          houseId: 'h1',
+          language: 'it',
+        );
+        final trip = body['trip'] as Map<String, dynamic>;
+        expect(trip['attivita'], ['city', 'evenings', 'formal_dinner']);
+        expect(trip['alloggio'], 'friends');
+      },
+    );
   });
 
   group('aiStopsOf', () {

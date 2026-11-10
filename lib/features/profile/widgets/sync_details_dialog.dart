@@ -29,6 +29,8 @@ class SyncDetailsDialog extends ConsumerWidget {
     'spaces.title': Icons.inventory_2_outlined,
     'luggages.title': Icons.work_outline,
     'profile.sync_entity_items': Icons.category_outlined,
+    'profile.sync_entity_kits': Icons.inventory_2_outlined,
+    'profile.sync_entity_kit_items': Icons.list_alt_outlined,
     'trips.title': Icons.luggage_outlined,
   };
 

@@ -1,5 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:pack_log/core/analytics/core_analytics_service.dart';
+import 'package:pack_log/core/monitoring/monitoring_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/houses/providers/house_provider.dart';
@@ -9,6 +12,13 @@ import 'package:pack_log/features/trips/providers/trip_provider.dart';
 import 'package:pack_log/features/trips/providers/trip_weather_provider.dart';
 import 'package:pack_log/features/trips/services/trip_weather_service.dart';
 import 'package:pack_log/shared/model/location_suggestion_model.dart';
+
+class _MockAnalytics extends Mock implements CoreAnalyticsService {}
+
+class _MockMonitoring extends Mock implements AppMonitoringService {}
+
+late _MockAnalytics _analytics;
+late _MockMonitoring _monitoring;
 
 class _FakeTripNotifier extends TripNotifier {
   _FakeTripNotifier(this.trips);
@@ -79,6 +89,8 @@ ProviderContainer _container(_FakeService service, TripModel trip) {
       tripNotifierProvider.overrideWith(() => _FakeTripNotifier([trip])),
       houseNotifierProvider.overrideWith(_FakeHouseNotifier.new),
       tripWeatherServiceProvider.overrideWithValue(service),
+      coreAnalyticsServiceProvider.overrideWithValue(_analytics),
+      monitoringServiceProvider.overrideWithValue(_monitoring),
     ],
   );
   addTearDown(container.dispose);
@@ -86,7 +98,59 @@ ProviderContainer _container(_FakeService service, TripModel trip) {
 }
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    _analytics = _MockAnalytics();
+    _monitoring = _MockMonitoring();
+  });
+
+  void verifyNoSentry() => verifyNever(
+    () => _monitoring.captureException(
+      any(),
+      stackTrace: any(named: 'stackTrace'),
+      tags: any(named: 'tags'),
+    ),
+  );
+
+  group('tetti ed errori', () {
+    Future<void> load(Object error) async {
+      final service = _FakeService()..error = error;
+      await _container(
+        service,
+        _trip(),
+      ).read(tripWeatherNotifierProvider('t1').future);
+    }
+
+    test('tetto finito: ai_limit_reached, niente Sentry', () async {
+      await load(const TripWeatherCapException());
+      verify(
+        () => _analytics.trackAiLimitReached(feature: 'weather'),
+      ).called(1);
+      verifyNoSentry();
+    });
+
+    test('errore della funzione: in Sentry', () async {
+      await load(const TripWeatherException('HTTP 500'));
+      verify(
+        () => _monitoring.captureException(
+          any(that: isA<TripWeatherException>()),
+          stackTrace: any(named: 'stackTrace'),
+          tags: {'operation': 'trip_weather'},
+        ),
+      ).called(1);
+      verifyNever(
+        () => _analytics.trackAiLimitReached(feature: any(named: 'feature')),
+      );
+    });
+
+    test('rete assente: né evento né Sentry', () async {
+      await load(const TripWeatherNetworkException('rete: x'));
+      verifyNever(
+        () => _analytics.trackAiLimitReached(feature: any(named: 'feature')),
+      );
+      verifyNoSentry();
+    });
+  });
 
   test('senza cache chiama e salva; poi la cache basta', () async {
     final service = _FakeService();
@@ -227,5 +291,20 @@ void main() {
     ).read(tripWeatherNotifierProvider('t1').future);
     expect(state, isA<TripWeatherNotAvailable>());
     expect(service.calls, 0);
+  });
+
+  test('draft_put_does_not_reload_saved_trip_weather', () async {
+    // Un viaggio salvato il cui ultimo meteo è fallito (nessuna copia).
+    final service = _FakeService()..error = const TripWeatherException('x');
+    final container = _container(service, _trip());
+    await container.read(tripWeatherNotifierProvider('t1').future);
+    expect(service.calls, 1);
+
+    // La bozza di un altro viaggio non rifà la richiesta di questo.
+    container
+        .read(tripWeatherDraftsProvider.notifier)
+        .put(_trip().copyWith(id: 'altro'));
+    await container.read(tripWeatherNotifierProvider('t1').future);
+    expect(service.calls, 1);
   });
 }

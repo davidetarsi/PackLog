@@ -4,6 +4,7 @@ import 'package:flutter/rendering.dart';
 import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
 import '../theme/cta_reserved_space.dart';
+import '../theme/surface_colors.dart';
 import 'ds_button.dart';
 import 'ds_glass_band.dart';
 import 'ds_sheet_header.dart';
@@ -30,6 +31,35 @@ Future<T?> showDsFormSheet<T>(
   BuildContext context, {
   required WidgetBuilder builder,
 }) => showDsSheet<T>(context, builder: builder, enableDrag: false);
+
+/// Pagina GoRouter che presenta un form nello stesso modal usato dai fogli DS.
+class DsFormSheetPage<T> extends Page<T> {
+  const DsFormSheetPage({required this.builder, super.key, super.name});
+
+  final WidgetBuilder builder;
+
+  @override
+  Route<T> createRoute(BuildContext context) {
+    final localizations = MaterialLocalizations.of(context);
+    return ModalBottomSheetRoute<T>(
+      builder: builder,
+      capturedThemes: InheritedTheme.capture(
+        from: context,
+        to: Navigator.of(context).context,
+      ),
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      barrierLabel: localizations.scrimLabel,
+      barrierOnTapHint: localizations.scrimOnTapHint(
+        localizations.bottomSheetLabel,
+      ),
+      modalBarrierColor: Theme.of(context).bottomSheetTheme.modalBarrierColor,
+      settings: this,
+    );
+  }
+}
 
 /// Cornice dei moduli: chiusura in testata, contenuto scorrevole e una CTA.
 /// Durante una scrittura impedisce chiusura e modifiche ai campi.
@@ -109,27 +139,30 @@ class DsFormSheet extends StatelessWidget {
 
     final frame = Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        // Superficie 1, staccata dalla pagina: dentro, card e campi sono la 2.
+        color: context.raisedSurface,
         borderRadius: const BorderRadius.vertical(
           top: Radius.circular(AppConstants.modalBorderRadius),
         ),
       ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AbsorbPointer(
-              absorbing: isBusy,
-              child: DsSheetHeader(
-                title: title,
-                actions: actions,
-                onClose: () => Navigator.pop(context),
+      child: SheetSurfaceScope(
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AbsorbPointer(
+                absorbing: isBusy,
+                child: DsSheetHeader(
+                  title: title,
+                  actions: actions,
+                  onClose: () => Navigator.pop(context),
+                ),
               ),
-            ),
-            body,
-          ],
+              body,
+            ],
+          ),
         ),
       ),
     );
@@ -174,47 +207,78 @@ class _SheetBody extends StatefulWidget {
 class _SheetBodyState extends State<_SheetBody> {
   /// Altezza del piè, misurata dopo il layout.
   double _footerHeight = 0;
+  final GlobalKey _contentKey = GlobalKey();
+  final GlobalKey _footerKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
     final footer = widget.footer;
-    final reserved = footer == null ? 0.0 : _footerHeight;
+    return widget.expand
+        ? Expanded(child: _buildBody(context, footer, double.infinity))
+        : Flexible(
+            child: LayoutBuilder(
+              builder: (context, constraints) =>
+                  _buildBody(context, footer, constraints.maxHeight),
+            ),
+          );
+  }
 
-    // Il contenuto che scorre da solo (calendario) legge lo spazio del piè
-    // da `context.ctaReservedHeight`, come nelle pagine.
+  Widget _buildBody(BuildContext context, Widget? footer, double maxHeight) {
+    final hasRoomForContent =
+        maxHeight.isFinite &&
+        maxHeight - _footerHeight >= kMinInteractiveDimension;
+    final footerInScroll =
+        footer != null && !widget.expand && !hasRoomForContent;
+    final reserved = footer == null || footerInScroll ? 0.0 : _footerHeight;
+    final child = KeyedSubtree(key: _contentKey, child: widget.child);
+
+    Widget measuredFooter() => KeyedSubtree(
+      key: _footerKey,
+      child: _MeasureSize(
+        onChange: (size) {
+          if (mounted && size.height != _footerHeight) {
+            setState(() => _footerHeight = size.height);
+          }
+        },
+        child: DsGlassBand(child: footer!),
+      ),
+    );
+
+    // Con un piè fisso, il contenuto scorre e riserva la sua altezza. Quando
+    // non resta neppure un controllo interattivo di spazio libero, contenuto e
+    // piè condividono invece lo stesso scroll.
     final content = CtaReservedSpaceScope(
       height: reserved,
       child: widget.expand
-          ? widget.child
+          ? child
+          : footerInScroll
+          ? SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(padding: widget.padding, child: child),
+                  measuredFooter(),
+                ],
+              ),
+            )
           : SingleChildScrollView(
               padding: widget.padding.add(EdgeInsets.only(bottom: reserved)),
-              child: widget.child,
+              child: child,
             ),
     );
 
-    final stack = footer == null
+    final stack = footer == null || footerInScroll
         ? content
         : Stack(
             fit: widget.expand ? StackFit.expand : StackFit.loose,
             children: [
               content,
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: _MeasureSize(
-                  onChange: (size) {
-                    if (size.height != _footerHeight) {
-                      setState(() => _footerHeight = size.height);
-                    }
-                  },
-                  child: DsGlassBand(child: footer),
-                ),
-              ),
+              Positioned(left: 0, right: 0, bottom: 0, child: measuredFooter()),
             ],
           );
 
-    return widget.expand ? Expanded(child: stack) : Flexible(child: stack);
+    return stack;
   }
 }
 

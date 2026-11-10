@@ -30,6 +30,9 @@ import '../../../screenshots/support/fakes.dart'
     show aiResultsState, createPhotoFixtures, photoShirt;
 import '../../../screenshots/support/seed.dart' show kHomeId, kEmptyHouseId;
 
+import '../../../helpers/catalogo_di_prova.dart';
+import 'package:pack_log/core/catalog/catalog_store.dart';
+
 class _FakeAiImport extends AiImportNotifier {
   _FakeAiImport(this._initial);
   final AiImportState _initial;
@@ -238,6 +241,7 @@ Future<_TestApp> _openResults(
 }
 
 void main() {
+  setUp(() => caricaCatalogoDelRepo());
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
     await EasyLocalization.ensureInitialized();
@@ -310,6 +314,7 @@ void main() {
     expect(find.text('1 capo identificato'), findsOneWidget);
     expect(find.text('Foto 1 · 1 capo'), findsOneWidget);
     expect(find.text('Salva: 1 nuovo'), findsOneWidget);
+    CatalogStore.setLanguage('en');
     await EasyLocalization.of(
       tester.element(find.byType(AiResultsScreen)),
     )!.setLocale(const Locale('en', 'US'));

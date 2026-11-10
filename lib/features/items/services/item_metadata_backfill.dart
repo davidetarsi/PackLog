@@ -1,8 +1,9 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/monitoring/monitoring_service.dart';
+import '../../../core/once_per_day.dart';
+import '../model/item_metadata_merge.dart';
 import '../model/item_model.dart';
 import '../repositories/item_repository.dart';
 import 'item_metadata_service.dart';
@@ -17,7 +18,8 @@ const kItemMetadataBackfillInterval = Duration(hours: 1);
 
 /// Completa in background la scheda degli oggetti che non ce l'hanno:
 /// aggiunti offline, o scritti a mano prima che la scheda arrivasse da
-/// `item-metadata`. Parte all'accesso (vedi `AuthNotifier`).
+/// `item-metadata` (anche quelli con solo le scelte dell'utente, vedi
+/// [needsAiMetadata]). Parte all'accesso (vedi `AuthNotifier`).
 ///
 /// Lavora un oggetto alla volta, dal più vecchio, entro
 /// [kItemMetadataBackfillDailyLimit] al giorno; si ferma alla prima risposta
@@ -29,7 +31,9 @@ class ItemMetadataBackfill {
     required ItemMetadataService service,
     Future<SharedPreferences>? prefs,
     DateTime Function()? now,
+    AppMonitoringService? monitoring,
   }) : _repo = repository,
+       _monitoring = monitoring,
        _service = service,
        _prefs = prefs,
        _now = now ?? DateTime.now;
@@ -42,6 +46,7 @@ class ItemMetadataBackfill {
   final ItemMetadataService _service;
   final Future<SharedPreferences>? _prefs;
   final DateTime Function() _now;
+  final AppMonitoringService? _monitoring;
   bool _running = false;
 
   /// Un giro di recupero. Restituisce le case con oggetti aggiornati, da
@@ -51,8 +56,9 @@ class ItemMetadataBackfill {
     _running = true;
     try {
       return await _run();
-    } catch (e) {
+    } catch (e, st) {
       debugPrint('[Backfill] giro interrotto: $e');
+      _report(e, st);
       return const {};
     } finally {
       _running = false;
@@ -77,14 +83,19 @@ class ItemMetadataBackfill {
 
     final pending =
         (await _repo.getAllItems())
-            .where((i) => i.aiMetadata == null && i.name.trim().isNotEmpty)
+            .where(
+              (i) => needsAiMetadata(i.aiMetadata) && i.name.trim().isNotEmpty,
+            )
             .toList()
           ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
     final houses = <String>{};
     for (final item in pending) {
       if (done >= kItemMetadataBackfillDailyLimit) break;
-      final scheda = await _service.fromName(item.name);
+      final scheda = await _service.fromName(
+        item.name,
+        source: ItemMetadataService.sourceBackfill,
+      );
       if (scheda == null) break;
       done++;
       await prefs.setString(_dayKey, today);
@@ -95,23 +106,39 @@ class ItemMetadataBackfill {
   }
 
   /// Scrive la scheda solo se l'oggetto c'è ancora, con lo stesso nome e
-  /// ancora senza scheda.
+  /// ancora da completare. I campi scelti dall'utente restano suoi (vedi
+  /// [mergeAiMetadata]).
   Future<bool> _save(ItemModel item, ItemMetadataResult scheda) async {
     try {
-      final current = await _repo.getItemById(item.id);
-      if (current.name != item.name || current.aiMetadata != null) {
-        return false;
-      }
-      await _repo.updateItem(
-        current.copyWith(
-          aiMetadata: jsonEncode(scheda.metadata),
-          updatedAt: _now(),
-        ),
-      );
-      return true;
-    } catch (e) {
+      // Le guardie girano sulla riga riletta dentro la transazione: un
+      // salvataggio della scheda concorrente non viene annullato.
+      final written = await _repo.updateAiMetadata(item.id, (current) {
+        if (current.name != item.name || !needsAiMetadata(current.aiMetadata)) {
+          return null;
+        }
+        return (
+          aiMetadata: mergeAiMetadata(
+            current: current.aiMetadata,
+            ai: scheda.metadata,
+          ),
+          category: null,
+        );
+      }, updatedAt: _now());
+      return written != null;
+    } catch (e, st) {
       debugPrint('[Backfill] ${item.id} non aggiornato: $e');
+      _report(e, st);
       return false;
     }
+  }
+
+  /// Un guasto in Sentry; la rete assente no (si riprova al giro dopo).
+  void _report(Object e, StackTrace st) {
+    if (isNetworkFailure(e)) return;
+    _monitoring?.captureException(
+      e,
+      stackTrace: st,
+      tags: {'operation': 'item_metadata_backfill'},
+    );
   }
 }

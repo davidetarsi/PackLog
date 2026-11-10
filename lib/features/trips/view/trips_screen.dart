@@ -2,16 +2,16 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/monitoring/monitoring_service.dart';
 import '../../houses/providers/house_provider.dart';
 import '../model/trip_model.dart';
 import '../model/trip_postcard.dart';
+import '../providers/to_buy_provider.dart';
 import '../providers/trip_provider.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/entity_action_handler.dart';
-import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/app_pill_tab.dart';
+import '../../../shared/widgets/ds_text_button.dart';
 import '../../../shared/widgets/entity_context_menu.dart';
 import '../../../shared/widgets/shell_tab_scaffold.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
@@ -112,34 +112,15 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     );
   }
 
-  /// Riusa il viaggio: copia senza date, poi apre la modifica in modalità
-  /// riuso. Se l'utente esce senza salvare, la copia viene eliminata dalla
-  /// rotta di modifica.
-  Future<void> _handleReuse(TripModel trip) async {
-    // Letto prima dell'await: il catch può arrivare dopo il dispose.
-    final monitoring = ref.read(monitoringServiceProvider);
-    try {
-      final newId = await ref
-          .read(tripNotifierProvider.notifier)
-          .reuseTrip(trip.id);
-      if (!mounted) return;
-      context.push('/trips/$newId/edit-info?reuse=1');
-    } catch (error, stack) {
-      monitoring.captureException(error, stackTrace: stack);
-      if (!mounted) return;
-      AppSnackBar.showError(
-        context,
-        'errors.duplicate_trip_failed'.tr(args: [trip.name]),
-      );
-    }
-  }
+  /// Riusa il viaggio: apre il passo 1 di un viaggio nuovo, già compilato.
+  /// Non si salva niente finché l'utente non sceglie una strada.
+  void _handleReuse(TripModel trip) =>
+      context.push('/new-trip?reuseFrom=${trip.id}');
 
   void _onPileCta(TripModel trip, PostcardCta cta) {
-    if (cta == PostcardCta.prepare) {
-      context.push('/trips/${trip.id}/edit-items');
-    } else {
-      context.push('/trips/${trip.id}');
-    }
+    // La cartolina porta sempre al dettaglio: lì ci sono bagagli, meteo e il
+    // bottone "Aggiungi oggetti".
+    context.push('/trips/${trip.id}');
   }
 
   /// Nome della meta: casa di destinazione se esiste, altrimenti città o
@@ -173,6 +154,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
       body: Column(
         children: [
           TabHeader(title: 'navigation.trips'.tr()),
+          _ToBuyEntryRow(count: ref.watch(toBuyEntriesProvider).length),
           // A sinistra, allineati al titolo della tab, come nel mock. Il
           // margine sta dentro lo scorrimento: su schermi stretti le pillole
           // arrivano fino al bordo.
@@ -251,7 +233,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
             DsEmptyState(
               icon: Icons.calendar_today_outlined,
               title: 'trips.no_upcoming'.tr(),
-              ctaLabel: 'create_sheet.new_trip'.tr(),
+              ctaLabel: 'trips.new.title'.tr(),
               ctaIcon: Icons.add,
               onCta: () => context.push('/new-trip'),
             ),
@@ -406,6 +388,35 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
       error: error,
       title: 'errors.load_trips'.tr(),
       onRetry: () => ref.read(tripNotifierProvider.notifier).refresh(),
+    );
+  }
+}
+
+/// Riga in cima alla tab: "Da comprare · N". Compare solo con almeno una voce
+/// e apre la vista delle cose da comprare.
+class _ToBuyEntryRow extends StatelessWidget {
+  const _ToBuyEntryRow({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    if (count == 0) return const SizedBox.shrink();
+    return Padding(
+      padding: EdgeInsets.only(
+        left: context.spacingMd,
+        right: context.spacingMd,
+        bottom: context.spacingXs,
+      ),
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: DsTextButton(
+          key: const Key('trips_to_buy_entry'),
+          icon: Icons.shopping_cart_outlined,
+          label: 'trips.to_buy.entry'.tr(args: ['$count']),
+          onPressed: () => context.push('/trips/to-buy'),
+        ),
+      ),
     );
   }
 }

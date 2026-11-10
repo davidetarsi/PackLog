@@ -2,6 +2,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/core/catalog/catalog.dart';
+import 'package:pack_log/core/catalog/catalog_store.dart';
 import 'package:pack_log/features/items/model/clothing_details.dart';
 import 'package:pack_log/features/items/model/clothing_labels.dart';
 import 'package:pack_log/features/items/providers/user_colors_provider.dart';
@@ -13,7 +15,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../helpers/memory_asset_loader.dart';
 
+import '../../../helpers/catalogo_di_prova.dart';
+
 void main() {
+  setUp(() => caricaCatalogoDelRepo());
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
     await EasyLocalization.ensureInitialized();
@@ -36,6 +41,7 @@ void main() {
     required ValueChanged<ClothingDetails> onChanged,
     Set<String> doubts = const {},
     ValueChanged<String>? onDoubtResolved,
+    ValueChanged<ClothingField>? onFieldTouched,
     List<String> userColors = const [],
   }) async {
     // Abbastanza alto da mostrare tutti i gruppi senza scorrere.
@@ -68,6 +74,7 @@ void main() {
                     onChanged: onChanged,
                     doubts: doubts,
                     onDoubtResolved: onDoubtResolved,
+                    onFieldTouched: onFieldTouched,
                   ),
                 ),
               ),
@@ -146,6 +153,36 @@ void main() {
     expect(salvia, greaterThan(labels.indexOf(colorLabel('Beige'))));
   });
 
+  testWidgets(
+    'un colore disattivato non compare fra quelli dell\'utente, ma il capo che ce l\'ha lo mostra',
+    (tester) async {
+      CatalogStore.set(catalogoConVoceDisattivata('color', 'Bordeaux'));
+
+      // Un capo di un altro colore: Bordeaux non si propone.
+      await pump(
+        tester,
+        value: details,
+        onChanged: (_) {},
+        userColors: const ['Bordeaux'],
+      );
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is DsChoicePill && w.label == colorLabel('Bordeaux'),
+        ),
+        findsNothing,
+      );
+
+      // Il capo che è Bordeaux lo mostra, selezionato.
+      await pump(
+        tester,
+        value: details.copyWith(color: 'Bordeaux'),
+        onChanged: (_) {},
+        userColors: const ['Bordeaux'],
+      );
+      expect(pill(tester, colorLabel('Bordeaux')).selected, isTrue);
+    },
+  );
+
   testWidgets('"+ Altro colore" aggiunge il colore scritto e lo seleziona', (
     tester,
   ) async {
@@ -213,4 +250,172 @@ void main() {
     await tester.pumpAndSettle();
     expect(resolved, ['warmth']);
   });
+
+  testWidgets(
+    'senza dettagli: il tipo dice di sceglierlo, nessun calore è scelto',
+    (tester) async {
+      await pump(tester, value: ClothingDetails.empty, onChanged: (_) {});
+
+      expect(find.text('Scegli il tipo'), findsOneWidget);
+      expect(pill(tester, warmthLabel(3)).selected, isFalse);
+      expect(pill(tester, warmthLabel(4)).selected, isFalse);
+      expect(pill(tester, activityLabel('Everyday')).selected, isFalse);
+    },
+  );
+
+  group('onFieldTouched', () {
+    testWidgets(
+      'toccare la pillola già scelta conferma il campo, senza cambiarlo',
+      (tester) async {
+        final touched = <ClothingField>[];
+        var changes = 0;
+        await pump(
+          tester,
+          value: details,
+          onChanged: (_) => changes++,
+          onFieldTouched: touched.add,
+        );
+
+        await tester.tap(find.text(warmthLabel(4)));
+        await tester.pumpAndSettle();
+
+        expect(touched, [ClothingField.warmth]);
+        expect(changes, 0);
+      },
+    );
+
+    testWidgets('la scelta di un altro calore conferma il campo', (
+      tester,
+    ) async {
+      final touched = <ClothingField>[];
+      await pump(
+        tester,
+        value: details,
+        onChanged: (_) {},
+        onFieldTouched: touched.add,
+      );
+
+      await tester.tap(find.text(warmthLabel(2)));
+      await tester.pumpAndSettle();
+
+      expect(touched, [ClothingField.warmth]);
+    });
+
+    testWidgets('la formalità già scelta conferma il campo', (tester) async {
+      final touched = <ClothingField>[];
+      await pump(
+        tester,
+        value: details,
+        onChanged: (_) {},
+        onFieldTouched: touched.add,
+      );
+
+      await tester.tap(find.text(formalityLabel('Casual')));
+      await tester.pumpAndSettle();
+
+      expect(touched, [ClothingField.formality]);
+    });
+
+    testWidgets('il tipo scelto di nuovo, nel picker, conferma il tipo', (
+      tester,
+    ) async {
+      final touched = <ClothingField>[];
+      ClothingDetails? emitted;
+      await pump(
+        tester,
+        value: details,
+        onChanged: (d) => emitted = d,
+        onFieldTouched: touched.add,
+      );
+
+      await tester.tap(find.byKey(const Key('clothing_type_row')));
+      await tester.pumpAndSettle();
+      // Il tipo attuale è scritto anche nella riga: la voce del picker è l'ultima.
+      final option = find.text(clothingTypeLabel('Sweater')).last;
+      await tester.ensureVisible(option);
+      await tester.tap(option);
+      await tester.pumpAndSettle();
+
+      expect(touched, [ClothingField.type]);
+      expect(emitted?.subCategory, 'Sweater');
+    });
+
+    testWidgets('ogni cambio di colore conferma il campo', (tester) async {
+      final touched = <ClothingField>[];
+      await pump(
+        tester,
+        value: details,
+        onChanged: (_) {},
+        onFieldTouched: touched.add,
+      );
+
+      // Toccare il colore già scelto lo toglie: è un cambio.
+      await tester.tap(find.text(colorLabel('Blu')));
+      await tester.pumpAndSettle();
+
+      expect(touched, [ClothingField.color]);
+    });
+
+    testWidgets(
+      'un uso in più conferma il campo, l\'ultimo che non si toglie no',
+      (tester) async {
+        final touched = <ClothingField>[];
+        await pump(
+          tester,
+          value: details,
+          onChanged: (_) {},
+          onFieldTouched: touched.add,
+        );
+
+        await tester.tap(find.text(activityLabel('Everyday')));
+        await tester.pumpAndSettle();
+        expect(touched, isEmpty);
+
+        await tester.tap(find.text(activityLabel('Beach')));
+        await tester.pumpAndSettle();
+        expect(touched, [ClothingField.uses]);
+      },
+    );
+  });
+
+  testWidgets(
+    'un uso nuovo è una pillola; uno disattivato compare solo se il capo lo usa',
+    (tester) async {
+      // Il catalogo cambia: si aggiunge un uso "Festa" e si disattiva "Lounge".
+      final json = catalogoDelRepo().toJson();
+      final voci = (json['entries'] as List).cast<Map<String, dynamic>>();
+      voci.add({
+        'domain': 'use',
+        'id': 'Party',
+        'sort': 90,
+        'active': true,
+        'label': {'it': 'Festa', 'en': 'Party'},
+        'data': {'prompt': 'x', 'promptOrder': 8},
+      });
+      for (final v in voci) {
+        if (v['domain'] == 'use' && v['id'] == 'Lounge') v['active'] = false;
+      }
+      CatalogStore.set(Catalog.fromJson(json));
+      final etichettaLounge = catalogoDelRepo().find('use', 'Lounge')!.labelIt;
+      bool pillola(String etichetta) => find
+          .byWidgetPredicate((w) => w is DsChoicePill && w.label == etichetta)
+          .evaluate()
+          .isNotEmpty;
+
+      await pump(
+        tester,
+        value: const ClothingDetails(uses: {'Everyday'}),
+        onChanged: (_) {},
+      );
+      expect(pillola('Festa'), isTrue);
+      expect(pillola(etichettaLounge), isFalse);
+
+      await pump(
+        tester,
+        value: const ClothingDetails(uses: {'Lounge'}),
+        onChanged: (_) {},
+      );
+      expect(pill(tester, etichettaLounge).selected, isTrue);
+    },
+  );
 }

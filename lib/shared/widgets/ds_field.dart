@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../constants/app_constants.dart';
+import '../helpers/first_letter_formatter.dart';
 import '../theme/app_spacing.dart';
 import '../theme/surface_colors.dart';
 
@@ -145,6 +146,11 @@ class DsTextField extends StatelessWidget {
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       textCapitalization: textCapitalization,
+      // La tastiera non basta a garantire la maiuscola iniziale.
+      inputFormatters: [
+        if (textCapitalization == TextCapitalization.sentences)
+          const FirstLetterFormatter(),
+      ],
       autofocus: autofocus,
       autocorrect: autocorrect,
       minLines: minLines,

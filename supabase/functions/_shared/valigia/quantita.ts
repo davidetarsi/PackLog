@@ -1,3 +1,4 @@
+import { eCammino, famigliaCammino, BUDGET_CAMMINO } from "./cammino.ts";
 // Quantita' ed essenziali: deterministico, nessuna AI. Porting delle sezioni
 // "Quantita" e "porta sempre" di packlog_checklist_bench_48.py; il PERCHE' di
 // ogni numero e' commentato la'.
@@ -14,6 +15,7 @@ export const USI_PER_PEZZO: Record<string, number> = {
   "pigiama": 4, "pyjama": 4, "pajama": 4, "camicia da notte": 4,
 };
 export const RADICI_NOTTE = new Set(["pigiama", "pyjama", "pajama", "camicia da notte"]);
+const RADICI_MUTANDE = new Set(["mutand", "slip", "boxer", "perizoma", "intim", "underwear", "brief"]);
 export const RADICE_DA_SOTTOCAT: Record<string, string> = { Underwear: "underwear", Socks: "sock", Pajamas: "pigiama" };
 
 export interface Essenziale {
@@ -31,14 +33,33 @@ export const SOGLIA_COLLANT = 20.0;
 export const MAX_COLLANT = 3;
 
 export function essenzialiPerViaggio(items: Capo[], giorni: number, lavatrice: boolean,
-  tempMax: number | null = null): Essenziale[] {
+  tempMax: number | null = null, cammino = false, mareCaldo = false): Essenziale[] {
+  const alMare = mareCaldo && !cammino;
   const out: Essenziale[] = [];
   const visti = new Set<string>();
+  // Tipi non ancora coperti dalle copie dei capi gia' presi: {radice: pezzi che mancano}
+  // (copie possedute, 31 ottobre). Vuoto negli armadi senza copie.
+  const scoperti = new Map<string, number>();
   for (const g of items) {
     if (!g.sempre_in_valigia) continue;
-    const r = radiceSempre(g.name) || RADICE_DA_SOTTOCAT[g.sub_fine] || null;
+    const radice = radiceSempre(g.name) || RADICE_DA_SOTTOCAT[g.sub_fine] || null;
+    // Underwear include anche reggiseni e canottiere: al mare non sono sinonimi di mutande.
+    const radiceMare = alMare && senzaAccenti(g.name.toLowerCase()).includes("canottiera intima")
+      ? "canottiera intima" : radice;
+    const famiglia = cammino ? famigliaCammino(g.sub_fine, radice ?? "")
+      : RADICI_MUTANDE.has(radiceMare ?? "") ? "intimo" : ["calz", "sock"].includes(radiceMare ?? "") ? "calzini" : null;
+    const r = (cammino || alMare) && famiglia === "intimo" ? "mutand"
+      : (cammino || alMare) && famiglia === "calzini" ? "calz" : radiceMare;
     if (r === "collant" && (tempMax == null || tempMax > SOGLIA_COLLANT)) continue;
-    if (r != null && visti.has(r)) continue;   // una sola voce per tipo
+    // una sola voce per tipo; con le copie possedute il tipo continua sul capo dopo finche' serve
+    if (r != null && visti.has(r) && !scoperti.has(r)) continue;
+    if (r != null && scoperti.has(r)) {
+      let qta = scoperti.get(r)!;
+      scoperti.delete(r);
+      if (g.copie != null && qta > g.copie) { scoperti.set(r, qta - g.copie); qta = g.copie; }
+      out.push({ item: g.name, item_id: g.id, radice: r || "categoria", quantita: qta, bulk: g.bulk || 1 });
+      continue;
+    }
     if (r != null && RADICI_NOTTE.has(r)) {      // una sola cosa per la notte
       if (visti.has("notte")) continue;
       visti.add("notte");
@@ -51,12 +72,21 @@ export function essenzialiPerViaggio(items: Capo[], giorni: number, lavatrice: b
     } else if (usi >= 99) {
       qta = 1;
     } else {
-      qta = ceilDiv(giorni, usi) + 1;
-      if (lavatrice) qta = Math.min(qta, ceilDiv(5, usi) + 1);
+      const extra = alMare && famiglia === "intimo" ? 0 : 1;
+      qta = ceilDiv(giorni, usi) + extra;
+      if (lavatrice) qta = Math.min(qta, ceilDiv(5, usi) + extra);
       qta = Math.min(qta, giorni + TETTO_ESSENZIALI_EXTRA);
       if (r === "collant") qta = Math.min(ceilDiv(giorni, usi), MAX_COLLANT);
     }
+    if (alMare && famiglia === "calzini") qta = Math.max(1, Math.floor(qta * 0.7 + 0.5));
+    if (cammino && famiglia && BUDGET_CAMMINO[famiglia]) qta = Math.min(qta, BUDGET_CAMMINO[famiglia]);
+    if (r && g.copie != null && qta > g.copie) { scoperti.set(r, qta - g.copie); qta = g.copie; }
     out.push({ item: g.name, item_id: g.id, radice: r || "categoria", quantita: qta, bulk: g.bulk || 1 });
+  }
+  // Se i capi di quel tipo finiscono prima del bisogno, il resto torna sull'ultimo: l'uscita per
+  // l'app lo riporta alle copie e avvisa che ne servono di piu'.
+  for (const [r, manca] of scoperti) {
+    [...out].reverse().find((x) => x.radice === r)!.quantita += manca;
   }
   return out;
 }
@@ -98,6 +128,19 @@ export function usiSottoSoglia(sub: string, tempMax: number | null | undefined, 
 export const MAX_COSTUMI = rc.MAX_COSTUMI;
 export const MEZZI_GIORNI_DI_MARE = true;
 export const RADICI_MARE_VERO = ["mare", "spiaggia", "snorkel", "immersion", "surf"];
+
+export function tutteTappeCalde(massime: (number | null | undefined)[]): boolean {
+  return massime.length > 0 && massime.every((t) =>
+    typeof t === "number" && Number.isFinite(t) && rc.caldoUnCapoAlGiorno(t));
+}
+
+/** La riduzione richiede mare dichiarato e ogni tappa nota e calda. Il Cammino ha una propria rotazione. */
+export function viaggioCaldoAlMare(attivita: string[] | null | undefined,
+  massime: (number | null | undefined)[]): boolean {
+  return !eCammino(attivita) && tutteTappeCalde(massime) &&
+    (attivita ?? []).some((a) => RADICI_MARE_VERO.some((r) => senzaAccenti(a.toLowerCase()).includes(r)));
+}
+
 export const RADICI_GIORNI_ACQUA_IN_PIU = ["immersion", "snorkel", "surf", "spiaggia"];
 export const RADICI_ACQUA = ["mare", "sauna", "swim", "terme", "termal", "onsen", "piscin", "nuot"];
 export const PAROLE_SERA = ["cena", "cene", "ristorante", "vita notturna", "concert", "teatro", "serata"];

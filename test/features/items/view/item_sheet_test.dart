@@ -5,6 +5,9 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/features/items/model/clothing_labels.dart';
+import 'package:pack_log/features/items/providers/item_enrichment_provider.dart';
+import 'package:pack_log/features/items/providers/item_metadata_service_provider.dart';
+import 'package:pack_log/features/items/services/item_metadata_service.dart';
 import 'package:pack_log/features/items/providers/item_provider.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
@@ -13,11 +16,14 @@ import 'package:pack_log/features/items/widgets/category_pill.dart';
 import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
+import 'package:pack_log/shared/widgets/ds_choice_pill.dart';
 import 'package:pack_log/shared/widgets/ds_group_header.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../screenshots/support/harness.dart';
 import '../../../screenshots/support/seed.dart';
+
+import '../../../helpers/catalogo_di_prova.dart';
 
 /// Il salvataggio dell'oggetto aspetta [gate]: serve a tenere la scheda
 /// occupata mentre il test prova a chiuderla.
@@ -32,7 +38,25 @@ class _GatedItems extends ItemNotifier {
   }
 }
 
+/// item-metadata finto: registra i nomi chiesti e risponde sempre [result].
+class _RecordingMetadata extends ItemMetadataService {
+  _RecordingMetadata(this.result) : super(url: '', anonKey: '');
+
+  final ItemMetadataResult result;
+  final names = <String>[];
+
+  @override
+  Future<ItemMetadataResult?> fromName(
+    String name, {
+    String source = ItemMetadataService.sourceManual,
+  }) async {
+    names.add(name);
+    return result;
+  }
+}
+
 void main() {
+  setUp(() => caricaCatalogoDelRepo());
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
     await EasyLocalization.ensureInitialized();
@@ -188,12 +212,25 @@ void main() {
         .onPressed;
 
     expect(onSave(), isNull);
-    await app.tap(find.text('Varie'));
+    await app.enterText(find.byKey(const Key('item_sheet_note')), 'Di lana');
     expect(onSave(), isNotNull);
     // Tornando com'era si spegne di nuovo.
-    await app.tap(find.text('Vestiti'));
+    await app.enterText(find.byKey(const Key('item_sheet_note')), '');
     expect(onSave(), isNull);
-    await app.enterText(find.byKey(const Key('item_sheet_note')), 'Di lana');
+    await app.finish();
+  });
+
+  testWidgets('toccare una categoria, anche quella di prima, accende "Salva"', (
+    tester,
+  ) async {
+    final app = await openCalzini(tester);
+    VoidCallback? onSave() => tester
+        .widget<DsButton>(find.byKey(const Key('item_sheet_save')))
+        .onPressed;
+
+    // Toccare una categoria, anche quella di prima, è una scelta da salvare:
+    // poi l'AI non la cambia più.
+    await app.tap(find.text('Vestiti'));
     expect(onSave(), isNotNull);
     await app.finish();
   });
@@ -214,6 +251,9 @@ void main() {
     tester,
   ) async {
     final app = await openCalzini(tester);
+    // Con la sezione dei dettagli (anche vuota) il campo nota sta più in basso:
+    // si porta in vista come farebbe chi scorre.
+    await tester.ensureVisible(find.byKey(const Key('item_sheet_note')));
     final context = tester.element(find.byKey(const Key('item_sheet_note')));
     final noteBottom = tester
         .getRect(find.byKey(const Key('item_sheet_note')))
@@ -393,6 +433,68 @@ void main() {
       return jsonDecode(item.aiMetadata!) as Map<String, dynamic>;
     }
 
+    /// La pillola con quell'etichetta è selezionata?
+    bool selectedPill(WidgetTester tester, String label) => tester
+        .widget<DsChoicePill>(
+          find.byWidgetPredicate((w) => w is DsChoicePill && w.label == label),
+        )
+        .selected;
+
+    /// I metadati salvati di [name] come stringa, com'erano nel DB.
+    Future<String?> storedRaw(
+      WidgetTester tester,
+      ScreenshotApp app,
+      String name,
+    ) async {
+      final all = (await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        return app.container.read(itemRepositoryProvider).getAllItems();
+      }))!;
+      return all.firstWhere((i) => i.name == name).aiMetadata;
+    }
+
+    Future<Map<String, dynamic>> storedOf(
+      WidgetTester tester,
+      ScreenshotApp app,
+      String name,
+    ) async {
+      final raw = await storedRaw(tester, app, name);
+      return jsonDecode(raw!) as Map<String, dynamic>;
+    }
+
+    /// L'oggetto [name] com'è nel provider adesso.
+    ItemModel itemNamed(ScreenshotApp app, String name) => app.container
+        .read(itemNotifierProvider(kHomeId))
+        .value!
+        .firstWhere((i) => i.name == name);
+
+    /// I metadati di "Maglione di lana" con alcuni campi cambiati: la risposta
+    /// dell'AI.
+    Map<String, dynamic> aiAnswer(Map<String, dynamic> changes) => {
+      ...(jsonDecode(kMaglioneAiMetadata) as Map<String, dynamic>),
+      ...changes,
+    };
+
+    /// La risposta dell'AI arriva: scrive [ai] sull'oggetto [item], come fa
+    /// `item-metadata` (senza `userFields`, quindi l'AI può scrivere tutto).
+    Future<void> answerAi(
+      ScreenshotApp app,
+      ItemModel item, {
+      required Map<String, dynamic> ai,
+      ItemCategory? category,
+    }) async {
+      await app.container
+          .read(itemNotifierProvider(kHomeId).notifier)
+          .updateItem(
+            item.copyWith(
+              aiMetadata: jsonEncode(ai),
+              category: category ?? item.category,
+              updatedAt: DateTime.now(),
+            ),
+          );
+      await app.settle();
+    }
+
     testWidgets('un capo mostra Dettagli dopo Spazio, con i suoi tag', (
       tester,
     ) async {
@@ -413,18 +515,34 @@ void main() {
       await app.finish();
     });
 
-    testWidgets('un oggetto senza metadati di capo non ha la sezione', (
+    testWidgets(
+      'un oggetto senza metadati ha la sezione vuota e modificabile',
+      (tester) async {
+        final app = await openCalzini(tester);
+        expect(find.byKey(const Key('clothing_type_row')), findsOneWidget);
+        expect(find.text('Scegli il tipo'), findsOneWidget);
+        expect(selectedPill(tester, warmthLabel(4)), isFalse);
+        expect(onSave(tester), isNull);
+
+        await tapDetail(tester, app, find.text(warmthLabel(4)));
+        expect(onSave(tester), isNotNull);
+        await app.finish();
+      },
+    );
+
+    testWidgets('un nuovo oggetto senza nome non ha la sezione', (
       tester,
     ) async {
-      final app = await openCalzini(tester);
+      final (:app, result: _) = await openNew(tester);
       expect(find.byKey(const Key('clothing_type_row')), findsNothing);
-      expect(find.text('Nota'), findsOneWidget);
       await app.finish();
     });
 
-    testWidgets('un nuovo oggetto non ha la sezione', (tester) async {
+    testWidgets('un nuovo oggetto con categoria dedotta ha la sezione', (
+      tester,
+    ) async {
       final (:app, result: _) = await openNew(tester, initialName: 'Ciab');
-      expect(find.byKey(const Key('clothing_type_row')), findsNothing);
+      expect(find.byKey(const Key('clothing_type_row')), findsOneWidget);
       await app.finish();
     });
 
@@ -455,6 +573,22 @@ void main() {
       expect(meta['coverage'], 'Long');
       expect(meta['activityTags'], ['Everyday']);
       expect(meta['waterResistance'], 0);
+      await app.finish();
+    });
+
+    testWidgets('confermare la categoria la salva come scelta dell\'utente', (
+      tester,
+    ) async {
+      final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+      await openMaglione(tester, app);
+
+      await app.tap(find.text('Vestiti'));
+      await tapSave(tester, app);
+
+      final meta = await storedMetadata(tester, app);
+      expect(meta['userFields'], contains('appCategory'));
+      expect(meta['subCategory'], 'Sweater');
+      expect(meta.containsKey('aiPending'), isFalse);
       await app.finish();
     });
 
@@ -499,5 +633,256 @@ void main() {
       expect(find.byType(DsGroupHeader), findsWidgets);
       await app.finish();
     });
+
+    testWidgets('creando un capo senza toccare i dettagli non salva metadati', (
+      tester,
+    ) async {
+      final (:app, :result) = await openNew(tester, initialName: 'Maglietta');
+      expect(find.byKey(const Key('clothing_type_row')), findsOneWidget);
+      expect(selectedPill(tester, warmthLabel(4)), isFalse);
+
+      await tapSave(tester, app);
+      final created = await result;
+      expect(created!.aiMetadata, isNull);
+      await app.finish();
+    });
+
+    testWidgets('creando un capo, un calore scelto è una scelta dell utente', (
+      tester,
+    ) async {
+      final (:app, :result) = await openNew(tester, initialName: 'Maglietta');
+      await tapDetail(tester, app, find.text(warmthLabel(4)));
+      await tapSave(tester, app);
+
+      final created = await result;
+      final meta = jsonDecode(created!.aiMetadata!) as Map<String, dynamic>;
+      expect(meta['warmth'], 4);
+      expect(meta['userFields'], ['warmth']);
+      expect(meta['aiPending'], isTrue);
+      await app.finish();
+    });
+
+    testWidgets('creando un capo, Elettronica e Igiene nascondono i dettagli', (
+      tester,
+    ) async {
+      final (:app, result: _) = await openNew(tester, initialName: 'Maglietta');
+      await app.tap(find.text('Elettronica'));
+      expect(find.byKey(const Key('clothing_type_row')), findsNothing);
+      await app.tap(find.text('Igiene'));
+      expect(find.byKey(const Key('clothing_type_row')), findsNothing);
+      await app.finish();
+    });
+
+    testWidgets('un oggetto senza metadati, con un calore scelto, li riceve', (
+      tester,
+    ) async {
+      final app = await openCalzini(tester);
+      await tapDetail(tester, app, find.text(warmthLabel(4)));
+      await tapSave(tester, app);
+
+      final meta = await storedOf(tester, app, 'Calzini');
+      expect(meta['warmth'], 4);
+      expect(meta['userFields'], ['warmth']);
+      expect(meta['aiPending'], isTrue);
+      await app.finish();
+    });
+
+    testWidgets(
+      'senza campi toccati i metadati salvati restano byte per byte',
+      (tester) async {
+        final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+        await openMaglione(tester, app);
+
+        await app.enterText(
+          find.byKey(const Key('item_sheet_note')),
+          'Di lana',
+        );
+        await tapSave(tester, app);
+        expect(
+          await storedRaw(tester, app, 'Maglione di lana'),
+          kMaglioneAiMetadata,
+        );
+        await app.finish();
+      },
+    );
+
+    testWidgets('toccare la pillola già scelta rende la scheda modificata', (
+      tester,
+    ) async {
+      final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+      await openMaglione(tester, app);
+      expect(onSave(tester), isNull);
+
+      await tapDetail(tester, app, find.text(warmthLabel(4)));
+      expect(onSave(tester), isNotNull);
+      await tapSave(tester, app);
+
+      final meta = await storedOf(tester, app, 'Maglione di lana');
+      expect(meta['warmth'], 4);
+      expect(meta['userFields'], ['warmth']);
+      await app.finish();
+    });
+
+    testWidgets(
+      'la risposta dell AI riempie i campi non toccati, quello toccato resta',
+      (tester) async {
+        final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+        await openMaglione(tester, app);
+        await tapDetail(tester, app, find.text(warmthLabel(2)));
+
+        await answerAi(
+          app,
+          itemNamed(app, 'Maglione di lana'),
+          ai: aiAnswer({
+            'subCategory': 'T-Shirt',
+            'baseColor': 'Beige',
+            'warmth': 5,
+            'formality': 'Business',
+          }),
+        );
+
+        expect(selectedPill(tester, warmthLabel(2)), isTrue);
+        expect(selectedPill(tester, warmthLabel(5)), isFalse);
+        expect(find.text(clothingTypeLabel('T-Shirt')), findsOneWidget);
+        expect(selectedPill(tester, colorLabel('Beige')), isTrue);
+        expect(selectedPill(tester, formalityLabel('Business')), isTrue);
+        expect(onSave(tester), isNotNull);
+
+        await tapSave(tester, app);
+        final meta = await storedOf(tester, app, 'Maglione di lana');
+        expect(meta['warmth'], 2);
+        expect(meta['userFields'], ['warmth']);
+        expect(meta['subCategory'], 'T-Shirt');
+        expect(meta['baseColor'], 'Beige');
+        await app.finish();
+      },
+    );
+
+    testWidgets('la categoria segue l AI finché l utente non ne tocca una', (
+      tester,
+    ) async {
+      final app = await openCalzini(tester);
+      await answerAi(
+        app,
+        itemNamed(app, 'Calzini'),
+        category: ItemCategory.varie,
+        ai: const {'name': 'Calzini'},
+      );
+
+      expect(pillOf(tester, ItemCategory.varie), CategoryPillState.forced);
+      expect(pillOf(tester, ItemCategory.vestiti), CategoryPillState.inactive);
+      expect(onSave(tester), isNull);
+      await app.finish();
+    });
+
+    testWidgets(
+      'rinomina scritta a scheda aperta, salvata dopo la risposta per il nome '
+      'vecchio: la scheda si chiede di nuovo e le scelte dell utente restano',
+      (tester) async {
+        final service = _RecordingMetadata(
+          const ItemMetadataResult(
+            metadata: {
+              'category': 'Upper Body',
+              'warmth': 5,
+              'baseColor': 'blu',
+            },
+          ),
+        );
+        final app = await ScreenshotApp.start(
+          tester,
+          theme: ShotTheme.light,
+          setup: AppSetup(
+            extraOverrides: [
+              itemMetadataServiceProvider.overrideWithValue(service),
+            ],
+          ),
+        );
+        await app.go('/');
+        await app.push('/houses/$kHomeId');
+        await app.tap(find.text('Calzini'));
+
+        // Scrive il nome nuovo e sceglie il calore; poi arriva la risposta
+        // per "Calzini" e solo dopo salva.
+        await app.enterText(
+          find.byKey(const Key('item_sheet_name')),
+          'Calzini di lana',
+        );
+        await tapDetail(tester, app, find.text(warmthLabel(4)));
+        await answerAi(
+          app,
+          itemNamed(app, 'Calzini'),
+          ai: const {
+            'category': 'Upper Body',
+            'warmth': 2,
+            'baseColor': 'rosso',
+          },
+        );
+        await tapSave(tester, app);
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 300)),
+        );
+        await app.settle();
+
+        expect(service.names, ['Calzini di lana']);
+        final meta = await storedOf(tester, app, 'Calzini di lana');
+        expect(meta['warmth'], 4);
+        expect(meta['userFields'], ['warmth']);
+        expect(meta['baseColor'], 'blu');
+        expect(meta.containsKey('aiPending'), isFalse);
+        await app.finish();
+      },
+    );
+
+    testWidgets(
+      'rinomina salvata con la risposta già arrivata: i valori restano finché '
+      'non arriva quella del nome nuovo (aiPending)',
+      (tester) async {
+        final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+        await app.go('/');
+        await app.push('/houses/$kHomeId');
+        await app.tap(find.text('Calzini'));
+        await app.enterText(
+          find.byKey(const Key('item_sheet_name')),
+          'Calzini di lana',
+        );
+        await answerAi(
+          app,
+          itemNamed(app, 'Calzini'),
+          ai: const {'category': 'Upper Body', 'warmth': 2},
+        );
+        await tapSave(tester, app);
+
+        final meta = await storedOf(tester, app, 'Calzini di lana');
+        expect(meta['aiPending'], isTrue);
+        expect(meta['warmth'], 2);
+        await app.finish();
+      },
+    );
+
+    testWidgets(
+      'la riga "Sto completando" sta sopra i dettagli mentre l oggetto è in attesa',
+      (tester) async {
+        final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+        await openMaglione(tester, app);
+        const pending = 'Sto completando i dettagli. Puoi già modificarli.';
+        expect(find.text(pending), findsNothing);
+
+        final id = itemNamed(app, 'Maglione di lana').id;
+        app.container.read(itemEnrichmentProvider.notifier).start(id);
+        await app.settle();
+        expect(find.text(pending), findsOneWidget);
+        expect(
+          tester.getTopLeft(find.text(pending)).dy,
+          lessThan(
+            tester.getTopLeft(find.byKey(const Key('clothing_type_row'))).dy,
+          ),
+        );
+
+        app.container.read(itemEnrichmentProvider.notifier).finish(id);
+        await app.settle();
+        expect(find.text(pending), findsNothing);
+        await app.finish();
+      },
+    );
   });
 }

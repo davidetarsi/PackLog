@@ -44,14 +44,44 @@ class DsSheetHeader extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleLarge?.title,
                 )
               : Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleLarge?.title,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final style = Theme.of(
+                            context,
+                          ).textTheme.titleLarge?.title;
+                          final titleWidget = Text(
+                            title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: style,
+                          );
+                          final actionWidgets = Wrap(
+                            alignment: WrapAlignment.end,
+                            spacing: context.spacingXs,
+                            runSpacing: context.spacingXs,
+                            children: actions,
+                          );
+                          // OverflowBar sposta le azioni a destra sotto il titolo.
+                          return OverflowBar(
+                            alignment: MainAxisAlignment.spaceBetween,
+                            overflowAlignment: OverflowBarAlignment.end,
+                            overflowSpacing: context.spacingXs,
+                            children: [
+                              ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxWidth: constraints.maxWidth,
+                                ),
+                                child: titleWidget,
+                              ),
+                              if (actions.isNotEmpty) actionWidgets,
+                            ],
+                          );
+                        },
                       ),
                     ),
-                    ...actions,
                     DsIconButton(
                       key: const Key('sheet_close'),
                       icon: Icons.close,

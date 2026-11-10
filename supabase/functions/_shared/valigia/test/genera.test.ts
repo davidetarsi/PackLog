@@ -1,5 +1,5 @@
 // Il giro intero (genera.ts) con modello, Jev e meteo finti che rispondono come
-// nel bench: stesso prompt, stessa valigia, stessi motivi.
+// nel bench: stesso prompt, contratto storico o delta di policy esplicito.
 // Uso: node --test test/genera.test.ts   (ORACOLO_CELLE=file per l'oracolo intero)
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -7,8 +7,11 @@ import { readFileSync } from "node:fs";
 import type { RigaArmadio } from "../capo.ts";
 import { type ChiediJev, DOMANDA_SCARPE } from "../jev.ts";
 import { generaValigia, scenarioDaApp } from "../genera.ts";
+import { postiApp } from "../posti.ts";
+import { uscitaApp } from "../uscita.ts";
+import { caricaArmadio } from "../capo.ts";
 
-const file = process.env.ORACOLO_CELLE ?? new URL("./oracolo_celle_campione.json", import.meta.url).pathname;
+const file = process.env.ORACOLO_CELLE ?? new URL("./oracolo_celle_campione.json", import.meta.url);
 const casi: any[] = JSON.parse(readFileSync(file, "utf8"));
 const righe: Record<string, RigaArmadio[]> = {};
 for (const c of JSON.parse(readFileSync(new URL("./oracolo_quantita.json", import.meta.url), "utf8"))) {
@@ -16,6 +19,9 @@ for (const c of JSON.parse(readFileSync(new URL("./oracolo_quantita.json", impor
 }
 const numeri = (x: unknown) =>
   JSON.parse(JSON.stringify(x), (_k, v) => typeof v === "string" ? v.replace(/(\d)\.0\b/g, "$1") : v);
+
+// `leggero` sui pantaloni serve solo ai suggerimenti dell'app: il bench non lo conosce.
+const senzaLeggero = (x: unknown) => JSON.parse(JSON.stringify(x), (k, v) => (k === "leggero" ? undefined : v));
 
 function jevCome(a: any): ChiediJev {
   return async (stato, domande) => {
@@ -33,7 +39,7 @@ function jevCome(a: any): ChiediJev {
   };
 }
 
-test("stesso prompt, stessa valigia, stessi motivi del bench", async () => {
+test("flusso completo: prompt storico, risultati e delta revisionati del motore", async () => {
   let n = 0;
   for (const c of casi) {
     const { scenario, geo, meteo } = structuredClone(c.viaggio);
@@ -50,10 +56,22 @@ test("stesso prompt, stessa valigia, stessi motivi del bench", async () => {
       jev: jevCome(c.args),
       profiliNoti,
     });
-    assert.deepEqual(numeri(r.valigia), numeri(c.atteso), nome);
+    assert.ok(r.fabbisogni, `${nome}: il motore deve restituire i fabbisogni residui`);
+    const viaggio = { ...scenario, ...(scenario.legs?.length ? {
+      tappe: scenario.legs.map((l: any) => ({ nome: l.destinazione, giorni: l.giorni, attivita: l.attivita })),
+    } : { destinazione: { nome: scenario.destinazione } }) };
+    const contesto = { viaggio, meteo, armadio: caricaArmadio(righe[c.armadio]) };
+    const salvate = new Map(righe[c.armadio].map((g) => [String(g.id), g.quantity ?? null]));
+    assert.deepEqual(
+      postiApp(r.valigia, r.motivi as any, salvate, { ...contesto, fabbisogni: r.fabbisogni }),
+      postiApp(r.valigia, r.motivi as any, salvate, contesto), `${nome}: fabbisogni del motore e adapter coerenti`);
+    // Confronto esatto con l'oracolo del bench Python (nessun baseline del TS stesso).
+    const valigia = structuredClone(r.valigia) as any;
+    for (const rich of valigia.richiesti ?? []) { delete rich.capoTipico; delete rich.maxWarmth; delete rich.vincoliPosto; }
+    assert.deepEqual(senzaLeggero(numeri(valigia)), senzaLeggero(numeri(c.atteso)), nome);
     // nei testi interni (reason) "2.0" e "2" valgono uguale, come in confronta_celle
-    assert.deepEqual(numeri(r.motivi), numeri(c.motivi), nome);
-    assert.deepEqual(JSON.parse(JSON.stringify(r.perche)), c.perche, nome);
+    assert.deepEqual(senzaLeggero(numeri(r.motivi)), senzaLeggero(numeri(c.motivi)), nome);
+    assert.deepEqual(senzaLeggero(r.perche), senzaLeggero(c.perche), nome);
     n++;
   }
   assert.ok(n > 0);
@@ -71,4 +89,26 @@ test("scenario dall'app nella forma del bench", () => {
     destinazione: { nome: "Cortina d'Ampezzo", paese: "Italia", lat: 46.5, lon: 12.1 } }),
   { data_inizio: "2026-09-15", giorni: 5, attivita: ["trekking"], bagaglio: "", alloggio: "", lavatrice: false,
     destinazione: "Cortina d'Ampezzo", paese: "Italia" });
+});
+
+test("armadio vuoto: la valigia si fa lo stesso, tutto manca e i posti ci sono", async () => {
+  const c = casi.find((x) => x.tipo === "singola");
+  const { scenario, geo, meteo } = structuredClone(c.viaggio);
+  const r = await generaValigia(scenario, [], {
+    clima: async () => ({ geo, meteo }),
+    modello: async () => ({ testo: c.grezzo }),
+    jev: null,
+  });
+  assert.deepEqual(r.valigia.ideali, []);
+  assert.ok(r.valigia.mancanti_canonici.length > 0);
+  const viaggio = { data_inizio: scenario.data_inizio, giorni: scenario.giorni, attivita: scenario.attivita,
+    bagaglio: scenario.bagaglio, alloggio: scenario.alloggio, lavatrice: scenario.lavatrice,
+    destinazione: { nome: scenario.destinazione, paese: scenario.paese } };
+  const { posti } = postiApp(r.valigia, r.motivi as any, new Map(), { meteo: r.meteo, viaggio, armadio: caricaArmadio([]) });
+  assert.ok(posti.length > 0);
+  assert.ok(posti.every((p) => p.copie >= 1));
+  // l'uscita per le app vecchie regge l'armadio vuoto: nessun capo, gli avvisi ci sono
+  const vecchia = uscitaApp(r.valigia, r.motivi as any, new Map(), { meteo: r.meteo, viaggio, armadio: [] });
+  assert.deepEqual(vecchia.capi, []);
+  assert.ok(vecchia.avvisi.length > 0);
 });

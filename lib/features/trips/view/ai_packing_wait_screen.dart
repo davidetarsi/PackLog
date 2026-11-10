@@ -1,412 +1,232 @@
-import 'dart:async';
-
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../shared/theme/app_spacing.dart';
-import '../../../shared/widgets/ds_button.dart';
-import '../../../shared/widgets/ds_text_button.dart';
-import '../../profile/providers/gpt_usage_provider.dart';
-import '../model/ai_packing.dart';
-import '../services/pack_trip_service.dart';
-import '../../../shared/theme/app_text_styles.dart';
+import '../model/ai_packing_request.dart';
+import '../providers/ai_packing_run_provider.dart';
+import '../services/pack_trip_timing.dart';
+import 'widgets/wait/ai_wait_body.dart';
+import 'widgets/wait/ai_wait_failure.dart';
+import 'widgets/wait/wait_handoff.dart';
+import 'widgets/wait/wait_step_sequence.dart';
 
-/// Ciò che serve a `pack-trip` per generare la valigia, e a mostrare l'attesa.
-class PackTripJob {
-  const PackTripJob({
-    required this.body,
-    required this.houseId,
-    required this.title,
-    required this.nights,
-  });
+export '../model/pack_trip_job.dart';
 
-  /// Corpo della richiesta a `pack-trip`.
-  final Map<String, dynamic> body;
-
-  /// Casa da cui arrivano i vestiti.
-  final String houseId;
-
-  /// Tappe del viaggio, come si leggono nell'attesa ("Islanda e Olanda").
-  final String title;
-
-  final int nights;
-}
-
-/// Pagina intera mentre `pack-trip` prepara la valigia. Alla risposta torna
-/// indietro con il [AiPackingResult]; con "Annulla" torna indietro con null;
-/// in caso di errore mostra un messaggio con la sua uscita.
+/// Pagina intera mentre il lavoro AI ([aiPackingRunProvider]) prepara la
+/// valigia. Non chiama niente: mostra lo stato. Indietro la stacca e il
+/// lavoro continua; all'arrivo i passi finiscono il racconto, la card si apre
+/// e la pagina va al dettaglio del viaggio in revisione; un errore mostra la
+/// sua uscita.
 class AiPackingWaitScreen extends ConsumerStatefulWidget {
-  const AiPackingWaitScreen({
-    super.key,
-    required this.tripId,
-    required this.job,
-  });
-
-  final String tripId;
-  final PackTripJob job;
+  const AiPackingWaitScreen({super.key});
 
   @override
   ConsumerState<AiPackingWaitScreen> createState() =>
       _AiPackingWaitScreenState();
 }
 
-/// Momenti in cui il passo successivo si accende, dopo l'inizio. Sono a
-/// tempo, non legati a eventi reali del server.
-const _stepStarts = [Duration(seconds: 3), Duration(seconds: 6)];
-
 class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
-  late final PackTripService _service;
-  final List<Timer> _timers = [];
+  late final AiPackingRun _run;
+  final _cardKey = GlobalKey();
+  WaitStepSequence? _steps;
+  Rect? _handoff;
 
-  /// Passo in corso: 0, 1 o 2.
-  int _step = 0;
+  /// L'ultima richiesta vista: la pagina resta leggibile anche dopo il
+  /// [AiRunDone], quando lo stato non la porta più.
+  AiPackingRequest? _request;
 
-  /// Errore da mostrare; null mentre la richiesta è in corso.
-  Object? _failure;
+  /// La valigia è arrivata, sul viaggio con questo id.
+  String? _doneTripId;
 
-  /// Un'uscita è già partita (pop o push): da qui in poi nessun'altra uscita
-  /// può fare pop, altrimenti chiuderebbe la pagina chiamante.
+  /// Un'uscita è già partita: nessun'altra può navigare (due uscite
+  /// chiuderebbero anche la pagina sotto).
   bool _leaving = false;
+
+  /// I tempi dei passi si stanno caricando.
+  bool _loadingSteps = false;
 
   @override
   void initState() {
     super.initState();
-    // Stesso servizio per generare e per annullare: il provider non è keepAlive.
-    _service = ref.read(packTripServiceProvider);
-    _generate();
+    _run = ref.read(aiPackingRunProvider.notifier)..attach();
+    final state = ref.read(aiPackingRunProvider);
+    _request = _requestOf(state);
+    // Il lavoro può essere già finito prima che la pagina si veda.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _sync(ref.read(aiPackingRunProvider));
+    });
   }
 
   @override
   void dispose() {
-    _stopSteps();
+    _steps?.dispose();
+    _run.detach();
     super.dispose();
   }
 
-  Future<void> _generate() async {
-    setState(() {
-      _failure = null;
-      _step = 0;
-    });
-    _startSteps();
+  AiPackingRequest? _requestOf(AiPackingRunState state) => switch (state) {
+    AiRunRunning(:final request) => request,
+    AiRunFailed(:final request) => request,
+    _ => null,
+  };
 
-    AiPackingResult? result;
-    Object? failure;
-    try {
-      result = await _service.generate(
-        widget.job.body,
-        houseId: widget.job.houseId,
-      );
-    } catch (error) {
-      failure = error;
+  void _sync(AiPackingRunState state) {
+    if (_leaving) return;
+    switch (state) {
+      case AiRunRunning(:final request):
+        _request = request;
+        _startSteps();
+      case AiRunFailed(:final request):
+        _request = request;
+        _stopSteps();
+      case AiRunDone(:final tripId):
+        _arrived(tripId);
+      case AiRunIdle():
+        // Niente da mostrare (lavoro azzerato): si lascia la pagina.
+        if (_doneTripId == null) _close(clear: false);
     }
-    _stopSteps();
+  }
 
-    // Annullata o già in uscita: la pagina non deve più fare niente.
-    if (_leaving || !mounted) return;
-    ref.invalidate(gptUsageProvider);
+  Future<void> _startSteps() async {
+    if (_steps != null || _loadingSteps) return;
+    _loadingSteps = true;
+    final averageMs = await PackTripTiming.load();
+    _loadingSteps = false;
+    if (!mounted || _leaving || _steps != null || _doneTripId != null) return;
+    if (ref.read(aiPackingRunProvider) is! AiRunRunning) return;
+    _steps =
+        WaitStepSequence(
+            stepDuration: Duration(milliseconds: averageMs ~/ kWaitSteps),
+            onFinished: _openOnSuitcase,
+          )
+          ..addListener(() => setState(() {}))
+          ..start();
+    setState(() {});
+  }
 
-    final success = result;
-    if (success != null) {
-      _leave(() => context.pop<AiPackingResult>(success));
-      return;
+  void _stopSteps() {
+    _steps?.dispose();
+    setState(() => _steps = null);
+  }
+
+  /// Valigia pronta: i passi finiscono il racconto; senza animazioni, via subito.
+  void _arrived(String tripId) {
+    if (_doneTripId != null) return;
+    setState(() => _doneTripId = tripId);
+    final steps = _steps;
+    if (steps == null || MediaQuery.disableAnimationsOf(context)) {
+      return _openReview();
     }
-    setState(() => _failure = failure);
+    steps.arrive();
+  }
+
+  void _openOnSuitcase() {
+    if (_doneTripId == null || _leaving || !mounted) return;
+    final box = _cardKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return _openReview();
+    setState(() => _handoff = box.localToGlobal(Offset.zero) & box.size);
   }
 
   /// Unica porta d'uscita: la prima chiamata vince, le altre non fanno nulla.
-  /// Il flag va impostato prima di qualsiasi pop, anche durante l'animazione
-  /// di chiusura.
   void _leave(VoidCallback exit) {
     if (_leaving) return;
     _leaving = true;
-    _stopSteps();
+    _steps?.dispose();
     exit();
   }
 
-  void _cancel() => _leave(() {
-    _service.cancel();
-    ref.invalidate(gptUsageProvider);
-    context.pop();
+  /// Al dettaglio in revisione, poi il lavoro si azzera.
+  void _openReview() {
+    final tripId = _doneTripId;
+    if (tripId == null) return;
+    _leave(() {
+      context.go('/trips/$tripId?review=1');
+      _run.clear();
+    });
+  }
+
+  /// Indietro in attesa: la pagina si stacca e il lavoro continua; ad
+  /// arrivare ci pensa l'avviso globale. Il passo 1 che ha avviato il lavoro
+  /// si chiude con la pagina (niente è salvato, i dati sono nel lavoro): si
+  /// va ai Viaggi, o al dettaglio se è una Rigenera.
+  void _stay() => _leave(() {
+    _run.detach();
+    final request = _request;
+    context.go(
+      request == null || request.isNew ? '/trips' : '/trips/${request.trip.id}',
+    );
   });
 
-  /// Chiude questa pagina e apre [location] sopra la pagina che l'ha chiamata.
-  void _leaveFor(String location) => _leave(() {
+  /// Chiude un errore (o una pagina senza lavoro): [clear] azzera il lavoro.
+  void _close({bool clear = true}) => _leave(() {
+    if (clear) _run.clear();
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/trips');
+    }
+  });
+
+  void _goTo(String location) => _leave(() {
+    _run.clear();
     final router = GoRouter.of(context);
     context.pop();
     router.push(location);
   });
 
-  void _startSteps() {
-    _stopSteps();
-    for (var i = 0; i < _stepStarts.length; i++) {
-      _timers.add(
-        Timer(_stepStarts[i], () {
-          if (mounted) setState(() => _step = i + 1);
-        }),
-      );
-    }
-  }
-
-  void _stopSteps() {
-    for (final timer in _timers) {
-      timer.cancel();
-    }
-    _timers.clear();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final failure = _failure;
+    ref.listen(aiPackingRunProvider, (_, next) => _sync(next));
+    final state = ref.watch(aiPackingRunProvider);
+    final request = _requestOf(state) ?? _request;
+    final failed = state is AiRunFailed;
+
     return PopScope(
-      // Il pop lo gestisce sempre la pagina, così passa dalla stessa porta
-      // d'uscita: tasto indietro durante l'attesa = "Annulla", in errore =
-      // "Chiudi".
+      // Indietro passa dalla porta d'uscita: in attesa si stacca, a valigia
+      // arrivata apre la revisione, in errore chiude.
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        if (failure == null) {
-          _cancel();
+        if (state is AiRunFailed) {
+          _close();
+        } else if (_doneTripId != null) {
+          _openReview();
         } else {
-          _leave(() => context.pop());
+          _stay();
         }
       },
       child: Scaffold(
-        body: SafeArea(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: context.spacingLg),
-            child: failure == null
-                ? _buildWaiting(context)
-                : _buildFailure(context, failure),
-          ),
-        ),
+        body: request == null
+            ? const SizedBox.shrink()
+            : Stack(
+                children: [
+                  SafeArea(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: context.spacingLg,
+                      ),
+                      child: failed
+                          ? AiWaitFailure(
+                              failure: state.error,
+                              houseId: request.job.houseId,
+                              onRetry: _run.retry,
+                              onClose: _close,
+                              onGoTo: _goTo,
+                            )
+                          : AiWaitBody(
+                              job: request.job,
+                              tripId: request.trip.id,
+                              steps: _steps,
+                              cardKey: _cardKey,
+                            ),
+                    ),
+                  ),
+                  if (_handoff case final from?)
+                    WaitHandoff(from: from, onDone: _openReview),
+                ],
+              ),
       ),
-    );
-  }
-
-  Widget _buildWaiting(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final nights = 'trips.ai.wait.nights'.plural(widget.job.nights);
-    final steps = [
-      'trips.ai.wait.step_weather'.tr(args: [widget.job.title]),
-      'trips.ai.wait.step_wardrobe'.tr(),
-      'trips.ai.wait.step_check'.tr(),
-    ];
-
-    return Column(
-      children: [
-        Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                Icons.auto_awesome_outlined,
-                size: context.iconSizeXl,
-                color: colorScheme.onSurfaceVariant,
-              ),
-              SizedBox(height: context.spacingLg),
-              Text(
-                'trips.ai.wait.title'.tr(),
-                style: theme.textTheme.headlineMedium?.title,
-              ),
-              SizedBox(height: context.spacingSm),
-              Text(
-                'trips.ai.wait.subtitle'.tr(args: [widget.job.title, nights]),
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-              SizedBox(height: context.spacingLg),
-              for (var i = 0; i < steps.length; i++) ...[
-                if (i > 0) SizedBox(height: context.spacingMd),
-                _WaitStep(
-                  label: steps[i],
-                  state: i < _step
-                      ? _StepState.done
-                      : i == _step
-                      ? _StepState.current
-                      : _StepState.pending,
-                ),
-              ],
-              SizedBox(height: context.spacingLg),
-              Text(
-                'trips.ai.wait.hint'.tr(),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Center(
-          child: DsTextButton(onPressed: _cancel, label: 'common.cancel'.tr()),
-        ),
-        SizedBox(height: context.spacingXl),
-      ],
-    );
-  }
-
-  Widget _buildFailure(BuildContext context, Object failure) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    final String title;
-    final String body;
-    final String primaryLabel;
-    final VoidCallback primaryAction;
-    var showExit = true;
-
-    switch (failure) {
-      case PackTripCreditsException():
-        title = 'trips.ai.error.credits_title'.tr();
-        body = 'trips.ai.error.credits_body'.tr();
-        primaryLabel = 'trips.ai.error.credits_action'.tr();
-        primaryAction = () => _leaveFor('/profile');
-      case PackTripEmptyWardrobeException():
-        title = 'trips.ai.error.empty_title'.tr();
-        body = 'trips.ai.error.empty_body'.tr();
-        primaryLabel = 'trips.ai.error.empty_action'.tr();
-        final houseId = widget.job.houseId;
-        primaryAction = () => _leaveFor('/houses/$houseId');
-      case PackTripWardrobeTooLargeException():
-        // Un'unica uscita: è anche l'azione principale.
-        title = 'trips.ai.error.too_large_title'.tr();
-        body = 'trips.ai.error.too_large_body'.tr();
-        primaryLabel = 'common.close'.tr();
-        primaryAction = () => _leave(() => context.pop());
-        showExit = false;
-      default:
-        title = 'trips.ai.error.generic_title'.tr();
-        body = 'trips.ai.error.generic_body'.tr();
-        primaryLabel = 'common.retry'.tr();
-        primaryAction = _generate;
-    }
-
-    return Column(
-      children: [
-        const Spacer(),
-        Icon(
-          Icons.error_outline,
-          size: context.iconSizeXl,
-          color: colorScheme.onSurfaceVariant,
-        ),
-        SizedBox(height: context.spacingLg),
-        Text(title, style: theme.textTheme.headlineSmall?.title),
-        SizedBox(height: context.spacingSm),
-        Text(
-          body,
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const Spacer(),
-        DsButton(label: primaryLabel, onPressed: primaryAction, expand: true),
-        if (showExit)
-          SizedBox(
-            width: double.infinity,
-            child: DsTextButton(
-              onPressed: () => _leave(() => context.pop()),
-              label: 'common.close'.tr(),
-            ),
-          ),
-        SizedBox(height: context.spacingXl),
-      ],
-    );
-  }
-}
-
-enum _StepState { done, current, pending }
-
-/// Un passo dell'attesa, con un puntino davanti: fermo e scuro se fatto, che
-/// lampeggia se in corso, chiaro se ancora da fare. Fatto e in corso hanno il
-/// testo scuro; da fare, grigio.
-class _WaitStep extends StatelessWidget {
-  const _WaitStep({required this.label, required this.state});
-
-  final String label;
-  final _StepState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final pending = state == _StepState.pending;
-    final dot = _Dot(
-      color: pending ? colorScheme.outlineVariant : colorScheme.onSurface,
-    );
-
-    return Row(
-      children: [
-        SizedBox.square(
-          dimension: context.iconSizeMd,
-          child: Center(
-            child: state == _StepState.current ? _Blinking(child: dot) : dot,
-          ),
-        ),
-        SizedBox(width: context.spacingMd),
-        Expanded(
-          child: Text(
-            label,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: pending ? colorScheme.outline : colorScheme.onSurface,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _Dot extends StatelessWidget {
-  const _Dot({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: context.spacingSm,
-      height: context.spacingSm,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-    );
-  }
-}
-
-/// Fa lampeggiare [child] finché resta a schermo.
-class _Blinking extends StatefulWidget {
-  const _Blinking({required this.child});
-
-  final Widget child;
-
-  @override
-  State<_Blinking> createState() => _BlinkingState();
-}
-
-class _BlinkingState extends State<_Blinking>
-    with SingleTickerProviderStateMixin {
-  static const Duration _period = Duration(milliseconds: 700);
-  static const double _minOpacity = 0.2;
-
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: _period,
-  )..repeat(reverse: true);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      key: const Key('ai_wait_blinking_dot'),
-      opacity: Tween<double>(begin: 1, end: _minOpacity).animate(_controller),
-      child: widget.child,
     );
   }
 }

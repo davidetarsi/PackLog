@@ -10,6 +10,10 @@
 // Nei viaggi a tappe geo.per_tappa[i].dettaglio da' i giorni della tappa che
 // cadono nei prossimi 7, con sei fasce di quattro ore (giorni.ts); senza tappe
 // lo stesso sta in geo.dettaglio. Se il dettaglio non arriva, manca e basta.
+// Per le stime dallo storico, geo.per_tappa[i].giorni_storici ha ogni giorno
+// della tappa: medie di massima, minima e vento degli ultimi anni e quanti anni
+// su quelli con dato hanno avuto piu' di 1 mm di pioggia (anni_pioggia su
+// anni_con_dato). Manca per le previsioni.
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "@supabase/supabase-js";
 import { climaViaggio, giorno, iso, type Servizi } from "../_shared/clima/meteo.ts";
@@ -54,7 +58,7 @@ Deno.serve(async (req) => {
   try {
     const servizi = serviziMeteo(db, Deno.env.get("OPEN_METEO_API_KEY") || undefined);
     const r = await climaViaggio(viaggio.data_inizio, viaggio.giorni, viaggio.destinazione ?? null,
-      viaggio.tappe ?? null, servizi);
+      viaggio.tappe ?? null, servizi, true);
     if (viaggio.tappe?.length) {
       const piano = pianoTappe(viaggio.data_inizio, viaggio.tappe);
       await Promise.all(viaggio.tappe.map(async (t, i) => {

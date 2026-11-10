@@ -6,13 +6,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:pack_log/features/profile/providers/gpt_usage_provider.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/items/providers/item_provider.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
+import 'package:pack_log/features/trips/model/ai_packing_request.dart';
+import 'package:pack_log/features/trips/model/trip_model.dart';
+import 'package:pack_log/features/trips/model/trip_weather.dart';
+import 'package:pack_log/features/trips/providers/ai_packing_run_provider.dart';
+import 'package:pack_log/features/trips/providers/trip_weather_provider.dart';
 import 'package:pack_log/features/trips/services/pack_trip_service.dart';
 import 'package:pack_log/features/trips/view/ai_packing_wait_screen.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
+import 'package:pack_log/shared/widgets/packlog_gradient.dart';
 
+import '../../../helpers/catalogo_di_prova.dart';
 import '../../../helpers/memory_asset_loader.dart';
 
 const _houseId = 'h1';
@@ -24,68 +33,145 @@ final _job = PackTripJob(
   nights: 8,
 );
 
-final _result = AiPackingResult(
-  generatedAt: DateTime.utc(2026, 10, 24, 9),
-  houseId: _houseId,
-  proposal: const [],
-  warnings: const [],
-  reasons: const [],
-);
+AiPackingRequest _requestFor(PackTripJob job, {bool isNew = false}) =>
+    AiPackingRequest(
+      trip: TripModel(
+        id: 'trip-1',
+        name: 'Islanda',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      ),
+      isNew: isNew,
+      setup: const AiPackingSetup(houseId: _houseId),
+      job: job,
+    );
 
-/// Finto di `PackTripService`: ogni `generate` prende la risposta successiva
-/// da [replies], e `cancel` registra solo che è stato chiamato.
-class _FakeService extends PackTripService {
-  final List<Completer<AiPackingResult>> replies = [];
-  final List<String> houseIds = [];
-  int generateCalls = 0;
-  bool cancelled = false;
+/// Il lavoro AI finto: lo stato lo decide il test; registra le chiamate.
+class _FakeRun extends AiPackingRun {
+  int attaches = 0;
+  int detaches = 0;
+  int clears = 0;
+  int retries = 0;
+
+  void emit(AiPackingRunState next) => state = next;
 
   @override
-  Future<AiPackingResult> generate(
-    Map<String, dynamic> body, {
-    required String houseId,
-  }) {
-    generateCalls++;
-    houseIds.add(houseId);
-    final reply = Completer<AiPackingResult>();
-    replies.add(reply);
-    return reply.future;
+  AiPackingRunState build() => const AiRunIdle();
+
+  @override
+  void attach() => attaches++;
+
+  @override
+  void detach() => detaches++;
+
+  @override
+  void clear() {
+    clears++;
+    state = const AiRunIdle();
   }
 
   @override
-  void cancel() => cancelled = true;
-
-  Completer<AiPackingResult> get last => replies.last;
+  Future<void> retry() async {
+    retries++;
+    final current = state;
+    if (current is AiRunFailed) state = AiRunRunning(current.request);
+  }
 }
 
-/// Cosa è successo al route della pagina d'attesa.
-class _Outcome {
-  bool popped = false;
-  int completions = 0;
-  AiPackingResult? result;
+late _FakeRun _run;
+late AiPackingRequest _request;
+
+/// Dove è arrivato il router.
+late List<String> _visited;
+
+late ProviderContainer _container;
+
+class _Weather extends TripWeatherNotifier {
+  _Weather(this.state0);
+  final TripWeatherState state0;
+
+  @override
+  Future<TripWeatherState> build(String tripId) async => state0;
 }
 
-late _FakeService _service;
-late _Outcome _outcome;
-late int _usageBuilds;
+/// Meteo che arriva quando lo decide il test.
+class _LateWeather extends TripWeatherNotifier {
+  _LateWeather(this.arrival);
+  final Completer<TripWeatherState> arrival;
 
-Future<void> _pump(WidgetTester tester) async {
-  _service = _FakeService();
-  _outcome = _Outcome();
-  _usageBuilds = 0;
+  @override
+  Future<TripWeatherState> build(String tripId) => arrival.future;
+}
+
+class _Items extends ItemNotifier {
+  _Items(this.count);
+  final int count;
+
+  @override
+  Future<List<ItemModel>> build(String houseId) async => [
+    for (var i = 0; i < count; i++)
+      ItemModel(
+        id: 'i$i',
+        houseId: houseId,
+        name: 'Capo $i',
+        category: ItemCategory.vestiti,
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      ),
+  ];
+}
+
+TripWeather _meteo({double rain = 0}) => TripWeather(
+  signature: 's',
+  fetchedAt: DateTime(2026, 11, 1),
+  stops: [
+    StopWeather(
+      name: 'Reykjavik',
+      from: DateTime(2026, 11, 10),
+      to: DateTime(2026, 11, 14),
+      source: WeatherSource.climate,
+      tempMin: 1.2,
+      tempMax: 6.4,
+      rainDays: rain,
+    ),
+  ],
+);
+
+/// Apre la pagina d'attesa sopra "home" con un lavoro in corso.
+Future<void> _pump(
+  WidgetTester tester, {
+  Map<String, Object> prefs = const {},
+  PackTripJob? job,
+  TripWeather? weather,
+  Completer<TripWeatherState>? lateWeather,
+  int items = 3,
+  bool disableAnimations = false,
+  bool isNew = false,
+}) async {
+  SharedPreferences.setMockInitialValues(prefs);
+  _run = _FakeRun();
+  _request = _requestFor(job ?? _job, isNew: isNew);
+  _visited = [];
 
   final container = ProviderContainer(
     overrides: [
-      packTripServiceProvider.overrideWithValue(_service),
-      gptUsageProvider.overrideWith((ref) {
-        _usageBuilds++;
-        return GptUsageModel(usageCount: 0, usageCap: 30);
-      }),
+      aiPackingRunProvider.overrideWith(() => _run),
+      tripWeatherNotifierProvider('trip-1').overrideWith(
+        () => lateWeather != null
+            ? _LateWeather(lateWeather)
+            : _Weather(
+                weather == null
+                    ? const TripWeatherFailed()
+                    : TripWeatherReady(weather),
+              ),
+      ),
+      itemNotifierProvider(_houseId).overrideWith(() => _Items(items)),
     ],
   );
-  // Ascolto la quota: così `invalidate` la ricostruisce e lo si vede.
-  container.listen(gptUsageProvider, (_, _) {}, fireImmediately: true);
   addTearDown(container.dispose);
+  _container = container;
+  // Il notifier si inizializza alla prima lettura.
+  container.read(aiPackingRunProvider);
 
   final router = GoRouter(
     initialLocation: '/home',
@@ -102,15 +188,9 @@ Future<void> _pump(WidgetTester tester) async {
             builder: (context, state) => Scaffold(
               body: Center(
                 child: TextButton(
-                  onPressed: () async {
-                    final result = await context.push<AiPackingResult>(
-                      '/trips/trip-1/ai-packing',
-                      extra: _job,
-                    );
-                    _outcome
-                      ..popped = true
-                      ..completions += 1
-                      ..result = result;
+                  onPressed: () {
+                    _run.emit(AiRunRunning(_request));
+                    context.push('/ai-packing');
                   },
                   child: const Text('apri'),
                 ),
@@ -120,11 +200,19 @@ Future<void> _pump(WidgetTester tester) async {
         ],
       ),
       GoRoute(
-        path: '/trips/:id/ai-packing',
-        builder: (context, state) => AiPackingWaitScreen(
-          tripId: state.pathParameters['id']!,
-          job: state.extra! as PackTripJob,
-        ),
+        path: '/ai-packing',
+        builder: (context, state) => const AiPackingWaitScreen(),
+      ),
+      GoRoute(
+        path: '/trips',
+        builder: (context, state) => const Scaffold(body: Text('VIAGGI')),
+      ),
+      GoRoute(
+        path: '/trips/:id',
+        builder: (context, state) {
+          _visited.add(state.uri.toString());
+          return const Scaffold(body: Text('DETTAGLIO'));
+        },
       ),
       GoRoute(
         path: '/profile',
@@ -154,6 +242,12 @@ Future<void> _pump(WidgetTester tester) async {
         saveLocale: false,
         child: Builder(
           builder: (context) => MaterialApp.router(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(disableAnimations: disableAnimations),
+              child: child!,
+            ),
             theme: AppTheme.light,
             locale: context.locale,
             supportedLocales: context.supportedLocales,
@@ -166,23 +260,61 @@ Future<void> _pump(WidgetTester tester) async {
   );
   await tester.pump();
   await tester.tap(find.text('apri'));
-  // Niente pumpAndSettle: lo spinner dell'attesa non si ferma mai.
+  // Niente pumpAndSettle: il bordo dell'attesa non si ferma mai.
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 500));
 }
 
 Finder _text(String text) => find.text(text);
 
-/// Lascia finire la transizione di uscita: lo spinner non si ferma mai, quindi
-/// niente pumpAndSettle.
+/// La valigia è arrivata, salvata sul viaggio trip-1.
+void _arrive() => _run.emit(const AiRunDone('trip-1', itemsError: false));
+
+void _fail(Object error) => _run.emit(AiRunFailed(_request, error));
+
+/// Lascia finire una transizione: il bordo gira per sempre, quindi niente
+/// pumpAndSettle.
 Future<void> _settle(WidgetTester tester) async {
   await tester.pump();
   await tester.pump(const Duration(seconds: 1));
 }
 
+/// Lascia passare i minimi dei passi e il passaggio alla valigia.
+Future<void> _finish(WidgetTester tester) async {
+  await tester.pump();
+  for (var i = 0; i < 12; i++) {
+    await tester.pump(const Duration(seconds: 1));
+  }
+}
+
 void main() {
+  setUp(caricaCatalogoDelRepo);
+
   group('attesa', () {
-    testWidgets('mostra titolo, tappe e durata', (tester) async {
+    testWidgets(
+      'la scintilla respira e i tre passi stanno nel bordo che gira',
+      (tester) async {
+        await _pump(tester);
+
+        final sparkle = tester.widget<PackLogSparkle>(
+          find.byType(PackLogSparkle),
+        );
+        expect(sparkle.breathing, isTrue);
+        final border = tester.widget<PackLogGradientBorder>(
+          find.byType(PackLogGradientBorder),
+        );
+        expect(border.loops, -1);
+        expect(
+          find.descendant(
+            of: find.byType(PackLogGradientBorder),
+            matching: find.text('Scelgo dal tuo armadio'),
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets('mostra titolo, tappe e durata e si attacca', (tester) async {
       await _pump(tester);
 
       expect(_text('Preparo la valigia'), findsOneWidget);
@@ -194,12 +326,30 @@ void main() {
         _text('Di solito ci vogliono una decina di secondi.'),
         findsOneWidget,
       );
-      expect(_text('Annulla'), findsOneWidget);
-      expect(_service.generateCalls, 1);
-      expect(_service.houseIds, [_houseId]);
+      expect(_run.attaches, 1);
     });
 
-    testWidgets('i passi avanzano a 0, 3 e 6 secondi', (tester) async {
+    testWidgets('no_cancel_button', (tester) async {
+      await _pump(tester);
+
+      expect(find.text('Annulla'), findsNothing);
+      expect(find.byKey(const Key('ai_wait_cancel')), findsNothing);
+    });
+
+    testWidgets('shows_stay_line', (tester) async {
+      await _pump(tester);
+
+      expect(
+        _text(
+          'Resta qui mentre prepariamo la valigia: non chiudere PackLog e non aprire altre app.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('i passi avanzano a un terzo del tempo medio (10 s)', (
+      tester,
+    ) async {
       await _pump(tester);
 
       // Il puntino che lampeggia sta sul passo in corso; ce n'è uno solo.
@@ -218,68 +368,233 @@ void main() {
       expect(find.byKey(const Key('ai_wait_blinking_dot')), findsOneWidget);
       expect(blinkingStep(), 'Guardo il meteo di Islanda e Olanda');
 
-      await tester.pump(const Duration(seconds: 3));
+      // Il _pump ha già fatto passare mezzo secondo.
+      await tester.pump(const Duration(milliseconds: 2832));
+      expect(blinkingStep(), 'Guardo il meteo di Islanda e Olanda');
+      await tester.pump(const Duration(milliseconds: 2));
       expect(blinkingStep(), 'Scelgo dal tuo armadio');
 
-      await tester.pump(const Duration(seconds: 3));
+      await tester.pump(const Duration(milliseconds: 3331));
+      expect(blinkingStep(), 'Scelgo dal tuo armadio');
+      await tester.pump(const Duration(milliseconds: 1));
       expect(blinkingStep(), 'Controllo cosa manca');
       // Niente rotellina: l'avanzamento lo dice il puntino.
       expect(find.byType(CircularProgressIndicator), findsNothing);
 
-      _service.last.complete(_result);
-      await tester.pump();
+      _arrive();
+      await _finish(tester);
     });
 
-    testWidgets(
-      'risposta: la route restituisce il risultato e invalida la quota',
-      (tester) async {
-        await _pump(tester);
-        expect(_usageBuilds, 1);
+    testWidgets('back_while_running_goes_to_trips_and_keeps_running', (
+      tester,
+    ) async {
+      await _pump(tester, isNew: true);
 
-        _service.last.complete(_result);
-        await _settle(tester);
+      await tester.binding.handlePopRoute();
+      await _settle(tester);
 
-        expect(_outcome.popped, isTrue);
-        expect(_outcome.result, same(_result));
-        expect(_usageBuilds, 2);
-        expect(_text('Preparo la valigia'), findsNothing);
-      },
-    );
+      expect(_run.detaches, greaterThanOrEqualTo(1));
+      expect(_run.clears, 0);
+      expect(_container.read(aiPackingRunProvider), isA<AiRunRunning>());
+      // Il passo 1 che ha lanciato il lavoro non c'è più: si va ai Viaggi.
+      expect(_text('VIAGGI'), findsOneWidget);
+      expect(find.text('apri'), findsNothing);
+      expect(_text('Preparo la valigia'), findsNothing);
+    });
 
-    testWidgets('Annulla chiama cancel e torna indietro con null', (
+    testWidgets('back_while_regenerating_goes_to_trip_detail', (tester) async {
+      await _pump(tester);
+
+      await tester.binding.handlePopRoute();
+      await _settle(tester);
+
+      expect(_run.clears, 0);
+      expect(_container.read(aiPackingRunProvider), isA<AiRunRunning>());
+      expect(_visited, ['/trips/trip-1']);
+      expect(_text('DETTAGLIO'), findsOneWidget);
+      expect(find.text('apri'), findsNothing);
+    });
+
+    testWidgets('arrival_while_attached_opens_review', (tester) async {
+      await _pump(tester);
+
+      _arrive();
+      await _finish(tester);
+
+      expect(_visited, ['/trips/trip-1?review=1']);
+      expect(_text('DETTAGLIO'), findsOneWidget);
+      expect(_run.clears, 1);
+      // `go` sostituisce la pila: la casa e la radice non ci sono più.
+      expect(find.text('apri'), findsNothing);
+    });
+
+    testWidgets('senza animazioni la valigia si apre subito', (tester) async {
+      await _pump(tester, disableAnimations: true);
+
+      _arrive();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(_visited, ['/trips/trip-1?review=1']);
+      expect(_run.clears, 1);
+    });
+
+    testWidgets('arrivo subito: i minimi si rispettano, poi si esce', (
       tester,
     ) async {
       await _pump(tester);
+      _arrive();
+      // 0,5 s già passati nel pump: servono 1 s + 0,8 + 1 + 0,8 + 1 + 0,8 s
+      // dall'inizio, poi i 300 ms del passaggio.
+      await tester.pump(const Duration(milliseconds: 4900));
+      expect(_visited, isEmpty);
+      expect(_text('Preparo la valigia'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byKey(const Key('ai_wait_check')), findsNWidgets(3));
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(_visited, isEmpty);
+      await _finish(tester);
+      expect(_visited, ['/trips/trip-1?review=1']);
+    });
 
-      await tester.tap(find.text('Annulla'));
+    testWidgets('back_during_handoff_navigates_once', (tester) async {
+      await _pump(tester);
+      _arrive();
+      // In pieno racconto d'arrivo: la valigia è già salvata.
+      await tester.pump(const Duration(seconds: 1));
+
+      await tester.binding.handlePopRoute();
+      await tester.binding.handlePopRoute();
+      await _finish(tester);
+
+      expect(_visited, ['/trips/trip-1?review=1']);
+      expect(_run.clears, 1);
+      expect(find.text('RADICE'), findsNothing);
+    });
+
+    testWidgets('una pagina senza lavoro si chiude da sola', (tester) async {
+      await _pump(tester);
+      _run.emit(const AiRunIdle());
       await _settle(tester);
 
-      expect(_service.cancelled, isTrue);
-      expect(_outcome.popped, isTrue);
-      expect(_outcome.result, isNull);
-      expect(_text('Preparo la valigia'), findsNothing);
-      expect(_text('Non è stato possibile preparare la valigia'), findsNothing);
+      expect(find.text('apri'), findsOneWidget);
+      expect(_run.clears, 0);
+    });
+  });
+
+  group('racconto dei passi', () {
+    testWidgets('il tempo imparato sposta i passi (T = 30 s)', (tester) async {
+      await _pump(
+        tester,
+        prefs: {
+          'pack_trip_avg_ms': ['30000'],
+        },
+      );
+      await tester.pump(const Duration(milliseconds: 9490));
+      expect(find.byKey(const Key('ai_wait_check')), findsNothing);
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(find.byKey(const Key('ai_wait_check')), findsOneWidget);
+      _arrive();
+      await _finish(tester);
+    });
+
+    testWidgets('a un terzo del tempo il passo mostra la riga col dato vero', (
+      tester,
+    ) async {
+      await _pump(tester, weather: _meteo(rain: 2), items: 12);
+      expect(find.text('1–6°, 2 giorni di pioggia'), findsNothing);
+      await tester.pump(const Duration(milliseconds: 3400));
+      expect(find.text('1–6°, 2 giorni di pioggia'), findsOneWidget);
+      expect(find.text('12 capi guardati'), findsNothing);
+      await tester.pump(const Duration(milliseconds: 3400));
+      expect(find.text('12 capi guardati'), findsOneWidget);
+      _arrive();
+      await _finish(tester);
+    });
+
+    testWidgets('il meteo che arriva in ritardo compare con la dissolvenza', (
+      tester,
+    ) async {
+      final arrival = Completer<TripWeatherState>();
+      await _pump(tester, lateWeather: arrival);
+      await tester.pump(const Duration(milliseconds: 3400));
+      expect(find.byKey(const Key('ai_wait_check')), findsOneWidget);
+      expect(find.text('1–6°, 2 giorni di pioggia'), findsNothing);
+      final result = find.byKey(const Key('ai_wait_result')).first;
+      expect(tester.widget<AnimatedOpacity>(result).opacity, 0);
+
+      arrival.complete(TripWeatherReady(_meteo(rain: 2)));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(find.text('1–6°, 2 giorni di pioggia'), findsOneWidget);
+      expect(tester.widget<AnimatedOpacity>(result).opacity, 1);
+      await tester.pump(const Duration(milliseconds: 3400));
+      expect(find.text('3 capi guardati'), findsOneWidget);
+      _arrive();
+      await _finish(tester);
+    });
+
+    testWidgets('armadio vuoto e meteo senza pioggia', (tester) async {
+      await _pump(tester, weather: _meteo(), items: 0);
+      await tester.pump(const Duration(milliseconds: 7000));
+      expect(find.text('1–6°'), findsOneWidget);
+      expect(find.text('Armadio vuoto: preparo le proposte'), findsOneWidget);
+      _arrive();
+      await _finish(tester);
+    });
+
+    testWidgets('niente riga quando il dato manca', (tester) async {
+      await _pump(tester);
+      await tester.pump(const Duration(milliseconds: 3400));
+      expect(find.byKey(const Key('ai_wait_check')), findsOneWidget);
+      expect(find.textContaining('°'), findsNothing);
+      _arrive();
+      await _finish(tester);
+    });
+
+    testWidgets('la riga dell\'ultimo passo arriva con la valigia', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        job: PackTripJob(
+          body: const {
+            'trip': {
+              'attivita': ['trekking'],
+            },
+          },
+          houseId: _houseId,
+          title: 'Islanda e Olanda',
+          nights: 8,
+        ),
+      );
+      await tester.pump(const Duration(seconds: 9));
+      expect(find.text('Trekking, 8 notti'), findsNothing);
+      _arrive();
+      await tester.pump(const Duration(milliseconds: 1000));
+      expect(find.text('Trekking, 8 notti'), findsOneWidget);
+      await _finish(tester);
     });
   });
 
   group('errori', () {
     testWidgets('crediti finiti: rimanda al Profilo', (tester) async {
       await _pump(tester);
-      _service.last.completeError(const PackTripCreditsException());
+      _fail(const PackTripCreditsException());
       await _settle(tester);
 
       expect(_text('Hai finito i crediti AI'), findsOneWidget);
-      expect(_usageBuilds, 2);
       expect(find.byType(DsButton), findsOneWidget);
 
       await tester.tap(find.text('Vai al Profilo'));
       await tester.pumpAndSettle();
       expect(_text('PROFILO'), findsOneWidget);
+      expect(_run.clears, 1);
     });
 
     testWidgets('armadio vuoto: porta alla casa', (tester) async {
       await _pump(tester);
-      _service.last.completeError(const PackTripEmptyWardrobeException());
+      _fail(const PackTripEmptyWardrobeException());
       await _settle(tester);
 
       expect(_text('Questa casa non ha vestiti'), findsOneWidget);
@@ -293,7 +608,7 @@ void main() {
       tester,
     ) async {
       await _pump(tester);
-      _service.last.completeError(const PackTripWardrobeTooLargeException());
+      _fail(const PackTripWardrobeTooLargeException());
       await _settle(tester);
 
       expect(_text("L'armadio è troppo grande"), findsOneWidget);
@@ -303,69 +618,92 @@ void main() {
       await tester.tap(find.text('Chiudi'));
       await _settle(tester);
 
-      expect(_outcome.popped, isTrue);
-      expect(_outcome.result, isNull);
+      expect(_run.clears, 1);
+      expect(find.text('apri'), findsOneWidget);
     });
 
-    testWidgets('errore generico: Riprova richiama generate', (tester) async {
+    testWidgets('senza rete: dice che sei offline', (tester) async {
       await _pump(tester);
-      _service.last.completeError(const PackTripException('HTTP 502'));
+      _fail(const PackTripNetworkException('rete'));
       await _settle(tester);
 
-      expect(_text('Non è stato possibile preparare la valigia'), findsOneWidget);
-      expect(_service.generateCalls, 1);
+      expect(
+        _text('Non è stato possibile preparare la valigia'),
+        findsOneWidget,
+      );
+      expect(
+        _text('Sei offline. Riprova quando torni in rete.'),
+        findsOneWidget,
+      );
+      expect(find.text('Riprova'), findsOneWidget);
+      expect(find.text('Chiudi'), findsOneWidget);
+    });
+
+    testWidgets('problema del server: testo dedicato', (tester) async {
+      await _pump(tester);
+      _fail(const PackTripException('HTTP 502'));
+      await _settle(tester);
+
+      expect(
+        _text('Non sono riuscito a preparare la valigia. Riprova tra poco.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('502'), findsNothing);
+    });
+
+    testWidgets('failure_retry_and_close', (tester) async {
+      await _pump(tester);
+      _fail(const PackTripException('HTTP 502'));
+      await _settle(tester);
 
       await tester.tap(find.text('Riprova'));
       await tester.pump();
-
-      expect(_service.generateCalls, 2);
+      expect(_run.retries, 1);
+      // Il lavoro riparte: di nuovo l'attesa, coi passi da capo.
       expect(_text('Preparo la valigia'), findsOneWidget);
+      expect(_text('Guardo il meteo di Islanda e Olanda'), findsOneWidget);
 
-      _service.last.complete(_result);
+      _fail(const PackTripException('HTTP 502'));
+      await _settle(tester);
+      await tester.tap(find.text('Chiudi'));
       await _settle(tester);
 
-      expect(_outcome.result, same(_result));
+      expect(_run.clears, 1);
+      expect(find.text('apri'), findsOneWidget);
+      expect(find.text('RADICE'), findsNothing);
     });
 
-    testWidgets('errore generico: Chiudi esce senza risultato', (tester) async {
-      await _pump(tester);
-      _service.last.completeError(const PackTripException('rete'));
+    testWidgets('close_after_failure_returns_to_step_one', (tester) async {
+      await _pump(tester, isNew: true);
+      _fail(const PackTripException('HTTP 502'));
       await _settle(tester);
 
       await tester.tap(find.text('Chiudi'));
       await _settle(tester);
 
-      expect(_outcome.popped, isTrue);
-      expect(_outcome.result, isNull);
+      // Si torna alla pagina sotto (il passo 1 compilato), non ai Viaggi.
+      expect(_run.clears, 1);
+      expect(find.text('apri'), findsOneWidget);
+      expect(_text('VIAGGI'), findsNothing);
+    });
+
+    testWidgets('indietro in errore chiude e azzera', (tester) async {
+      await _pump(tester);
+      _fail(const PackTripException('rete'));
+      await _settle(tester);
+
+      await tester.binding.handlePopRoute();
+      await _settle(tester);
+
+      expect(_run.clears, 1);
+      expect(find.text('apri'), findsOneWidget);
     });
   });
 
   group('una sola uscita', () {
-    testWidgets('dopo il successo, Annulla non chiude la pagina chiamante', (
-      tester,
-    ) async {
-      await _pump(tester);
-      _service.last.complete(_result);
-      // Un frame solo: la pagina d'attesa è ancora in uscita. Flutter non
-      // consegna tocchi a una route in uscita, quindi si richiama direttamente
-      // il callback di Annulla, come farebbe un tocco arrivato prima.
-      await tester.pump();
-      final annulla = tester
-          .widget<TextButton>(find.widgetWithText(TextButton, 'Annulla'))
-          .onPressed!;
-      annulla();
-      await _settle(tester);
-
-      expect(_outcome.completions, 1);
-      expect(_outcome.result, same(_result));
-      expect(_service.cancelled, isFalse);
-      expect(find.text('RADICE'), findsNothing);
-      expect(find.text('apri'), findsOneWidget);
-    });
-
     testWidgets('due Chiudi di fila chiudono una sola volta', (tester) async {
       await _pump(tester);
-      _service.last.completeError(const PackTripWardrobeTooLargeException());
+      _fail(const PackTripWardrobeTooLargeException());
       await _settle(tester);
 
       // Due chiamate dello stesso callback, come due tocchi ravvicinati.
@@ -374,8 +712,7 @@ void main() {
       chiudi();
       await _settle(tester);
 
-      expect(_outcome.completions, 1);
-      expect(_outcome.result, isNull);
+      expect(_run.clears, 1);
       expect(find.text('RADICE'), findsNothing);
       expect(find.text('apri'), findsOneWidget);
     });

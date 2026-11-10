@@ -20,12 +20,17 @@ class DsIconButton extends StatelessWidget {
   /// `null` usa il colore del tema dell'icona.
   final Color? color;
 
+  /// L'icona sta sul bordo destro dell'area di tocco (che resta 48), per
+  /// allinearla al margine della riga.
+  final bool flushEnd;
+
   const DsIconButton({
     super.key,
     required this.icon,
     required this.tooltip,
     required this.onPressed,
     this.color,
+    this.flushEnd = false,
   });
 
   @override
@@ -44,6 +49,8 @@ class DsIconButton extends StatelessWidget {
           kMinInteractiveDimension,
           kMinInteractiveDimension,
         ),
+        padding: flushEnd ? EdgeInsets.zero : null,
+        alignment: flushEnd ? AlignmentDirectional.centerEnd : null,
       ),
       onPressed: onPressed,
     );

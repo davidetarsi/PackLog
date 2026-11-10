@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/services/pack_trip_service.dart';
 
@@ -202,15 +204,41 @@ void main() {
       );
     });
 
-    test('errore di rete: PackTripException', () async {
-      final service = _service(
-        () => MockClient((_) async => throw http.ClientException('offline')),
+    for (final (nome, errore) in <(String, Object Function())>[
+      ('ClientException', () => http.ClientException('offline')),
+      ('SocketException', () => const SocketException('offline')),
+      ('TimeoutException', () => TimeoutException('lento')),
+    ]) {
+      test('nessuna risposta ($nome): PackTripNetworkException', () async {
+        final service = _service(() => MockClient((_) async => throw errore()));
+
+        await expectLater(
+          service.generate(_body, houseId: _houseId),
+          throwsA(isA<PackTripNetworkException>()),
+        );
+      });
+    }
+
+    test('502 e corpo non valido non sono errori di rete', () async {
+      final bad = _service(
+        () => MockClient((_) async => _json(502, {'error': 'x'})),
+      );
+      final html = _service(
+        () => MockClient((_) async => http.Response('<html/>', 200)),
       );
 
-      await expectLater(
-        service.generate(_body, houseId: _houseId),
-        throwsA(isA<PackTripException>()),
-      );
+      for (final service in [bad, html]) {
+        await expectLater(
+          service.generate(_body, houseId: _houseId),
+          throwsA(
+            isA<PackTripException>().having(
+              (e) => e is PackTripNetworkException,
+              'di rete',
+              isFalse,
+            ),
+          ),
+        );
+      }
     });
 
     test('senza sessione: PackTripException', () async {
@@ -224,6 +252,38 @@ void main() {
         throwsA(isA<PackTripException>()),
       );
     });
+
+    test('generate_times_out_as_network_error', () async {
+      final service = PackTripService(
+        // Una connessione che non risponde mai.
+        client: () => MockClient((_) => Completer<http.Response>().future),
+        token: () => 'jwt',
+        timeout: const Duration(milliseconds: 50),
+      );
+
+      await expectLater(
+        service.generate(_body, houseId: _houseId),
+        throwsA(isA<PackTripNetworkException>()),
+      );
+    });
+
+    test('il timeout di produzione è di 90 secondi', () {
+      expect(kPackTripTimeout, const Duration(seconds: 90));
+    });
+
+    test(
+      'risposta 200 illeggibile: PackTripInvalidResponseException',
+      () async {
+        final service = _service(
+          () => MockClient((_) async => http.Response('non json', 200)),
+        );
+
+        await expectLater(
+          service.generate(_body, houseId: _houseId),
+          throwsA(isA<PackTripInvalidResponseException>()),
+        );
+      },
+    );
 
     test(
       'cancel: la generate in corso solleva PackTripException(annullata)',
@@ -256,6 +316,32 @@ void main() {
   });
 
   group('parsePackTripResponse', () {
+    test('versione_generatore presente: generatorVersion', () {
+      final json = _okResponse()..['versione_generatore'] = '2026-11-08';
+
+      final result = parsePackTripResponse(json, houseId: _houseId, now: _now);
+
+      expect(result.generatorVersion, '2026-11-08');
+    });
+
+    test('versione_generatore assente: null, e il json vecchio si legge', () {
+      final result = parsePackTripResponse(
+        _okResponse(),
+        houseId: _houseId,
+        now: _now,
+      );
+      expect(result.generatorVersion, isNull);
+
+      final old = result.toJson()..remove('generatorVersion');
+      expect(AiPackingResult.fromJson(old).generatorVersion, isNull);
+
+      final withVersion = result.copyWith(generatorVersion: '2026-11-08');
+      final back = AiPackingResult.fromJson(
+        jsonDecode(jsonEncode(withVersion.toJson())) as Map<String, dynamic>,
+      );
+      expect(back.generatorVersion, '2026-11-08');
+    });
+
     test('un avviso con livello sconosciuto si scarta', () {
       final json = _okResponse();
       (json['avvisi'] as List).add(<String, dynamic>{
@@ -294,6 +380,170 @@ void main() {
         () => parsePackTripResponse(json, houseId: _houseId, now: _now),
         throwsA(isA<PackTripException>()),
       );
+    });
+  });
+  group('parsePackTripResponse: kit', () {
+    test('risposta senza kit: campi vuoti', () {
+      final result = parsePackTripResponse(
+        _okResponse(),
+        houseId: _houseId,
+        now: _now,
+      );
+
+      expect(result.kitSuggestions, isEmpty);
+      expect(result.kitAdded, isEmpty);
+      expect(result.kitAnswers, isEmpty);
+      expect(result.kitLearnCounted, isEmpty);
+    });
+
+    test('suggeriti letti nell ordine, aggiunti con le copie', () {
+      final json = _okResponse()
+        ..['kit'] = {
+          'aggiunti': [
+            {'kit_id': 'k1', 'item_id': 'i1', 'copie': 2},
+            {'kit_id': 'k1', 'item_id': 'i2', 'copie': 1},
+          ],
+          'suggeriti': [
+            {
+              'kit_id': 'k-b',
+              'presi': 1,
+              'totale': 3,
+              'mancanti': [
+                {'item_id': 'i3', 'copie': 2},
+                {'item_id': 'i4', 'copie': 1},
+              ],
+            },
+            {'kit_id': 'k-a', 'presi': 0, 'totale': 2, 'mancanti': <dynamic>[]},
+          ],
+        };
+
+      final result = parsePackTripResponse(json, houseId: _houseId, now: _now);
+
+      expect(result.kitAdded.map((a) => (a.kitId, a.itemId, a.copies)), [
+        ('k1', 'i1', 2),
+        ('k1', 'i2', 1),
+      ]);
+      expect(result.kitSuggestions.map((s) => s.kitId), ['k-b', 'k-a']);
+      final first = result.kitSuggestions.first;
+      expect((first.taken, first.total), (1, 3));
+      expect(first.missing.map((m) => (m.itemId, m.copies)), [
+        ('i3', 2),
+        ('i4', 1),
+      ]);
+    });
+
+    test('kit presente ma vuoto: nessun campo', () {
+      final json = _okResponse()
+        ..['kit'] = {'aggiunti': <dynamic>[], 'suggeriti': <dynamic>[]};
+
+      final result = parsePackTripResponse(json, houseId: _houseId, now: _now);
+
+      expect(result.kitAdded, isEmpty);
+      expect(result.kitSuggestions, isEmpty);
+    });
+  });
+
+  group('parsePackTripResponse: posti e informazioni', () {
+    Map<String, dynamic> posto(
+      String id, {
+      String livello = 'importante',
+      String categoria = 'vestiti',
+      int copie = 2,
+    }) => {
+      'id': id,
+      'tipo': 'Scarf',
+      'categoria': categoria,
+      'livello': livello,
+      'nome': 'Sciarpa',
+      'copie': copie,
+      'motivo': null,
+      'aggiungi': 'Aggiungi la sciarpa',
+      'comprato': 'Comprata',
+    };
+
+    test('posti letti: remaining == copies, campi mappati', () {
+      final json = _okResponse();
+      json['posti'] = [
+        posto('s1'),
+        {
+          ...posto('s2', livello: 'utile', categoria: 'toiletries', copie: 1),
+          'motivo': 'Fa freddo',
+        },
+      ];
+      json['informazioni'] = [
+        {'codice': 'lavanderia', 'titolo': 'Lavanderia', 'perche': 'Lavi'},
+      ];
+
+      final result = parsePackTripResponse(json, houseId: _houseId, now: _now);
+
+      expect(result.slots, hasLength(2));
+      final first = result.slots![0];
+      expect(first.id, 's1');
+      expect(first.type, 'Scarf');
+      expect(first.category, ItemCategory.vestiti);
+      expect(first.level, AiSlotLevel.important);
+      expect(first.name, 'Sciarpa');
+      expect(first.copies, 2);
+      expect(first.remaining, 2);
+      expect(first.reason, isNull);
+      expect(first.addLabel, 'Aggiungi la sciarpa');
+      expect(first.boughtLabel, 'Comprata');
+      expect(first.toBuy, isFalse);
+      expect(first.checked, isFalse);
+      final second = result.slots![1];
+      expect(second.category, ItemCategory.toiletries);
+      expect(second.level, AiSlotLevel.useful);
+      expect(second.reason, 'Fa freddo');
+      expect(result.notes, [
+        const AiTripNote(code: 'lavanderia', title: 'Lavanderia', why: 'Lavi'),
+      ]);
+    });
+
+    test(
+      'campo comprato assente resta compatibile con viaggi e funzioni vecchi',
+      () {
+        final json = _okResponse()
+          ..['posti'] = [posto('s1')..remove('comprato')];
+        final result = parsePackTripResponse(
+          json,
+          houseId: _houseId,
+          now: _now,
+        );
+        expect(result.slots!.single.boughtLabel, isNull);
+        final roundTrip = AiPackingResult.fromJson(result.toJson());
+        expect(roundTrip.slots!.single.boughtLabel, isNull);
+      },
+    );
+
+    test('posti assenti: slots null, avvisi come oggi', () {
+      final result = parsePackTripResponse(
+        _okResponse(),
+        houseId: _houseId,
+        now: _now,
+      );
+      expect(result.slots, isNull);
+      expect(result.notes, isEmpty);
+      expect(result.warnings.map((w) => w.id), ['pochi_pezzi:0']);
+    });
+
+    test('livello o categoria sconosciuti: il posto si scarta', () {
+      final json = _okResponse();
+      json['posti'] = [
+        posto('s1', livello: 'forse'),
+        posto('s2', categoria: 'elettronica'),
+        posto('s3', categoria: 'boh'),
+        posto('s4'),
+      ];
+
+      final result = parsePackTripResponse(json, houseId: _houseId, now: _now);
+
+      expect(result.slots!.map((s) => s.id), ['s4']);
+    });
+
+    test('posti presenti ma vuoti: slots lista vuota', () {
+      final json = _okResponse()..['posti'] = <dynamic>[];
+      final result = parsePackTripResponse(json, houseId: _houseId, now: _now);
+      expect(result.slots, isEmpty);
     });
   });
 }

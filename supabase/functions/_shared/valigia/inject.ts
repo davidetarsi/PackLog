@@ -1,3 +1,4 @@
+import { eCammino } from "./cammino.ts";
 // Gli slot che impone il codice: attivita', codice di abbigliamento, clima.
 // Porting delle funzioni inject_* e vicine di packlog_checklist_bench_48.py;
 // il PERCHE' di ogni regola e' commentato la'. Gli slot sono oggetti liberi come
@@ -64,7 +65,8 @@ export function warmthCeiling(tempMax: number | null | undefined): number {
 }
 
 export function eTrekking(attivita: (string | null)[] | null | undefined): boolean {
-  return (attivita ?? []).some((a) => K.RADICI_TREKKING.some((r: string) => lw(a).includes(r)));
+  // Le "escursioni leggere" restano trekking: decisione di Davide (18 e 31 ottobre).
+  return eCammino(attivita) || (attivita ?? []).some((a) => K.RADICI_TREKKING.some((r: string) => lw(a).includes(r)));
 }
 
 export function jevDice(classi: Record<string, any> | null | undefined, domanda: string): boolean | null {
@@ -159,8 +161,15 @@ export function capospallaInTracolla(capi: Record_[], capienza: number | null | 
   return capi.filter((x) => x.category !== "Outerwear" || x === caldo);
 }
 
-export function riverbero(attNorm: Set<string>, classi: any = null): boolean {
+/** quotaM: quota della meta (o della tappa). Sopra K.SOGLIA_QUOTA_RIVERBERO il
+ *  trekking (o le escursioni) chiede gli occhiali: l'alta montagna e' unita al
+ *  trekking (Davide, 31 ottobre). */
+export function riverbero(attNorm: Set<string>, classi: any = null, quotaM: number | null = null): boolean {
   if (interseca(attNorm, K.ATTIVITA_RIVERBERO)) return true;
+  if (K.SOGLIA_QUOTA_RIVERBERO != null && quotaM != null && quotaM >= K.SOGLIA_QUOTA_RIVERBERO &&
+    eTrekking([...attNorm])) {
+    return true;
+  }
   const p = (classi || {}).riverbero;
   return p != null && K.SOGLIA_JEV_RIVERBERO != null && p >= K.SOGLIA_JEV_RIVERBERO;
 }
@@ -258,7 +267,7 @@ export function slotCapiNuovi(items: Capo[], tempMin: number | null | undefined,
 export function injectFabbisogno(slots: Slot[], tempMin: number | null | undefined, tempMax: number | null | undefined,
   giorniPioggia: number | null | undefined, giorni: number | null = null, capienza: number | null = null,
   attivita: string[] | null = null, classi: any = null, tempMinAssoluta: number | null = null,
-  attivitaViaggio: string[] | null = null): Slot[] {
+  attivitaViaggio: string[] | null = null, quotaM: number | null = null): Slot[] {
   const nuovo = (nome: string, cat: string, subs: string[], kw: Record<string, any> = {}): Slot => ({
     slot: nome, category: cat, subCategories: subs, minWarmth: 1, maxWarmth: 5, formality: [],
     activityTags: [], frequency: "daily", essential: true, _fabbisogno: true,
@@ -310,7 +319,7 @@ export function injectFabbisogno(slots: Slot[], tempMin: number | null | undefin
     ];
     for (const [nome, cat, subs, tags, freq, extra] of lista) {
       const largo = nome === K.SLOT_MAGLIETTA_TECNICA || !serateCurate(attivita, classi);
-      const orientabili = slots.filter((s) => s.category === cat && interseca(insieme(s.subCategories || []), subs) &&
+      const orientabili = slots.filter((s) => !s._riposo_cammino && s.category === cat && interseca(insieme(s.subCategories || []), subs) &&
         (!vero(s.formality) || (largo && s.formality.includes("Casual")) ||
           [...insieme(s.formality)].every((f) => f === "Casual")));
       if (orientabili.length) {
@@ -329,7 +338,7 @@ export function injectFabbisogno(slots: Slot[], tempMin: number | null | undefin
     }
   }
 
-  if (giorni != null && giorni >= K.GIORNI_SECONDE_SCARPE && capienza != null && capienza > 30) {
+  if (!eCammino(attivita) && giorni != null && giorni >= K.GIORNI_SECONDE_SCARPE && capienza != null && capienza > 30) {
     if (slots.filter((s) => s.category === "Shoes").length < 2) {
       slots.push(nuovo("calzature di ricambio", "Shoes", ["Sneakers", "Loafers", "Boots", "Dress Shoes", "Sandals"],
         { frequency: "once", reason: `${giorni} giorni: un secondo paio di scarpe` }));
@@ -439,13 +448,18 @@ export function injectFabbisogno(slots: Slot[], tempMin: number | null | undefin
   }
 
   const ciabatte = insieme(K.SOTTOCAT_CIABATTE);
+  if (eCammino(attivita)) {
+    slots.push(nuovo("ciabatte per il riposo", "Shoes", ["Flip-Flops", "Sandals"], { frequency: "once",
+      _riposo_cammino: true, reason: "dopo il cammino: ciabatte per il riposo" }));
+  }
+
   if (K.CIABATTE_IN_ACQUA && eAttivitaAcqua(attivita || []) && (tempMax == null || tempMax >= K.SOGLIA_CALZATURE) &&
     !(capienza != null && capienza <= 8) &&
     !slots.some((s) => s.category === "Shoes" && vero(s.subCategories) && sottoinsieme(s.subCategories, ciabatte))) {
     slots.push(nuovo(K.SLOT_CIABATTE, "Shoes", [...K.SOTTOCAT_CIABATTE], { frequency: "once", reason: "attivita' in acqua: ciabatte o sandali" }));
   }
 
-  if (riverbero(attNorm, classi) && !slots.some((s) => s.category === "Accessory" &&
+  if (riverbero(attNorm, classi, quotaM) && !slots.some((s) => s.category === "Accessory" &&
     JSON.stringify(s.subCategories || []) === JSON.stringify(["Sunglasses"]))) {
     slots.push(nuovo("occhiali da sole", "Accessory", ["Sunglasses"], { reason: "neve, ghiacciaio o quota: riverbero" }));
   }

@@ -1,11 +1,14 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../../../shared/constants/app_constants.dart';
+import '../../../../../shared/helpers/snack_bar_helper.dart';
 import '../../../../../shared/theme/theme.dart';
 import '../../../../../shared/widgets/ds_button.dart';
 import '../../../../../shared/widgets/ds_choice_group.dart';
+import '../../../../../shared/widgets/ds_field.dart';
 import '../../../../../shared/widgets/ds_field_label.dart';
 import '../../../../../shared/widgets/ds_form_sheet.dart';
 import '../../../../../shared/widgets/ds_link_button.dart';
@@ -61,8 +64,17 @@ class _AiPackingSheetState extends ConsumerState<AiPackingSheet> {
   /// Tappa mostrata nello stepper.
   int _cur = 0;
 
-  /// Avviso di tappa incompleta già mostrato: il secondo tocco chiude.
+  /// Mostra l'avviso di tappa incompleta. Non chiude mai il foglio: sparisce
+  /// quando l'utente cambia una risposta o va alla tappa.
   bool _warned = false;
+
+  /// La casa si sta creando: un secondo tocco su "Prepara" non ne fa un'altra.
+  bool _creatingHouse = false;
+
+  /// Nome della casa da creare, per chi non ne ha nessuna.
+  late final TextEditingController _houseName = TextEditingController(
+    text: 'trips.ai.house_name_default'.tr(),
+  );
 
   @override
   void initState() {
@@ -73,10 +85,24 @@ class _AiPackingSheetState extends ConsumerState<AiPackingSheet> {
     if (setup != null) _answers.addAll(setup.stops);
   }
 
+  @override
+  void dispose() {
+    _houseName.dispose();
+    super.dispose();
+  }
+
   bool get _multi => _stops.length > 1;
 
+  /// Le risposte di partenza di una tappa: se si dorme in una casa dell'utente,
+  /// l'alloggio è già "Appartamento" (resta modificabile).
+  AiStopAnswers _initialAnswersOf(AiStop stop) =>
+      AiStopAnswers(stay: stop.houseId == null ? null : 'apartment');
+
   AiStopAnswers _answersOf(AiStop stop) =>
-      _answers[stop.key] ?? const AiStopAnswers();
+      _answers[stop.key] ?? _initialAnswersOf(stop);
+
+  /// La tappa è ancora com'era all'apertura: la copia da un'altra serve.
+  bool _isUntouched(AiStop stop) => _answersOf(stop) == _initialAnswersOf(stop);
 
   void _update(AiStop stop, AiStopAnswers answers) {
     setState(() {
@@ -118,14 +144,13 @@ class _AiPackingSheetState extends ConsumerState<AiPackingSheet> {
 
   /// Prima tappa che manca di attività o alloggio, oppure -1.
   int get _incompleteIndex {
-    if (!_multi) return -1;
     return _stops.indexWhere((stop) => _answersOf(stop).isIncomplete);
   }
 
   /// Dalla seconda tappa, se la tappa è intatta: la compilata più vicina prima
   /// di lei, altrimenti la prima dopo.
   int get _copySourceIndex {
-    if (_cur == 0 || !_answersOf(_stops[_cur]).isUntouched) return -1;
+    if (_cur == 0 || !_isUntouched(_stops[_cur])) return -1;
     for (var i = _cur - 1; i >= 0; i--) {
       if (!_answersOf(_stops[i]).isIncomplete) return i;
     }
@@ -135,19 +160,51 @@ class _AiPackingSheetState extends ConsumerState<AiPackingSheet> {
     return -1;
   }
 
-  void _finish(List<HouseModel> houses, List<LuggageModel> luggages) {
+  /// Il foglio si chiude con le risposte. Senza case ne crea una, col nome
+  /// del campo (vuoto: il nome di default).
+  Future<void> _finish(
+    List<HouseModel> houses,
+    List<LuggageModel> luggages,
+  ) async {
+    var houseId = _houseOf(houses)?.id;
+    if (houses.isEmpty) {
+      final typed = _houseName.text.trim();
+      final now = DateTime.now();
+      final house = HouseModel(
+        id: const Uuid().v4(),
+        name: typed.isEmpty ? 'trips.ai.house_name_default'.tr() : typed,
+        // La prima casa diventa la principale.
+        isPrimary: true,
+        createdAt: now,
+        updatedAt: now,
+      );
+      setState(() => _creatingHouse = true);
+      try {
+        await ref.read(houseNotifierProvider.notifier).addHouse(house);
+      } catch (_) {
+        if (!mounted) return;
+        setState(() => _creatingHouse = false);
+        AppSnackBar.showError(context, 'errors.create_house_failed'.tr());
+        return;
+      }
+      if (!mounted) return;
+      houseId = house.id;
+    }
     Navigator.pop(
       context,
       AiPackingSetup(
-        houseId: _houseOf(houses)?.id,
+        houseId: houseId,
         luggageId: _luggageOf(luggages)?.id,
         stops: {for (final stop in _stops) stop.key: _answersOf(stop)},
       ),
     );
   }
 
+  /// Attività e alloggio servono in ogni tappa: con una tappa incompleta
+  /// compare l'avviso, a ogni tocco, e il foglio resta aperto.
   void _prepare(List<HouseModel> houses, List<LuggageModel> luggages) {
-    if (_incompleteIndex >= 0 && !_warned) {
+    if (_creatingHouse) return;
+    if (_incompleteIndex >= 0) {
       setState(() => _warned = true);
       return;
     }
@@ -180,22 +237,28 @@ class _AiPackingSheetState extends ConsumerState<AiPackingSheet> {
             padding: EdgeInsets.all(context.spacingLg),
             child: const Center(child: CircularProgressIndicator()),
           )
-        : houseList.isEmpty
-        ? Text(
-            'trips.ai.no_houses'.tr(),
-            style: tt.bodyLarge?.copyWith(color: cs.onSurfaceVariant),
-          )
         : Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              DsChoiceGroup<HouseModel>(
-                title: 'trips.ai.house_title'.tr(),
-                options: houseList,
-                labelOf: (house) => house.displayName,
-                selected: {?chosenHouse},
-                onChanged: (chosen) =>
-                    setState(() => _houseId = chosen.first.id),
-              ),
+              if (houseList.isEmpty) ...[
+                // Prima casa: si crea qui, con il nome che l'utente preferisce.
+                DsFieldLabel.prominent('trips.ai.house_name_label'.tr()),
+                DsTextField(
+                  key: const Key('ai_house_name'),
+                  controller: _houseName,
+                  textCapitalization: TextCapitalization.sentences,
+                  enabled: !_creatingHouse,
+                ),
+                SizedBox(height: context.spacingMd),
+              ] else
+                DsChoiceGroup<HouseModel>(
+                  title: 'trips.ai.house_title'.tr(),
+                  options: houseList,
+                  labelOf: (house) => house.displayName,
+                  selected: {?chosenHouse},
+                  onChanged: (chosen) =>
+                      setState(() => _houseId = chosen.first.id),
+                ),
               if (luggageList.isEmpty) ...[
                 DsFieldLabel.prominent('trips.ai.luggage_title'.tr()),
                 Align(
@@ -270,7 +333,7 @@ class _AiPackingSheetState extends ConsumerState<AiPackingSheet> {
 
     return DsFormSheet(
       title: 'trips.ai.title'.tr(),
-      footer: loading || houseList.isEmpty
+      footer: loading
           ? null
           : _Footer(
               warning: _warned && incomplete >= 0

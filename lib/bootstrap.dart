@@ -50,6 +50,9 @@ import 'package:sqlite3/open.dart';
 import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 
 import 'core/analytics/analytics_service.dart';
+import 'core/analytics/core_analytics_service.dart';
+import 'core/catalog/catalog_repository.dart';
+import 'core/catalog/catalog_store.dart';
 import 'core/auth/secure_local_storage.dart';
 import 'core/consent/consent_provider.dart';
 import 'core/database/database.dart';
@@ -60,6 +63,7 @@ import 'core/monitoring/app_error_observer.dart';
 import 'core/monitoring/bootstrap_error_buffer.dart';
 import 'core/monitoring/monitoring_service.dart';
 import 'core/routing/app_router.dart';
+import 'features/trips/view/widgets/wait/ai_packing_run_listener.dart';
 import 'core/sync/sync_provider.dart';
 import 'features/onboarding/providers/onboarding_status_provider.dart';
 import 'shared/config/app_config.dart';
@@ -135,6 +139,7 @@ final appBootstrapProvider = FutureProvider<void>((ref) async {
   debugPrint('[Bootstrap] Future.wait completato, avvio sync orchestrator...');
   ref.read(syncOrchestratorProvider);
   debugPrint('[Bootstrap] Sync orchestrator inizializzato');
+  unawaited(_aggiornaCatalogo());
 
   // Servizi non critici schedulati sull'event queue — la parte sincrona di
   // SentryFlutter.init() (native bindings, integrations) blocca il main
@@ -161,7 +166,7 @@ final appBootstrapProvider = FutureProvider<void>((ref) async {
         } catch (e) {
           debugPrint('[Bootstrap] versione app non leggibile: $e');
         }
-        analytics.logEvent('app_opened', properties: {'trigger': 'cold_start'});
+        CoreAnalyticsService(analytics).trackAppOpened(trigger: 'cold_start');
       },
     ),
   );
@@ -367,6 +372,11 @@ Future<void> bootstrap(Environment env) async {
         WidgetsBinding.instance.platformDispatcher.locale.languageCode;
     final startLocale = resolveLocale(deviceLangCode);
 
+    // Il catalogo dei tag (copia locale o file del repo) prima del primo frame:
+    // pillole ed etichette ci sono subito. L'aggiornamento parte dopo Supabase.
+    CatalogStore.languageCode = startLocale.languageCode;
+    CatalogStore.set(await CatalogRepository().loadLocal());
+
     runApp(
       EasyLocalization(
         supportedLocales: const [Locale('it', 'IT'), Locale('en', 'US')],
@@ -389,6 +399,22 @@ Future<void> bootstrap(Environment env) async {
 // ─────────────────────────────────────────────────────────────────────────────
 // PRIVATE HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// Controlla il catalogo dei tag sul server (al massimo una volta al giorno) e,
+/// se è più nuovo, lo sostituisce in [CatalogStore]. Errori: solo un log.
+Future<void> _aggiornaCatalogo() async {
+  try {
+    final repo = CatalogRepository(
+      source: SupabaseCatalogSource(Supabase.instance.client),
+    );
+    final nuovo = await repo.refreshIfDue(
+      localVersion: CatalogStore.current.version,
+    );
+    if (nuovo != null) CatalogStore.set(nuovo);
+  } catch (e) {
+    debugPrint('[Bootstrap] aggiornamento del catalogo saltato: $e');
+  }
+}
 
 /// Valida la configurazione dell'app con severità dipendente dall'[env].
 ///
@@ -530,6 +556,9 @@ class MyApp extends ConsumerWidget {
         darkTheme: AppTheme.dark,
         themeMode: themeMode,
         routerConfig: routerConfig,
+        // L'avviso della valigia AI vive sopra tutte le pagine.
+        builder: (context, child) =>
+            AiPackingRunListener(child: child ?? const SizedBox.shrink()),
         localizationsDelegates: context.localizationDelegates,
         supportedLocales: context.supportedLocales,
         locale: context.locale,
@@ -602,6 +631,7 @@ class MyApp extends ConsumerWidget {
                     ref
                         .read(languageLocaleProvider.notifier)
                         .updateLocale(localeCode);
+                    CatalogStore.setLanguage(localeCode);
                   });
                 }
 

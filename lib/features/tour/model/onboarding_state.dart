@@ -53,6 +53,11 @@ enum OnboardingStep {
   /// Dentro la casa creata dalla prova AI: "tocca il nome per darle nome e
   /// luogo".
   houseDetailTooltip,
+
+  /// Primo avvio di un account nuovo (nessun passo salvato): il router porta
+  /// a "Dove vai?", il passo 1 del nuovo viaggio con l'AI come strada
+  /// principale. Si chiude con la X o dopo il salvataggio del passo 1.
+  firstTrip,
 }
 
 extension OnboardingStepLegacy on OnboardingStep {
@@ -84,6 +89,7 @@ extension OnboardingStepTourIndex on OnboardingStep {
     OnboardingStep.houseTooltip ||
     OnboardingStep.defaultHouseTooltip ||
     OnboardingStep.moveItemsTooltip ||
+    OnboardingStep.firstTrip ||
     OnboardingStep.done => null,
   };
 }

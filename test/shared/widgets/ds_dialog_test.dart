@@ -48,7 +48,8 @@ void main() {
     expect(find.text('Non si torna indietro.'), findsOneWidget);
     expect(find.text('Annulla'), findsOneWidget);
     expect(find.text('Elimina'), findsOneWidget);
-    expect(find.byType(DsButton), findsNWidgets(2));
+    expect(find.byType(DsButton), findsOneWidget);
+    expect(find.byType(DsTextButton), findsOneWidget);
 
     // Il titolo è titleLarge con peso w700 (`.title`).
     final title = tester.widget<Text>(find.text('Eliminare la casa?'));
@@ -207,7 +208,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.byType(DsButton), findsNWidgets(2));
+    expect(find.byType(DsButton), findsOneWidget);
+    expect(find.byType(DsTextButton), findsOneWidget);
   });
 
   testWidgets('barrierDismissible false: il tocco fuori non chiude', (

@@ -2,67 +2,66 @@
 // 19 ottobre 2026. Porting di tassonomia.py del bench
 // (AI-checklist-test-script): stesso contenuto, stesse funzioni.
 //
+import { type Catalogo, CATALOGO_BASE, voci } from "../catalogo/catalogo.ts";
+
 // Ogni sottocategoria nuova ha un GENITORE, la vecchia piu' vicina, oppure
 // null: con genitore il generatore la tratta come il genitore, senza entra
 // solo dove una regola la chiede. "Other" c'e' in ogni categoria.
 
-export const VECCHIE: Record<string, string[]> = {
-  "Upper Body": ["T-Shirt", "Shirt", "Polo", "Hoodie", "Sweatshirt", "Sweater", "Tank Top", "Crop Top"],
-  "Lower Body": ["Jeans", "Shorts", "Trousers", "Leggings", "Skirt", "Sweatpants", "Swimwear"],
-  "Shoes": ["Sneakers", "Sandals", "Boots", "Flip-Flops", "Loafers", "Dress Shoes", "Hiking Boots"],
-  "Outerwear": ["Coat", "Rain Jacket", "Down Jacket", "Windbreaker", "Blazer"],
-  "Accessory": ["Cap/Hat", "Belt", "Bag", "Scarf", "Sunglasses", "Jewelry", "Watch"],
-};
+// Dal 31 ottobre i valori vengono dal catalogo dei tag (catalogo.json, o la
+// tabella catalog_entries quando la funzione la legge: impostaTassonomia).
+// Le strutture qui sotto sono le stesse di prima e si riempiono sul posto, cosi'
+// chi le importa vede sempre il catalogo in uso.
+
+/** categoria -> sottocategorie che c'erano prima del 19 ottobre. */
+export const VECCHIE: Record<string, string[]> = {};
 
 // sottocategoria nuova -> [categoria, genitore, spiegazione per il prompt]
-export const NUOVE: Record<string, [string, string | null, string]> = {
-  "Thermal Top": ["Upper Body", "T-Shirt", "maglia termica, strato base"],
-  "Fleece": ["Upper Body", "Sweater", "pile"],
-  // senza genitore (20 ottobre): come Leggings faceva da pantalone; va sotto i pantaloni
-  "Thermal Bottoms": ["Lower Body", null, "calzamaglia o pantaloni termici"],
-  "Ski Pants": ["Lower Body", null, "pantaloni da sci o salopette"],
-  "Wetsuit": ["Lower Body", null, "muta da sub o da surf"],
-  "Dress": ["Full Body", null, "vestito o abito da donna, copre sopra e sotto"],
-  "Ski Jacket": ["Outerwear", "Down Jacket", "giacca da sci"],
-  "Ski Suit": ["Outerwear", "Down Jacket", "tuta da sci intera, copre anche le gambe"],
-  "Casual Jacket": ["Outerwear", null, "giacca casual: di jeans, bomber, giacca camicia"],
-  "Vest": ["Outerwear", null, "gilet o smanicato"],
-  "Water Shoes": ["Shoes", "Sandals", "scarpe da acqua o da scoglio"],
-  "Snow Boots": ["Shoes", "Boots", "doposci o scarponi da neve"],
-  "Gloves": ["Accessory", null, "guanti"],
-  "Tie": ["Accessory", null, "cravatta o papillon"],
-  "Umbrella": ["Accessory", null, "ombrello"],
-  "Underwear": ["Essentials", null, "mutande, boxer, reggiseno, canottiera intima"],
-  "Socks": ["Essentials", null, "calze e calzini"],
-  "Pajamas": ["Essentials", null, "pigiama"],
-};
+export const NUOVE: Record<string, [string, string | null, string]> = {};
 export const ALTRO = "Other";
 
-export const SPIEGA_VECCHIE: Record<string, string> = {
-  "Sweatpants": "pantaloni della tuta; in italiano 'tuta' e' sempre questo",
-  "Hoodie": "felpa con cappuccio",
-  "Sweatshirt": "felpa senza cappuccio",
-  "Swimwear": "costume da bagno, bikini",
-  "Windbreaker": "giacca a vento, k-way, softshell",
-  "Rain Jacket": "giacca antipioggia, guscio impermeabile",
-  "Down Jacket": "piumino",
-  "Cap/Hat": "cappello, berretto, cuffia di lana",
-};
+export const SPIEGA_VECCHIE: Record<string, string> = {};
 
-export const CATEGORIE = ["Upper Body", "Lower Body", "Full Body", "Shoes", "Outerwear", "Accessory",
-  "Essentials"];
+export const CATEGORIE: string[] = [];
 
-export const SOTTOCATEGORIE: Record<string, string[]> = Object.fromEntries(
-  CATEGORIE.map((c) => [c, [
-    ...(VECCHIE[c] ?? []),
-    ...Object.entries(NUOVE).filter(([, [cat]]) => cat === c).map(([s]) => s),
-    ALTRO,
-  ]]),
-);
+/** categoria -> tutte le sottocategorie (anche disattivate: servono per leggere
+ *  i capi salvati), nell'ordine del catalogo, con "Other" in fondo. */
+export const SOTTOCATEGORIE: Record<string, string[]> = {};
 
-export const GENITORE: Record<string, string | null> = Object.fromEntries(
-  Object.entries(NUOVE).map(([s, [, g]]) => [s, g]),
-);
+export const GENITORE: Record<string, string | null> = {};
+
+/** Le sottocategorie da proporre al modello: le voci attive del catalogo. */
+export const TIPI_ATTIVI = new Set<string>();
+
+function svuota(o: Record<string, unknown>): void {
+  for (const k of Object.keys(o)) delete o[k];
+}
+
+/** Riempie la tassonomia dal catalogo. Una voce con genitore il generatore la
+ *  tratta come il genitore; "Other" vale in ogni categoria. */
+export function impostaTassonomia(c: Catalogo): void {
+  for (const o of [VECCHIE, NUOVE, SPIEGA_VECCHIE, SOTTOCATEGORIE, GENITORE]) svuota(o);
+  CATEGORIE.splice(0, CATEGORIE.length, ...voci(c, "clothing_group", false).map((v) => v.id));
+  TIPI_ATTIVI.clear();
+  for (const cat of CATEGORIE) SOTTOCATEGORIE[cat] = [];
+  for (const t of voci(c, "clothing_type", false)) {
+    if (t.id === ALTRO) continue;
+    const cat = String(t.data.group);
+    if (!SOTTOCATEGORIE[cat]) continue;
+    SOTTOCATEGORIE[cat].push(t.id);
+    if (t.active) TIPI_ATTIVI.add(t.id);
+    if (t.data.isNew) {
+      NUOVE[t.id] = [cat, t.data.parent ?? null, t.data.hint ?? ""];
+      GENITORE[t.id] = t.data.parent ?? null;
+    } else {
+      (VECCHIE[cat] ??= []).push(t.id);
+      if (t.data.hint) SPIEGA_VECCHIE[t.id] = t.data.hint;
+    }
+  }
+  for (const cat of CATEGORIE) SOTTOCATEGORIE[cat].push(ALTRO);
+}
+
+impostaTassonomia(CATALOGO_BASE);
 
 /** La sottocategoria con cui ragiona la logica: il genitore se c'e'. */
 export function perIlGeneratore(sottocat: string | null | undefined): string | null | undefined {
@@ -77,10 +76,11 @@ export function categoriaDi(sottocat: string): string | null {
   return null;
 }
 
-/** Le righe "categoria -> sottocategorie" per i prompt (scan e nome). */
+/** Le righe "categoria -> sottocategorie" per i prompt (scan e nome): solo le
+ *  sottocategorie attive, e "Other". */
 export function testoPerPrompt(): string {
   return CATEGORIE.map((c) => {
-    const voci = SOTTOCATEGORIE[c].map((s) => {
+    const voci = SOTTOCATEGORIE[c].filter((s) => s === ALTRO || TIPI_ATTIVI.has(s)).map((s) => {
       const spiega = NUOVE[s]?.[2] || SPIEGA_VECCHIE[s];
       return spiega ? `"${s}" (${spiega})` : `"${s}"`;
     });

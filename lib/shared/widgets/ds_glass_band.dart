@@ -5,6 +5,7 @@ import '../constants/app_constants.dart';
 import '../theme/app_motion.dart';
 import '../theme/app_opacity.dart';
 import '../theme/app_spacing.dart';
+import '../theme/surface_colors.dart';
 
 /// Effetto sul bordo in fondo allo schermo, dietro i bottoni, la barra delle
 /// tab e il piè dei fogli: lo "scroll edge effect" morbido di Liquid Glass.
@@ -30,7 +31,8 @@ class DsGlassBand extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.surface;
+    // Sfuma nel fondo su cui sta: la pagina, o il foglio se è in un foglio.
+    final color = context.groundSurface;
     return Stack(
       children: [
         Positioned.fill(

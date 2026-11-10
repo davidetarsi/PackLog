@@ -136,6 +136,7 @@ class _ErrorDialog extends StatelessWidget {
       actions: [
         Wrap(
           alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
           spacing: context.spacingSm,
           runSpacing: context.spacingSm,
           children: [

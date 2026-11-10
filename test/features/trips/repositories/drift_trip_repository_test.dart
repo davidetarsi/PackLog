@@ -832,6 +832,57 @@ void main() {
     );
   });
 
+  group('DriftTripRepository — mezzi', () {
+    test('i mezzi sopravvivono al salvataggio e alla rilettura', () async {
+      final trip = model.TripModel(
+        id: 'trip-mezzi-1',
+        name: 'Lisbona',
+        transports: const ['plane', 'train'],
+        createdAt: DateTime(2026, 9, 1),
+        updatedAt: DateTime(2026, 9, 1),
+      );
+
+      await repository.addTrip(trip);
+      final loaded = await repository.getTripById('trip-mezzi-1');
+
+      expect(loaded.transports, ['plane', 'train']);
+    });
+
+    test('senza mezzi scrive [] e rilegge una lista vuota', () async {
+      final trip = model.TripModel(
+        id: 'trip-mezzi-2',
+        name: 'Weekend',
+        createdAt: DateTime(2026, 9, 1),
+        updatedAt: DateTime(2026, 9, 1),
+      );
+
+      await repository.addTrip(trip);
+      final row = await database.tripsDao.findTripById('trip-mezzi-2');
+      final loaded = await repository.getTripById('trip-mezzi-2');
+
+      expect(row!.transports, '[]');
+      expect(loaded.transports, isEmpty);
+    });
+
+    test('una riga con mezzi null (build vecchia) si legge vuota', () async {
+      await repository.addTrip(
+        model.TripModel(
+          id: 'trip-mezzi-3',
+          name: 'Vecchio',
+          createdAt: DateTime(2026, 9, 1),
+          updatedAt: DateTime(2026, 9, 1),
+        ),
+      );
+      await (database.update(database.trips)
+            ..where((t) => t.id.equals('trip-mezzi-3')))
+          .write(const TripsCompanion(transports: Value(null)));
+
+      final loaded = await repository.getTripById('trip-mezzi-3');
+
+      expect(loaded.transports, isEmpty);
+    });
+  });
+
   group('DriftTripRepository — tappe', () {
     test('le tappe sopravvivono al salvataggio e alla rilettura', () async {
       final trip = model.TripModel(
@@ -882,8 +933,8 @@ void main() {
           luggageId: 'l1',
           stops: {
             'stop-1': const AiStopAnswers(
-              activities: [AiActivity.city, AiActivity.sea],
-              stay: AiStay.hotel,
+              activities: ['city', 'sea'],
+              stay: 'hotel',
               washer: true,
             ),
           },

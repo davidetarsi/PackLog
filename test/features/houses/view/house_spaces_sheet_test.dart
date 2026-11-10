@@ -66,8 +66,12 @@ void main() {
   Future<ScreenshotApp> openLuggages(WidgetTester tester) async {
     final app = await ScreenshotApp.start(tester, theme: ShotTheme.dark);
     await app.go('/trips');
-    await app.push('/trips/$kUpcomingTripId/edit-items');
+    await app.push('/trips/$kUpcomingTripId');
     await tester.ensureVisible(find.byKey(const Key('pack_manage_luggages')));
+    // Lo scorrimento di ensureVisible è animato: senza un fotogramma il tocco
+    // parte prima che il bottone sia arrivato (con il meteo giorno per giorno
+    // la pagina è più lunga e lo scorrimento più lungo).
+    await tester.pumpAndSettle();
     await app.tap(find.byKey(const Key('pack_manage_luggages')));
     return app;
   }
@@ -93,6 +97,18 @@ void main() {
     await app.tap(find.byKey(const Key('sheet_close')).last);
     await app.settle();
     expect(find.text('Casa Milano'), findsWidgets);
+    await app.finish();
+  });
+
+  testWidgets('il foglio spiega cosa sono gli spazi, anche a casa vuota', (
+    tester,
+  ) async {
+    var app = await openStorage(tester);
+    expect(find.text('spaces.explainer'.tr()), findsOneWidget);
+    await app.finish();
+
+    app = await openStorage(tester, houseId: kEmptyHouseId);
+    expect(find.text('spaces.explainer'.tr()), findsOneWidget);
     await app.finish();
   });
 
@@ -278,6 +294,9 @@ void main() {
       bottom: 300 * tester.view.devicePixelRatio,
     );
     await app.settle();
+    // Con testo grande e tastiera il foglio scorre: la riga si raggiunge
+    // scorrendo, non è più per forza visibile subito.
+    await tester.ensureVisible(find.byKey(const Key('storage_add_space')));
     await app.tap(find.byKey(const Key('storage_add_space')));
     await app.enterText(find.byKey(const Key('space_sheet_name')), 'Garage');
     expect(
@@ -352,11 +371,7 @@ void main() {
         ),
         findsNothing,
       );
-      await app.tap(
-        find.byWidgetPredicate(
-          (w) => w is DsButton && w.label.startsWith('Fatto'),
-        ),
-      );
+      await app.settle();
       final trips = await tester.runAsync(
         () => app.container.read(tripNotifierProvider.future),
       );
@@ -389,14 +404,16 @@ void main() {
   });
 
   testWidgets(
-    'creare un bagaglio dalla valigia lo seleziona e lo salva nel viaggio',
+    'creare un bagaglio dal dettaglio lo seleziona e lo salva nel viaggio',
     (tester) async {
       final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
       await app.go('/trips');
-      await app.push('/trips/$kUpcomingTripId/edit-items');
+      await app.push('/trips/$kUpcomingTripId');
       // Con dei bagagli "Nuovo bagaglio" sta dentro "Gestisci bagagli".
       expect(find.byKey(const Key('pack_new_luggage')), findsNothing);
       await tester.ensureVisible(find.byKey(const Key('pack_manage_luggages')));
+      // Come in openLuggages: il tocco aspetta la fine dello scorrimento.
+      await tester.pumpAndSettle();
       await app.tap(find.byKey(const Key('pack_manage_luggages')));
       await app.tap(find.byKey(const Key('storage_add_luggage')));
       await app.enterText(
@@ -415,11 +432,7 @@ void main() {
         ),
         findsOneWidget,
       );
-      await app.tap(
-        find.byWidgetPredicate(
-          (w) => w is DsButton && w.label.startsWith('Fatto'),
-        ),
-      );
+      await app.settle();
       final trips = await tester.runAsync(
         () => app.container.read(tripNotifierProvider.future),
       );

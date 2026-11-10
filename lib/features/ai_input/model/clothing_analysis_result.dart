@@ -43,6 +43,11 @@ class ClothingAnalysisResult {
   /// lettura: non finiscono in [toJson].
   final List<String> doubts;
 
+  /// Il valore che Jev propone per ogni campo in dubbio (`dubbi[].jev`), per
+  /// sapere poi quale dei due l'utente ha tenuto. Solo in lettura, come
+  /// [doubts]: non finisce in [toJson].
+  final Map<String, Object?> doubtJev;
+
   const ClothingAnalysisResult({
     required this.name,
     required this.category,
@@ -57,6 +62,7 @@ class ClothingAnalysisResult {
     this.appCategory,
     this.extras = const {},
     this.doubts = const [],
+    this.doubtJev = const {},
   });
 
   /// Un elemento di `items` nella risposta di `item-metadata`:
@@ -70,7 +76,18 @@ class ClothingAnalysisResult {
     return base.copyWith(
       appCategory: appCategory is String ? appCategory : null,
       doubts: _doubtsFrom(json['dubbi']),
+      doubtJev: _doubtJevFrom(json['dubbi']),
     );
+  }
+
+  /// `campo` → `jev` delle voci di dubbio che ne hanno uno.
+  static Map<String, Object?> _doubtJevFrom(Object? dubbi) {
+    if (dubbi is! List) return const {};
+    return {
+      for (final voce in dubbi)
+        if (voce is Map && voce['campo'] is String && voce.containsKey('jev'))
+          voce['campo'] as String: voce['jev'],
+    };
   }
 
   /// I `campo` dei dubbi; le voci malformate si scartano.
@@ -126,6 +143,7 @@ class ClothingAnalysisResult {
     String? appCategory,
     Map<String, dynamic>? extras,
     List<String>? doubts,
+    Map<String, Object?>? doubtJev,
   }) {
     return ClothingAnalysisResult(
       name: name ?? this.name,
@@ -141,6 +159,7 @@ class ClothingAnalysisResult {
       appCategory: appCategory ?? this.appCategory,
       extras: extras ?? this.extras,
       doubts: doubts ?? this.doubts,
+      doubtJev: doubtJev ?? this.doubtJev,
     );
   }
 
@@ -223,6 +242,7 @@ class ClothingAnalysisResult {
     if (appCategory != other.appCategory) return false;
     if (!mapEquals(extras, other.extras)) return false;
     if (!listEquals(doubts, other.doubts)) return false;
+    if (!mapEquals(doubtJev, other.doubtJev)) return false;
     return true;
   }
 
@@ -241,5 +261,6 @@ class ClothingAnalysisResult {
     appCategory,
     Object.hashAll(extras.keys),
     Object.hashAll(doubts),
+    Object.hashAll(doubtJev.keys),
   );
 }

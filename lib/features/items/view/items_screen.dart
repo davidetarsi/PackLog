@@ -63,6 +63,9 @@ class ItemsScreen extends ConsumerStatefulWidget {
   /// Testo della ricerca nella casa; `null` o vuoto = nessun filtro.
   final String? searchQuery;
 
+  /// Contenuto sopra l'inventario. Nelle liste popolate scorre con gli oggetti.
+  final Widget? leading;
+
   /// Key per l'etichetta del primo gruppo (il tour la usa come bersaglio).
   final Key? firstGroupKey;
 
@@ -80,6 +83,7 @@ class ItemsScreen extends ConsumerStatefulWidget {
     required this.houseName,
     this.selectedSpaceId,
     this.searchQuery,
+    this.leading,
     this.firstGroupKey,
     this.onSearchResultOpened,
     this.onWriteManually,
@@ -102,6 +106,17 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
     ref.refresh(itemNotifierProvider(widget.houseId).future),
     ref.refresh(tripNotifierProvider.future),
   ]);
+
+  Widget _withLeading(Widget child) {
+    final leading = widget.leading;
+    if (leading == null) return child;
+    return Column(
+      children: [
+        leading,
+        Expanded(child: child),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -142,6 +157,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                   onRefresh: _onRefresh,
                   icon: Icons.search_off,
                   title: 'items.no_search_results'.tr(),
+                  leading: widget.leading,
                 );
               }
 
@@ -164,6 +180,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                       widget.onWriteManually ??
                       () =>
                           context.push('/houses/${widget.houseId}?add=manual'),
+                  leading: widget.leading,
                 );
               }
 
@@ -186,6 +203,8 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                     child: CustomScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       slivers: [
+                        if (widget.leading != null)
+                          SliverToBoxAdapter(child: widget.leading!),
                         // ── Gruppo Temporanei ─────────────────────────────
                         if (showsTemporaries)
                           SliverPadding(
@@ -234,22 +253,26 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                     ),
                   );
                 },
-                loading: () => const SkeletonSimpleList(),
-                error: (error, stack) => DsErrorState(
-                  error: error,
-                  title: 'errors.load_houses'.tr(),
-                  onRetry: () => ref.invalidate(houseNotifierProvider),
-                  message: 'errors.retry_hint'.tr(),
+                loading: () => _withLeading(const SkeletonSimpleList()),
+                error: (error, stack) => _withLeading(
+                  DsErrorState(
+                    error: error,
+                    title: 'errors.load_houses'.tr(),
+                    onRetry: () => ref.invalidate(houseNotifierProvider),
+                    message: 'errors.retry_hint'.tr(),
+                  ),
                 ),
               );
             },
-            loading: () => const SkeletonItemsBody(),
-            error: (error, stack) => DsErrorState(
-              error: error,
-              title: 'errors.load_items'.tr(),
-              onRetry: () => ref
-                  .read(itemNotifierProvider(widget.houseId).notifier)
-                  .refresh(widget.houseId),
+            loading: () => _withLeading(const SkeletonItemsBody()),
+            error: (error, stack) => _withLeading(
+              DsErrorState(
+                error: error,
+                title: 'errors.load_items'.tr(),
+                onRetry: () => ref
+                    .read(itemNotifierProvider(widget.houseId).notifier)
+                    .refresh(widget.houseId),
+              ),
             ),
           ),
         ),

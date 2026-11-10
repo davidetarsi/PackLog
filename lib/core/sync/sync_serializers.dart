@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../../features/houses/model/house_model.dart';
 import '../../features/items/model/item_model.dart';
 import '../../features/luggages/model/luggage_model.dart';
+import '../../features/trips/model/suitcase_edit.dart';
 import '../../shared/model/location_type.dart';
 import '../database/database.dart';
 import '../database/tables/mixins/syncable_table.dart';
@@ -217,6 +218,80 @@ abstract final class SyncSerializers {
     );
   }
 
+  static KitsCompanion buildKitCompanion(
+    Map<String, dynamic> r, {
+    DateTime? syncedAt,
+    bool includeSyncFields = true,
+  }) {
+    assert(
+      !includeSyncFields || syncedAt != null,
+      'syncedAt è richiesto quando includeSyncFields=true',
+    );
+    return KitsCompanion(
+      id: Value(r['id'] as String),
+      userId: Value(r['user_id'] as String?),
+      houseId: Value(r['house_id'] as String),
+      name: Value(r['name'] as String),
+      // text[] e jsonb sul server, JSON in testo in locale. Un valore assente
+      // (riga di un client più vecchio) diventa vuoto.
+      activities: Value(jsonEncode(r['activities'] ?? const <String>[])),
+      transports: Value(jsonEncode(r['transports'] ?? const <String>[])),
+      learned: Value(jsonEncode(r['learned'] ?? const <String, dynamic>{})),
+      createdAt: Value(DateTime.parse(r['created_at'] as String)),
+      updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
+      isDeleted: Value(r['is_deleted'] as bool? ?? false),
+      lastSyncedAt: includeSyncFields ? Value(syncedAt!) : const Value.absent(),
+      syncStatus: includeSyncFields
+          ? const Value(SyncStatus.synced)
+          : const Value.absent(),
+      syncRetryCount: includeSyncFields ? const Value(0) : const Value.absent(),
+      lastSyncError: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
+      nextSyncAttemptAt: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
+      sentryTraceId: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
+    );
+  }
+
+  static KitItemsCompanion buildKitItemCompanion(
+    Map<String, dynamic> r, {
+    DateTime? syncedAt,
+    bool includeSyncFields = true,
+  }) {
+    assert(
+      !includeSyncFields || syncedAt != null,
+      'syncedAt è richiesto quando includeSyncFields=true',
+    );
+    return KitItemsCompanion(
+      id: Value(r['id'] as String),
+      userId: Value(r['user_id'] as String?),
+      kitId: Value(r['kit_id'] as String),
+      itemId: Value(r['item_id'] as String),
+      copies: Value(r['copies'] as int? ?? 1),
+      createdAt: Value(DateTime.parse(r['created_at'] as String)),
+      updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
+      isDeleted: Value(r['is_deleted'] as bool? ?? false),
+      lastSyncedAt: includeSyncFields ? Value(syncedAt!) : const Value.absent(),
+      syncStatus: includeSyncFields
+          ? const Value(SyncStatus.synced)
+          : const Value.absent(),
+      syncRetryCount: includeSyncFields ? const Value(0) : const Value.absent(),
+      lastSyncError: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
+      nextSyncAttemptAt: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
+      sentryTraceId: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
+    );
+  }
+
   static TripsCompanion buildTripCompanion(
     Map<String, dynamic> r, {
     DateTime? syncedAt,
@@ -249,6 +324,10 @@ abstract final class SyncSerializers {
       legs: r['legs'] == null
           ? const Value.absent()
           : Value(jsonEncode(r['legs'])),
+      // Mezzi del viaggio: stesse regole di `legs` (`null` non tocca il locale).
+      transports: r['transports'] == null
+          ? const Value.absent()
+          : Value(jsonEncode(r['transports'])),
       // Stesse regole di `legs`: `null` non tocca il locale, un oggetto lo
       // sostituisce.
       aiPackingSetup: r['ai_packing_setup'] == null
@@ -341,6 +420,69 @@ abstract final class SyncSerializers {
     };
   }
 
+  /// Riga di `valigia_modifiche`. `user_id` è l'utente di quando la modifica è
+  /// stata fatta: se non è quello della sessione la RLS rifiuta la riga. Mai il
+  /// nome scritto dall'utente: [SuitcaseEdit] non lo porta.
+  static Map<String, dynamic> suitcaseEditToJson(SuitcaseEdit e) => {
+    'id': e.id,
+    'user_id': e.userId,
+    'trip_id': e.tripId,
+    'chiave_oggetto': e.itemKey,
+    'creato_il': e.at.toUtc().toIso8601String(),
+    'azione': e.action.dbValue,
+    'origine': e.origin.dbValue,
+    'copie_prima': e.copiesBefore,
+    'copie_dopo': e.copiesAfter,
+    'scheda': e.card,
+    'contesto': e.context,
+    'versione_generatore': e.generatorVersion,
+    'analisi_consentita': e.analysisAllowed,
+  };
+
+  static Map<String, dynamic> kitToJson(Kit kit) {
+    return {
+      'id': kit.id,
+      'user_id': kit.userId,
+      'house_id': kit.houseId,
+      'name': kit.name,
+      'activities': _decodeOr(kit.activities, const <String>[]),
+      'transports': _decodeOr(kit.transports, const <String>[]),
+      'learned': _decodeOr(kit.learned, const <String, dynamic>{}),
+      'created_at': kit.createdAt.toUtc().toIso8601String(),
+      'updated_at': kit.updatedAt.toUtc().toIso8601String(),
+      'is_deleted': kit.isDeleted,
+    };
+  }
+
+  static Map<String, dynamic> kitItemToJson(KitItemRow row) {
+    return {
+      'id': row.id,
+      'user_id': row.userId,
+      'kit_id': row.kitId,
+      'item_id': row.itemId,
+      'copies': row.copies,
+      'created_at': row.createdAt.toUtc().toIso8601String(),
+      'updated_at': row.updatedAt.toUtc().toIso8601String(),
+      'is_deleted': row.isDeleted,
+    };
+  }
+
+  /// JSON salvato in testo, o [fallback] se manca o è corrotto: un campo
+  /// illeggibile non deve bloccare il push dell'intero kit.
+  static Object _decodeOr(String? raw, Object fallback) {
+    if (raw == null || raw.isEmpty) return fallback;
+    try {
+      final decoded = jsonDecode(raw);
+      final sameKind =
+          (decoded is List && fallback is List) ||
+          (decoded is Map && fallback is Map);
+      return sameKind ? decoded : fallback;
+    } catch (e) {
+      debugPrint('[SyncSerializers] JSON del kit corrotto ignorato: $e');
+      return fallback;
+    }
+  }
+
   static Map<String, dynamic> luggageToJson(Luggage luggage) {
     return {
       'id': luggage.id,
@@ -406,9 +548,26 @@ abstract final class SyncSerializers {
       // Chiavi omesse quando il dato manca: upsertTrip è un upsert di una
       // riga sola, quindi una colonna omessa conserva il valore sul server.
       // Mandare `null` lo sovrascriverebbe.
+      // Stessa regola per i mezzi: `null` o lista vuota = chiave omessa (così
+      // il push funziona anche prima che il backend abbia la colonna).
+      ..._transportsEntry(trip.transports),
       ..._aiJsonEntry('ai_packing_setup', trip.aiPackingSetup),
       ..._aiJsonEntry('ai_packing_result', trip.aiPackingResult),
     };
+  }
+
+  /// La chiave `transports`, anche vuota: togliere tutti i mezzi deve
+  /// arrivare al server. Omessa solo se la colonna non è mai stata scritta
+  /// (viaggi di prima della v13) o il JSON locale è corrotto. Il backend deve
+  /// avere la migrazione dei kit prima di questa build.
+  static Map<String, Object?> _transportsEntry(String? raw) {
+    if (raw == null || raw.isEmpty) return const {};
+    try {
+      final value = jsonDecode(raw);
+      return value is List ? {'transports': value} : const {};
+    } on FormatException {
+      return const {};
+    }
   }
 
   /// Una sola chiave AI nel payload, oppure nessuna se il dato manca.

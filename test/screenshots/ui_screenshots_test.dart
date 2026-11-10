@@ -15,9 +15,11 @@ import 'dart:async';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:pack_log/core/catalog/catalog_choices.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/promo/view/promo_code_sheet.dart';
 import 'package:pack_log/features/ai_input/model/ai_failure_reason.dart';
@@ -25,10 +27,18 @@ import 'package:pack_log/features/ai_input/model/ai_import_state.dart';
 import 'package:pack_log/features/ai_input/providers/ai_import_notifier.dart';
 import 'package:pack_log/features/tour/model/onboarding_state.dart';
 import 'package:pack_log/features/trips/providers/trip_provider.dart';
+import 'package:pack_log/features/trips/model/ai_packing.dart';
+import 'package:pack_log/features/trips/model/ai_packing_request.dart';
+import 'package:pack_log/features/trips/providers/ai_packing_run_provider.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/items/repositories/item_repository.dart';
+import 'package:pack_log/features/kits/repositories/kit_repository.dart';
+import 'package:pack_log/features/kits/view/widgets/kit_chip_card.dart';
+import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/services/pack_trip_service.dart';
 import 'package:pack_log/features/trips/services/trip_weather_service.dart';
 import 'package:pack_log/features/trips/view/ai_packing_wait_screen.dart';
-import 'package:pack_log/features/trips/view/widgets/ai/ai_home_group.dart';
+import 'package:pack_log/features/trips/view/widgets/slots/slots_section.dart';
 import 'package:pack_log/features/trips/view/widgets/pack/pack_parts.dart';
 import 'package:pack_log/features/trips/view/widgets/trip_calendar.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
@@ -38,12 +48,14 @@ import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/profile/providers/gpt_usage_provider.dart';
 import 'package:pack_log/features/houses/providers/house_provider.dart';
 import 'package:pack_log/features/houses/view/add_edit_house_screen.dart';
+import 'package:pack_log/features/items/providers/item_enrichment_provider.dart';
 import 'package:pack_log/features/items/view/item_sheet.dart';
 import 'package:pack_log/features/luggages/view/add_edit_luggage_screen.dart';
 import 'package:pack_log/features/spaces/view/add_edit_space_screen.dart';
 import 'package:pack_log/shared/services/location_search_service.dart';
 import 'package:pack_log/shared/model/location_suggestion_model.dart';
 
+import '../helpers/catalogo_di_prova.dart';
 import 'support/fakes.dart';
 import 'support/fonts.dart';
 import 'support/harness.dart';
@@ -107,12 +119,71 @@ Future<void> _houseDetail(ScreenshotApp app, [String id = kHomeId]) async {
 Future<void> _tripDetail(
   ScreenshotApp app, [
   String id = kUpcomingTripId,
+  bool firstReview = false,
 ]) async {
   await app.go('/trips');
-  await app.push('/trips/$id');
+  await app.push('/trips/$id${firstReview ? '?review=1' : ''}');
 }
 
-/// Apre la pagina valigia di un viaggio, sopra la tab Viaggi.
+Future<void> _needsDetail(ScreenshotApp app, [String id = kSeoulTripId]) async {
+  await _tripDetail(app, id);
+  await app.tester.ensureVisible(find.byKey(const Key('pack_row_missing')));
+  await app.tap(find.byKey(const Key('pack_row_missing')));
+}
+
+/// Avvia un lavoro AI che non finisce mai e apre la pagina d'attesa.
+Future<void> _startWait(ScreenshotApp app, PackTripJob job) async {
+  final trips = await app.container.read(tripNotifierProvider.future);
+  final trip = trips.firstWhere((t) => t.id == kUpcomingTripId);
+  app.container
+      .read(aiPackingRunProvider.notifier)
+      .start(
+        AiPackingRequest(
+          trip: trip,
+          isNew: false,
+          setup: const AiPackingSetup(houseId: kHomeId),
+          job: job,
+        ),
+      );
+  unawaited(app.router.push('/ai-packing'));
+}
+
+Future<void> _addNonClothingNeeds(ProviderContainer c) async {
+  final trips = c.read(tripRepositoryProvider);
+  final trip = await trips.getTripById(kSeoulTripId);
+  final result = trip.aiResult!;
+  await trips.updateTrip(
+    trip.copyWith(
+      aiResult: result.copyWith(
+        slots: [
+          ...(result.slots ?? const []),
+          AiSlot(
+            id: 'slot-spazzolino',
+            type: 'toothbrush',
+            category: ItemCategory.toiletries,
+            level: AiSlotLevel.useful,
+            name: 'Spazzolino da viaggio',
+            copies: 1,
+            remaining: 1,
+            addLabel: 'Aggiungi il tuo',
+          ),
+          AiSlot(
+            id: 'slot-adattatore',
+            type: 'adapter',
+            category: ItemCategory.elettronica,
+            level: AiSlotLevel.useful,
+            name: 'Adattatore universale',
+            copies: 1,
+            remaining: 1,
+            addLabel: 'Aggiungi il tuo',
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Apre la pagina "Aggiungi alla valigia" di un viaggio, sopra la tab Viaggi.
 Future<void> _pack(ScreenshotApp app, String id) async {
   await app.go('/trips');
   await app.push('/trips/$id/edit-items');
@@ -154,6 +225,13 @@ Future<void> _emitAi(ScreenshotApp app, AiImportState state) async {
 class _SyncingForever extends Syncing {
   @override
   bool build() => true;
+}
+
+/// "T-shirt bianca" (`item-0`, capo senza metadati) con la richiesta della
+/// scheda ancora in corso.
+class _PendingItemDetails extends ItemEnrichment {
+  @override
+  Set<String> build() => const {'item-0'};
 }
 
 class _UnavailableHouses extends HouseNotifier {
@@ -276,13 +354,25 @@ Future<void> _tapShown(ScreenshotApp app, Finder finder) async {
   await app.tap(finder);
 }
 
-/// Apre il foglio "Valigia con AI" dal viaggio: il viaggio ha già oggetti,
+/// Apre il foglio "Valigia con AI" dal viaggio (Rigenera): il viaggio ha già oggetti,
 /// quindi prima c'è l'avviso di sostituzione, che si conferma.
 Future<void> _openAiSheet(ScreenshotApp app, String tripId) async {
-  await _pack(app, tripId);
-  await app.tap(find.byKey(const Key('pack_ai_suitcase')));
+  // "Rigenera" dal menu del dettaglio: il foglio si apre sopra il dettaglio.
+  await app.go('/trips');
+  await app.push('/trips/$tripId');
+  await app.tap(find.byWidgetPredicate((w) => w is PopupMenuButton));
+  await app.tap(_text('trips.pack.ai.regenerate'));
   await app.tap(_text('trips.pack.ai.replace_confirm'));
 }
+
+/// Seed completo con la valigia a posti su [tripId]: senza posti il menu del
+/// dettaglio non offre "Rigenera".
+AppSetup _rigeneraSetup(String tripId) => AppSetup(
+  seedWith: (c) async {
+    await seed(c, SeedLevel.full);
+    await seedRigenera(c, tripId);
+  },
+);
 
 // ── Flussi ───────────────────────────────────────────────────────────────────
 
@@ -302,7 +392,6 @@ const _aiResults = 'lib/features/ai_input/view/ai_results_screen.dart';
 const _aiSheetSrc = 'lib/features/trips/view/widgets/ai/ai_packing_sheet.dart';
 const _aiWaitSrc = 'lib/features/trips/view/ai_packing_wait_screen.dart';
 const _aiRowsSrc = 'lib/features/trips/view/widgets/ai/ai_pack_rows.dart';
-const _aiHomeSrc = 'lib/features/trips/view/widgets/ai/ai_home_group.dart';
 const _aiItemSrc = 'lib/features/trips/view/widgets/ai/ai_pack_item_sheet.dart';
 
 final flows = <Flow>[
@@ -528,7 +617,7 @@ final flows = <Flow>[
       route: '/',
       source: 'lib/shared/widgets/create_sheet.dart',
       description:
-          'Crea dalla tab Case: Scansiona con AI (con la casa), link a mano, poi Nuova casa e Nuovo viaggio.',
+          'Crea dalla tab Case: Viaggio, Oggetti, Vestiti e Casa; icone e testi sulla stessa colonna, con selettore della casa.',
       steps: _openCreateSheet,
     ),
     Scenario(
@@ -690,8 +779,7 @@ final flows = <Flow>[
       source: 'lib/features/luggages/view/add_edit_luggage_screen.dart',
       description: 'Modifica bagaglio dalla gestione globale nel viaggio.',
       steps: (app) async {
-        await app.go('/trips');
-        await app.push('/trips/$kUpcomingTripId/edit-items');
+        await _tripDetail(app);
         await app.tester.ensureVisible(
           find.byKey(const Key('pack_manage_luggages')),
         );
@@ -780,6 +868,42 @@ final flows = <Flow>[
         await app.longPress(find.text('Infradito'));
         await app.tap(find.byKey(const Key('selection_move')));
         await app.tap(find.text('Casa Milano'));
+      },
+    ),
+    Scenario(
+      19,
+      'dettaglio-casa',
+      'swipe-elimina',
+      route: '/houses/:id',
+      source: 'lib/features/items/view/swipe_to_delete_item.dart',
+      description:
+          'Swipe verso sinistra su una riga: sotto compare il fondo di errore '
+          'con il cestino.',
+      steps: (app) async {
+        await _houseDetail(app);
+        final gesture = await app.tester.startGesture(
+          app.tester.getCenter(find.text('Calzini')),
+        );
+        // Il primo spostamento serve a superare la soglia del gesto.
+        await gesture.moveBy(const Offset(-30, 0));
+        await app.tester.pump();
+        await gesture.moveBy(const Offset(-130, 0));
+        await app.tester.pump(const Duration(milliseconds: 100));
+      },
+    ),
+    Scenario(
+      20,
+      'dettaglio-casa',
+      'elimina-annulla',
+      route: '/houses/:id',
+      source: 'lib/features/items/view/swipe_to_delete_item.dart',
+      description:
+          'Riga eliminata con lo swipe: snackbar con il nome e "Annulla", '
+          'senza conferma.',
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.tester.drag(find.text('Calzini'), const Offset(-500, 0));
+        await app.settle();
       },
     ),
   ]),
@@ -886,6 +1010,41 @@ final flows = <Flow>[
         await _scrollSheet(app, -380);
         await app.tester.ensureVisible(_text('clothing.details.other_color'));
         await app.tap(_text('clothing.details.other_color'));
+      },
+    ),
+    Scenario(
+      8,
+      'oggetto-scheda',
+      'dettagli-in-attesa',
+      source: 'lib/features/items/view/item_sheet.dart',
+      description:
+          'Capo senza metadati mentre la scheda dell\'AI arriva: sopra i '
+          'Dettagli, la riga "Sto completando i dettagli. Puoi già '
+          'modificarli." e i dettagli ancora vuoti; il campo Nome resta '
+          'modificabile.',
+      setup: AppSetup(
+        extraOverrides: [
+          itemEnrichmentProvider.overrideWith(_PendingItemDetails.new),
+        ],
+      ),
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.tap(find.text('T-shirt bianca'));
+      },
+    ),
+    Scenario(
+      9,
+      'oggetto-scheda',
+      'sposta',
+      source: 'lib/features/items/view/bulk_move_sheet.dart',
+      description:
+          'Dal menu ⋮ della scheda, "Sposta in un\'altra casa": il foglio '
+          '"Sposta" si apre sopra la scheda.',
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.tap(find.text('Maglione di lana'));
+        await app.tap(find.byKey(const Key('item_sheet_menu')));
+        await app.tap(_text('items.move_to_house'));
       },
     ),
   ]),
@@ -1284,35 +1443,22 @@ final flows = <Flow>[
       route: '/trips',
       source: 'lib/shared/widgets/create_sheet.dart',
       description:
-          'Crea dalla tab Viaggi: Nuovo viaggio sale sopra Nuova casa.',
+          'Crea dalla tab Viaggi: stesse voci e stesso ordine che dalla tab Case.',
       steps: (app) => _openCreateSheet(app, '/trips'),
     ),
     Scenario(
       10,
       'viaggi',
-      'dopo-passo-1',
-      route: '/trips',
+      'riusa-passo-1',
+      route: '/new-trip',
       source: 'lib/features/trips/view/new_trip_screen.dart',
       description:
-          'Passo 1 compilato (Siviglia) e "Prepara la valigia più tardi": la '
-          'pila si apre sul viaggio appena creato, in cima.',
+          '"Riusa" da un viaggio passato: il passo 1 si apre già compilato '
+          '(meta, tappe, mezzi, nome), senza date e senza salvare niente, con '
+          'le due strade in fondo.',
       steps: (app) async {
-        await _openNewTrip(app);
-        await _searchPlace(app, _placeField(), 'Siviglia');
-        await _pickTripDates(
-          app,
-          departure: _nextMonthDay(20),
-          end: _nextMonthDay(23),
-        );
-        await app.tap(find.byKey(const Key('new_trip_later')));
-        // Il viaggio appena creato è la cartolina in cima alla pila.
-        expect(
-          find.descendant(
-            of: find.byKey(const Key('postcard_pile_top')),
-            matching: find.text('Siviglia'),
-          ),
-          findsWidgets,
-        );
+        await app.go('/trips');
+        await app.push('/new-trip?reuseFrom=$kPastTripId');
       },
     ),
   ]),
@@ -1326,7 +1472,8 @@ final flows = <Flow>[
       source: _addTrip,
       description:
           'Passo 1 appena aperto: "Dove vai?", "Quando?", itinerario vuoto, '
-          'nome del viaggio, "Avanti" spento.',
+          'nome del viaggio, "Prepara la valigia con AI" e "Scegli tu cosa portare" '
+          'spenti.',
       steps: (app) async {
         await _openNewTrip(app);
       },
@@ -1353,7 +1500,7 @@ final flows = <Flow>[
       source: _addTrip,
       description:
           'Meta Lisbona e date: l\'itinerario ha la tappa di arrivo e il '
-          'ritorno calcolato, "Avanti" acceso.',
+          'ritorno calcolato, i due bottoni accesi.',
       steps: (app) async {
         await _fillStep1(app);
       },
@@ -1408,11 +1555,11 @@ final flows = <Flow>[
       route: '/new-trip',
       source: _addTrip,
       description:
-          'Tocco su "Avanti" a modulo vuoto: il campo "Dove vai?" e il campo '
+          'Tocco su "Scegli tu cosa portare" a modulo vuoto: il campo "Dove vai?" e il campo '
           'delle date si colorano di errore, con il messaggio sotto ciascuno.',
       steps: (app) async {
         await _openNewTrip(app);
-        await app.tap(find.byKey(const Key('new_trip_next')));
+        await app.tap(find.byKey(const Key('new_trip_choose_items')));
       },
     ),
     Scenario(
@@ -1423,7 +1570,7 @@ final flows = <Flow>[
       source: _addTrip,
       description:
           'La meta finisce il giorno in cui finisce la tappa: la tappa ha zero '
-          'notti, il messaggio la segnala e "Avanti" è spento.',
+          'notti, il messaggio la segnala e i due bottoni sono spenti.',
       steps: (app) async {
         await _fillStep1(app);
         await _addSintraStop(app, end: _nextMonthDay(15));
@@ -1457,7 +1604,8 @@ final flows = <Flow>[
       route: '/trips/:id',
       source: _tripDetailSrc,
       description:
-          'Viaggio futuro con tappe, bagagli e oggetti parzialmente spuntati.',
+          'Valigia a mano: riepilogo, meteo, bagagli e oggetti parzialmente '
+          'spuntati, con "Aggiungi oggetti" in basso.',
       steps: _tripDetail,
     ),
     Scenario(
@@ -1475,7 +1623,8 @@ final flows = <Flow>[
       'senza-oggetti',
       route: '/trips/:id',
       source: _tripDetailSrc,
-      description: 'Viaggio senza oggetti: CTA "Prepara la valigia".',
+      description:
+          'Viaggio vuoto: valigia vuota e "Aggiungi oggetti" in basso.',
       steps: (app) => _tripDetail(app, kEmptyTripId),
     ),
     Scenario(
@@ -1496,21 +1645,31 @@ final flows = <Flow>[
       'default',
       route: '/trips/:id/edit-info',
       source: 'lib/features/trips/view/edit_trip_info_screen.dart',
-      description: 'Modifica nome, destinazione, date e tappe.',
+      description:
+          'Modifica viaggio con due tappe (Lisbona e Sintra): "Quando?" '
+          'mostra le date di tutto il viaggio, dalla partenza alla fine '
+          'dell\'ultima tappa, con le notti totali. Nell\'itinerario anche '
+          'la riga della meta (Lisbona) si tocca, per cambiarne la fine.',
       steps: (app) async {
         await _tripDetail(app);
         await app.tap(find.byKey(const Key('trip_detail_summary')));
+        expect(find.text('5 notti'), findsOneWidget);
+        await app.tester.ensureVisible(
+          find.byKey(const Key('new_trip_add_stop')),
+        );
+        await app.tester.pumpAndSettle();
       },
     ),
     Scenario(
       6,
       'valigia',
-      'da-modifica-oggetti',
+      'da-dettaglio',
       route: '/trips/:id/edit-items',
       source: _packSrc,
       description:
-          'Pagina valigia aperta da "Modifica valigia": riepilogo, bagagli, '
-          'ricerca e oggetti della casa proposta. Senza indicatore dei passi.',
+          'Pagina "Aggiungi alla valigia" aperta dal dettaglio con "Aggiungi '
+          'oggetti": solo ricerca, casa e oggetti della casa. Senza '
+          'indicatore dei passi.',
       steps: (app) async {
         await _tripDetail(app);
         await app.tap(find.byKey(const Key('trip_detail_cta')));
@@ -1523,11 +1682,12 @@ final flows = <Flow>[
       route: '/trips/:id/edit-items',
       source: _packSrc,
       description:
-          'Passo 2 di "Nuovo viaggio" appena salvato il passo 1: indicatore dei '
-          'passi con "Viaggio" fatto, "Valigia" attivo, "Fatto" a zero oggetti.',
+          'Pagina valigia dalla creazione, passo 2 di "Nuovo viaggio": '
+          'indicatore dei passi con "Viaggio" fatto, "Valigia" attivo, '
+          '"Fatto" a zero oggetti.',
       steps: (app) async {
         await _fillStep1(app);
-        await app.tap(find.byKey(const Key('new_trip_next')));
+        await app.tap(find.byKey(const Key('new_trip_choose_items')));
       },
     ),
     Scenario(
@@ -1537,12 +1697,11 @@ final flows = <Flow>[
       route: '/trips/:id/edit-items',
       source: _packSrc,
       description:
-          'Valigia con scelte e quantità: un bagaglio in più e la quantità di '
-          '"Calzini" diminuita di uno. "Fatto" dice quanti oggetti.',
+          'Valigia con scelte e quantità: la quantità di "Calzini" diminuita '
+          'di uno. "Fatto" dice quanti oggetti.',
       steps: (app) async {
         await _tripDetail(app);
         await app.tap(find.byKey(const Key('trip_detail_cta')));
-        await app.tap(find.text('Valigia grande'));
         // Calzini è a 7: il "+" è spento al massimo della casa, il "-" no. Si
         // toglie un capo senza deselezionare la riga.
         final calzini = find.byWidgetPredicate(
@@ -1648,18 +1807,18 @@ final flows = <Flow>[
       15,
       'valigia',
       'meteo-previsione',
-      route: '/trips/:id/edit-items',
+      route: '/trips/:id',
       source: _packWeatherSrc,
       description:
           'Viaggio in corso verso una casa: il meteo della casa dai giorni '
           'che restano, con la previsione e "Aggiorna".',
-      steps: (app) => _pack(app, kActiveTripId),
+      steps: (app) => _tripDetail(app, kActiveTripId),
     ),
     Scenario(
       16,
       'valigia',
       'meteo-tetto',
-      route: '/trips/:id/edit-items',
+      route: '/trips/:id',
       source: _packWeatherSrc,
       description:
           'Tetto giornaliero del meteo finito e nessuna copia: al posto delle '
@@ -1671,18 +1830,18 @@ final flows = <Flow>[
           ),
         ],
       ),
-      steps: (app) => _pack(app, kUpcomingTripId),
+      steps: (app) => _tripDetail(app, kUpcomingTripId),
     ),
     Scenario(
       17,
       'valigia',
       'meteo-non-disponibile',
-      route: '/trips/:id/edit-items',
+      route: '/trips/:id',
       source: _packWeatherSrc,
       description:
           'Viaggio verso una casa senza località: il meteo non si può '
           'chiedere e la sezione lo dice.',
-      steps: (app) => _pack(app, kEmptyTripId),
+      steps: (app) => _tripDetail(app, kEmptyTripId),
     ),
     Scenario(
       18,
@@ -1694,12 +1853,420 @@ final flows = <Flow>[
           'Toccando la tappa con la previsione: i giorni che restano, ognuno '
           'con il riepilogo e le sei fasce di quattro ore.',
       steps: (app) async {
-        await _pack(app, kActiveTripId);
+        await _tripDetail(app, kActiveTripId);
         await app.tap(find.text('Casa al mare').last);
       },
     ),
+    Scenario(
+      24,
+      'meteo',
+      'dettaglio-stima',
+      route: '/trips/:id/weather',
+      source: 'lib/features/trips/view/trip_weather_screen.dart',
+      description:
+          'Toccando una tappa con la stima dallo storico: "Media degli ultimi '
+          '5 anni" e ogni giorno con massima e minima medie e la pioggia come '
+          'anni su 5, senza icone né fasce.',
+      steps: (app) async {
+        await _pack(app, kUpcomingTripId);
+        await app.tap(find.text('Sintra').last);
+      },
+    ),
+    Scenario(
+      19,
+      'dettaglio-viaggio',
+      'valigia-con-posti',
+      route: '/trips/:id?review=1',
+      source: _tripDetailSrc,
+      description:
+          'Prima revisione salvata del risultato: gli oggetti propri hanno X '
+          'per rimuoverli, le proposte non hanno checkbox e la CTA è Fatto.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) async {
+        await _tripDetail(app, kSeoulTripId, true);
+        expect(find.text('Fatto'), findsOneWidget);
+        expect(app.issues, isEmpty, reason: 'overflow nella prima revisione');
+      },
+    ),
+    Scenario(
+      20,
+      'dettaglio-viaggio',
+      'valigia-con-posti-in-basso',
+      route: '/trips/:id',
+      source: _tripDetailSrc,
+      description:
+          'Dettaglio della valigia AI dopo la revisione: gli oggetti propri '
+          'hanno checkbox per la checklist e "Aggiungi oggetti" in basso.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) async {
+        await _tripDetail(app, kSeoulTripId);
+        final list = find.byType(ListView).first;
+        for (
+          var i = 0;
+          i < 3 &&
+              find.byKey(const Key('trip_item_item-12')).evaluate().isEmpty;
+          i++
+        ) {
+          await app.tester.drag(list, const Offset(0, -1000));
+          await app.settle();
+        }
+        await app.tester.ensureVisible(
+          find.byKey(const Key('trip_item_item-12')),
+        );
+        expect(find.byKey(const Key('trip_item_item-12')), findsOneWidget);
+        expect(find.byKey(const Key('trip_detail_cta')), findsOneWidget);
+        expect(
+          app.issues,
+          isEmpty,
+          reason: 'overflow nella checklist ordinaria',
+        );
+      },
+    ),
+    Scenario(
+      21,
+      'dettaglio-viaggio',
+      'foglio-posto',
+      route: '/trips/:id',
+      source: _tripDetailSrc,
+      description:
+          'Dalla card Cosa manca, il foglio di Magliette apre la ricerca '
+          'secondaria e mostra risultati reali dall’inventario.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) async {
+        await _needsDetail(app);
+        expect(find.byType(SlotsSection), findsOneWidget);
+        expect(
+          find.byKey(const Key('slot_row_slot-magliette')),
+          findsOneWidget,
+        );
+        await app.tester.drag(
+          find.byType(ListView).first,
+          const Offset(0, -1200),
+        );
+        await app.settle();
+        await app.tester.ensureVisible(
+          find.byKey(const Key('slot_row_slot-magliette')),
+        );
+        expect(
+          find.byKey(const Key('slot_row_slot-magliette')).hitTestable(),
+          findsOneWidget,
+        );
+        await app.tap(find.byKey(const Key('slot_row_slot-magliette')));
+        expect(
+          find.byKey(const Key('slot_sheet_input_slot-magliette')),
+          findsOneWidget,
+        );
+        await app.enterText(
+          find.byType(TextField).first,
+          'Caricatore telefono',
+        );
+        await app.tester.drag(
+          find.byType(SingleChildScrollView).last,
+          const Offset(0, -360),
+        );
+        await app.settle();
+        await app.tap(find.text('Cerca nel tuo inventario'));
+        expect(find.text('Oggetti trovati'), findsOneWidget);
+        expect(find.text('Caricatore telefono'), findsWidgets);
+        expect(app.issues, isEmpty, reason: 'overflow nel foglio di ricerca');
+      },
+    ),
+    Scenario(
+      22,
+      'dettaglio-viaggio',
+      'importante-da-togliere',
+      route: '/trips/:id',
+      source: _tripDetailSrc,
+      description:
+          'La X su un importante (Giacca invernale): il dialog che chiede '
+          'conferma dalla pagina dedicata alle necessità.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) async {
+        await _needsDetail(app);
+        await app.tap(
+          find.byKey(const Key('slot_remove_slot-giacca_invernale')),
+        );
+        expect(app.issues, isEmpty, reason: 'overflow nel dialog di conferma');
+      },
+    ),
+    Scenario(
+      23,
+      'dettaglio-viaggio',
+      'valigia-con-kit',
+      route: '/trips/:id',
+      source: _tripDetailSrc,
+      description:
+          'Valigia a posti con la riga del kit Montagna fra la barra e i '
+          'gruppi: 3 su 5 già in valigia, i nomi dei mancanti e '
+          '"Aggiungili in valigia".',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+          await seedKitInValigia(c);
+        },
+      ),
+      steps: (app) => _tripDetail(app, kSeoulTripId),
+    ),
+    Scenario(
+      24,
+      'dettaglio-viaggio',
+      'necessita-categorie-basse',
+      route: '/trips/:id/needs',
+      source: _tripDetailSrc,
+      description:
+          'La pagina necessità include anche igiene ed elettronica sotto le '
+          'categorie di abbigliamento, con acquisto nella categoria relativa.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+          await _addNonClothingNeeds(c);
+        },
+      ),
+      steps: (app) async {
+        await _tripDetail(app, kSeoulTripId);
+        await app.push('/trips/$kSeoulTripId/needs');
+        await app.tester.drag(
+          find.byType(ListView).first,
+          const Offset(0, -1200),
+        );
+        await app.settle();
+        await app.tester.ensureVisible(
+          find.byKey(const Key('slot_row_slot-adattatore')),
+        );
+        expect(find.text('Spazzolino da viaggio'), findsWidgets);
+        expect(find.text('Adattatore universale'), findsWidgets);
+        expect(
+          app.issues,
+          isEmpty,
+          reason: 'overflow nelle categorie in basso',
+        );
+      },
+    ),
+    Scenario(
+      25,
+      'dettaglio-viaggio',
+      'foglio-completato',
+      route: '/trips/:id/needs',
+      source: 'lib/features/trips/view/widgets/slots/slot_fill_sheet.dart',
+      description:
+          'Collegamento di cinque magliette dall’inventario completa le copie '
+          'richieste e lascia la CTA esplicita Chiudi.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+          final trips = c.read(tripRepositoryProvider);
+          final trip = await trips.getTripById(kSeoulTripId);
+          await trips.updateTrip(
+            trip.copyWith(
+              aiResult: trip.aiResult!.copyWith(
+                slots: [
+                  for (final slot in trip.aiResult!.slots!)
+                    if (slot.id == 'slot-magliette')
+                      slot.copyWith(copies: 5, remaining: 5)
+                    else
+                      slot,
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+      steps: (app) async {
+        await _tripDetail(app, kSeoulTripId);
+        await app.push('/trips/$kSeoulTripId/needs');
+        await app.tester.drag(
+          find.byType(ListView).first,
+          const Offset(0, -1200),
+        );
+        await app.settle();
+        await app.tester.ensureVisible(
+          find.byKey(const Key('slot_row_slot-magliette')),
+        );
+        await app.tap(find.byKey(const Key('slot_row_slot-magliette')));
+        await app.enterText(find.byType(TextField).first, 'T-shirt bianca');
+        await app.tester.ensureVisible(find.text('Cerca nel tuo inventario'));
+        await app.tap(find.text('Cerca nel tuo inventario'));
+        await app.tester.ensureVisible(find.text('Aggiungi'));
+        await app.tap(find.text('Aggiungi'));
+        expect(find.byKey(const Key('slot_sheet_done')), findsOneWidget);
+        expect(
+          find.text('Hai aggiunto tutte le copie richieste.'),
+          findsOneWidget,
+        );
+        expect(
+          app.issues,
+          isEmpty,
+          reason: 'overflow nel completamento foglio',
+        );
+      },
+    ),
+    Scenario(
+      26,
+      'dettaglio-viaggio',
+      'foglio-ricerca-stretto-tastiera',
+      route: '/trips/:id/needs?slot=slot-magliette',
+      source: 'lib/features/trips/view/widgets/slots/slot_fill_sheet.dart',
+      description:
+          'Render Flutter a 320×640 dp, testo 160% e viewInsets da tastiera; '
+          'ricerca inventario aperta con risultati.',
+      setup: AppSetup(
+        viewport: const Size(320, 640),
+        initialViewport: kScreenSize,
+        textScale: 1.6,
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) async {
+        await app.go('/trips/$kSeoulTripId/needs?slot=slot-magliette');
+        app.tester.view.physicalSize = const Size(320, 640) * kPixelRatio;
+        app.tester.view.viewInsets = const FakeViewPadding(
+          bottom: 280 * kPixelRatio,
+        );
+        await app.settle();
+        expect(
+          find.byKey(const Key('slot_sheet_input_slot-magliette')),
+          findsOneWidget,
+        );
+        await app.enterText(
+          find.byType(TextField).first,
+          'Caricatore telefono',
+        );
+        await app.tester.ensureVisible(find.text('Cerca nel tuo inventario'));
+        expect(
+          find.text('Cerca nel tuo inventario').hitTestable(),
+          findsOneWidget,
+        );
+        await app.tap(find.text('Cerca nel tuo inventario'));
+        expect(find.text('Oggetti trovati'), findsOneWidget);
+        expect(find.text('Caricatore telefono'), findsWidgets);
+        final result = find.text('Caricatore telefono').last;
+        await app.tester.ensureVisible(result);
+        expect(result.hitTestable(), findsOneWidget);
+        expect(
+          app.issues,
+          isEmpty,
+          reason: 'overflow con tastiera e testo 160%',
+        );
+      },
+    ),
+    Scenario(
+      27,
+      'dettaglio-viaggio',
+      'necessita-importanti',
+      route: '/trips/:id/needs',
+      source: _tripDetailSrc,
+      description:
+          'Testa della pagina necessità con le card importanti e motivazioni '
+          'complete del seed salvato.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) async {
+        await _tripDetail(app, kSeoulTripId);
+        await app.push('/trips/$kSeoulTripId/needs');
+        expect(find.textContaining('Fino a -7°'), findsOneWidget);
+        expect(app.issues, isEmpty, reason: 'overflow nelle card importanti');
+      },
+    ),
+    Scenario(
+      28,
+      'dettaglio-viaggio',
+      'viaggio-cambiato',
+      route: '/trips/:id',
+      source: 'lib/features/trips/view/widgets/trip_changed_notice.dart',
+      description:
+          'Valigia AI fatta per un viaggio che finiva un giorno prima: in '
+          'cima compare "Hai cambiato il viaggio" con "Rifalla con AI".',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+          await seedRigenera(c, kSeoulTripId, changed: true);
+        },
+      ),
+      steps: (app) async {
+        await _tripDetail(app, kSeoulTripId);
+        expect(find.byKey(const Key('trip_changed_notice')), findsOneWidget);
+      },
+    ),
+    Scenario(
+      29,
+      'necessita',
+      'card-alleggerite',
+      source: _tripDetailSrc,
+      description: 'Importanti con bordo arancione e contenuto neutro.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) => _needsDetail(app),
+    ),
+    Scenario(
+      30,
+      'necessita',
+      'foglio-titolo-lungo',
+      source: _tripDetailSrc,
+      description:
+          'Titolo lungo, X in alto, Da comprare a destra, ricerca espandibile.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+          await c.read(tripNotifierProvider.future);
+          await c
+              .read(tripNotifierProvider.notifier)
+              .updateAiSlot(
+                kSeoulTripId,
+                'slot-magliette',
+                (s) => s.copyWith(name: 'Mocassini eleganti per il viaggio'),
+              );
+        },
+      ),
+      steps: (app) async {
+        await _needsDetail(app);
+        await app.tester.drag(
+          find.byType(ListView).first,
+          const Offset(0, -1200),
+        );
+        await app.settle();
+        await app.tester.ensureVisible(
+          find.byKey(const Key('slot_row_slot-magliette')),
+        );
+        await app.tap(find.byKey(const Key('slot_row_slot-magliette')));
+        expect(app.issues, isEmpty);
+      },
+    ),
   ]),
-
   Flow('10-profilo', 'Tab Profilo: impostazioni e account', [
     Scenario(
       1,
@@ -1833,8 +2400,7 @@ final flows = <Flow>[
       source: 'lib/features/luggages/view/add_edit_luggage_screen.dart',
       description: 'Modifica bagaglio: nome, taglia e menu eliminazione.',
       steps: (app) async {
-        await app.go('/trips');
-        await app.push('/trips/$kUpcomingTripId/edit-items');
+        await _tripDetail(app);
         await app.tester.ensureVisible(
           find.byKey(const Key('pack_manage_luggages')),
         );
@@ -1849,8 +2415,7 @@ final flows = <Flow>[
       source: 'lib/features/luggages/view/add_edit_luggage_screen.dart',
       description: 'Nuovo bagaglio personalizzato con volume in litri.',
       steps: (app) async {
-        await app.go('/trips');
-        await app.push('/trips/$kUpcomingTripId/edit-items');
+        await _tripDetail(app);
         await app.tester.ensureVisible(
           find.byKey(const Key('pack_manage_luggages')),
         );
@@ -1908,8 +2473,7 @@ final flows = <Flow>[
       description:
           'Bagagli dell’utente gestibili dal viaggio, indipendenti dalle case.',
       steps: (app) async {
-        await app.go('/trips');
-        await app.push('/trips/$kUpcomingTripId/edit-items');
+        await _tripDetail(app);
         await app.tester.ensureVisible(
           find.byKey(const Key('pack_manage_luggages')),
         );
@@ -1920,11 +2484,10 @@ final flows = <Flow>[
       9,
       'bagagli',
       'selezione-viaggio',
-      source: 'lib/features/trips/view/pack_suitcase_screen.dart',
-      description: 'Selezione, creazione e gestione dei bagagli nella valigia.',
+      source: _tripDetailSrc,
+      description: 'Selezione, creazione e gestione dei bagagli nel dettaglio.',
       steps: (app) async {
-        await app.go('/trips');
-        await app.push('/trips/$kUpcomingTripId/edit-items');
+        await _tripDetail(app);
         await app.tester.ensureVisible(_text('trips.pack.luggages'));
         await app.settle();
       },
@@ -1939,6 +2502,7 @@ final flows = <Flow>[
       description:
           'Il foglio di un viaggio con una tappa: casa, bagaglio, attività '
           'e alloggio, senza stepper.',
+      setup: _rigeneraSetup(kSavedTripId),
       steps: (app) => _openAiSheet(app, kSavedTripId),
     ),
     Scenario(
@@ -1948,6 +2512,7 @@ final flows = <Flow>[
       source: _aiSheetSrc,
       description:
           'Il foglio con due tappe: avanzamento in alto e meteo della tappa.',
+      setup: _rigeneraSetup(kUpcomingTripId),
       steps: (app) => _openAiSheet(app, kUpcomingTripId),
     ),
     Scenario(
@@ -1958,10 +2523,11 @@ final flows = <Flow>[
       description:
           'Prepara la valigia con una tappa ancora da compilare: l\'avviso '
           'dice quale, e chiede se la compili ora.',
+      setup: _rigeneraSetup(kUpcomingTripId),
       steps: (app) async {
         await _openAiSheet(app, kUpcomingTripId);
-        await _tapShown(app, _text('trips.ai.activity.city'));
-        await _tapShown(app, _text('trips.ai.stay.hotel'));
+        await _tapShown(app, find.text(etichettaDi('activity', 'city')));
+        await _tapShown(app, find.text(etichettaDi('stay', 'hotel')));
         await _tapShown(app, find.text('trips.ai.next'.tr(args: ['Sintra'])));
         await _tapShown(
           app,
@@ -1989,15 +2555,13 @@ final flows = <Flow>[
       ),
       steps: (app) async {
         await app.go('/trips');
-        unawaited(
-          app.router.push(
-            '/trips/$kUpcomingTripId/ai-packing',
-            extra: const PackTripJob(
-              body: <String, dynamic>{},
-              houseId: kHomeId,
-              title: 'Lisbona e Sintra',
-              nights: 5,
-            ),
+        await _startWait(
+          app,
+          const PackTripJob(
+            body: <String, dynamic>{},
+            houseId: kHomeId,
+            title: 'Lisbona e Sintra',
+            nights: 5,
           ),
         );
         await app.settle();
@@ -2005,46 +2569,39 @@ final flows = <Flow>[
     ),
     Scenario(
       5,
-      'valigia',
-      'generata-con-avvisi',
-      source: _packSrc,
+      'attesa',
+      'due-passi-chiusi',
+      source: _aiWaitSrc,
       description:
-          'Valigia generata: avvisi aperti in cima, capi e igiene in valigia, '
-          'il capo da indossare in partenza segnato.',
-      setup: const AppSetup(aiPacking: true),
-      steps: (app) => _pack(app, kUpcomingTripId),
-    ),
-    Scenario(
-      6,
-      'valigia',
-      'dalla-casa-aperta',
-      source: _aiHomeSrc,
-      description:
-          'Gruppo "Dalla casa" aperto: gli oggetti non di abbigliamento che '
-          'non sono in valigia, da aggiungere con un tocco.',
-      setup: const AppSetup(aiPacking: true),
+          'L\'attesa dopo circa sette secondi: meteo e armadio sono chiusi, '
+          'ognuno con la sua riga col dato vero; il terzo passo lampeggia.',
+      setup: AppSetup(
+        extraOverrides: [
+          packTripServiceProvider.overrideWith(
+            (ref) => HangingPackTripService(),
+          ),
+        ],
+      ),
       steps: (app) async {
-        await _pack(app, kUpcomingTripId);
-        final header = find.descendant(
-          of: find.byType(AiHomeGroup),
-          matching: find.byType(InkWell),
+        await app.go('/trips');
+        await _startWait(
+          app,
+          const PackTripJob(
+            body: <String, dynamic>{
+              'trip': {
+                'attivita': ['city', 'walks'],
+              },
+            },
+            houseId: kHomeId,
+            title: 'Lisbona e Sintra',
+            nights: 5,
+          ),
         );
-        await app.tester.drag(
-          find.byType(ListView).first,
-          const Offset(0, -1500),
-        );
-        await app.settle();
-        await app.tap(header);
-        await app.tester.drag(
-          find.byType(ListView).first,
-          const Offset(0, -1000),
-        );
-        await app.settle();
-        await app.settle();
+        await app.settle(frames: 75);
       },
     ),
     Scenario(
-      7,
+      8,
       'scheda-oggetto',
       'capo-in-partenza',
       source: _aiItemSrc,
@@ -2053,39 +2610,73 @@ final flows = <Flow>[
           'Togli dalla valigia.',
       setup: const AppSetup(aiPacking: true),
       steps: (app) async {
-        await _pack(app, kUpcomingTripId);
+        await _tripDetail(app, kUpcomingTripId);
         // La riga è più in basso nella lista: prima la si porta a schermo.
-        await app.tester.ensureVisible(find.text('Giacca impermeabile').first);
+        await app.tester.scrollUntilVisible(
+          find.text('Giacca impermeabile'),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
         await app.settle();
         await app.tap(find.text('Giacca impermeabile'));
       },
     ),
     Scenario(
-      8,
-      'avvisi',
-      'elenco',
-      source: _aiRowsSrc,
-      description:
-          'Cosa manca: avvisi importanti in ambra e utili, ognuno con "Cerca '
-          'nell\'armadio" e "Ok, capito".',
-      setup: const AppSetup(aiPacking: true),
-      steps: (app) async {
-        await _pack(app, kUpcomingTripId);
-        await app.tap(find.byKey(const Key('pack_row_missing')));
-      },
-    ),
-    Scenario(
-      9,
+      10,
       'motivi',
       'elenco',
       source: _aiRowsSrc,
       description:
           'Perché queste scelte: un punto per clima o attività, con '
           'i capi collegati.',
-      setup: const AppSetup(aiPacking: true),
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
       steps: (app) async {
-        await _pack(app, kUpcomingTripId);
+        await _tripDetail(app, kSeoulTripId);
         await app.tap(find.byKey(const Key('pack_row_reasons')));
+      },
+    ),
+    Scenario(
+      11,
+      'motivi',
+      'con-posti',
+      source: _aiRowsSrc,
+      description:
+          'Perché queste scelte con i posti: gli importanti ancora aperti, '
+          'i punti dall\'armadio e i suggeriti, ognuno col suo motivo.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) async {
+        await _pack(app, kSeoulTripId);
+        await app.tap(find.byKey(const Key('pack_row_reasons')));
+      },
+    ),
+    Scenario(
+      12,
+      'motivi',
+      'con-posti-armadio',
+      source: _aiRowsSrc,
+      description:
+          'Lo stesso foglio scorso in fondo: i suggeriti e i punti '
+          'dall\'armadio, ognuno nel suo riquadro.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) async {
+        await _pack(app, kSeoulTripId);
+        await app.tap(find.byKey(const Key('pack_row_reasons')));
+        await _scrollSheet(app, -2000);
       },
     ),
   ]),
@@ -2245,12 +2836,187 @@ final flows = <Flow>[
       },
     ),
   ]),
+
+  Flow('13-kit', 'Kit: creazione e modifica nel foglio', [
+    Scenario(
+      1,
+      'kit',
+      'creazione',
+      route: '/houses/:id/kits/new',
+      source: 'lib/features/kits/view/kit_editor_screen.dart',
+      description:
+          'Nuovo kit nel foglio standard: Salva in testata, facoltativo sotto il titolo e pillole modificabili.',
+      setup: AppSetup(seedWith: _seedKitSheetPreview),
+      steps: (app) async {
+        await _openKitSheetPreview(app);
+        expect(app.issues, isEmpty);
+      },
+    ),
+    Scenario(
+      2,
+      'kit',
+      'ultimo-oggetto',
+      route: '/houses/:id/kits/new',
+      source: 'lib/features/kits/view/kit_editor_screen.dart',
+      description:
+          'Tutti e tre gli oggetti raggiungibili sopra il Rapid Fire; ultima riga e X toccabili.',
+      setup: AppSetup(seedWith: _seedKitSheetPreview),
+      steps: (app) async {
+        await _openKitSheetPreview(app);
+        final last = find.byKey(const Key('kit_item_row_kit-preview-2'));
+        await app.tester.ensureVisible(last);
+        await app.settle();
+        expect(
+          find.byKey(const Key('kit_item_remove_kit-preview-2')).hitTestable(),
+          findsOneWidget,
+        );
+        expect(app.issues, isEmpty);
+      },
+    ),
+    Scenario(
+      3,
+      'kit',
+      'stretto-tastiera',
+      route: '/houses/:id/kits/new',
+      source: 'lib/features/kits/view/kit_editor_screen.dart',
+      description:
+          'Foglio a320×640dp, testo160% e inset tastiera280dp simulato; controlli raggiungibili nello scroll.',
+      setup: AppSetup(
+        seedWith: _seedKitSheetPreview,
+        viewport: const Size(320, 640),
+        initialViewport: const Size(412, 915),
+        textScale: 1.6,
+      ),
+      steps: (app) async {
+        await _openKitSheetPreview(app);
+        app.tester.view.physicalSize = const Size(320, 640) * kPixelRatio;
+        app.tester.view.viewInsets = const FakeViewPadding(
+          bottom: 280 * kPixelRatio,
+        );
+        await app.settle();
+        await app.tester.ensureVisible(
+          find.byKey(const Key('kit_item_row_kit-preview-2')),
+        );
+        await app.settle();
+        expect(
+          find.byKey(const Key('kit_item_remove_kit-preview-2')).hitTestable(),
+          findsOneWidget,
+        );
+        expect(find.byKey(const Key('kit_save')).hitTestable(), findsOneWidget);
+        expect(app.issues, isEmpty);
+      },
+    ),
+    Scenario(
+      4,
+      'casa-kit',
+      'card',
+      route: '/houses/:id',
+      source: 'lib/features/kits/view/widgets/kit_chip_card.dart',
+      description:
+          'Card kit approvata: icona grande, nome e tag, senza quantità, bordo o freccia.',
+      setup: AppSetup(seedWith: _seedHouseKitPreview),
+      steps: (app) async {
+        await _openHouseKitPreview(app);
+        expect(find.byType(KitChipCard), findsOneWidget);
+        expect(app.issues, isEmpty);
+      },
+    ),
+    Scenario(
+      5,
+      'casa-kit',
+      'scorso',
+      route: '/houses/:id',
+      source: 'lib/features/houses/view/house_detail_screen.dart',
+      description:
+          'La striscia dei kit è uscita dallo schermo; resta la categoria degli oggetti visibili.',
+      setup: AppSetup(seedWith: _seedHouseKitPreview),
+      steps: (app) async {
+        await _openHouseKitPreview(app);
+        await app.tester.drag(
+          find.byType(CustomScrollView).last,
+          const Offset(0, -420),
+        );
+        await app.settle();
+        expect(find.byType(KitChipCard).hitTestable(), findsNothing);
+        expect(app.issues, isEmpty);
+      },
+    ),
+    Scenario(
+      6,
+      'casa-kit',
+      'stretto',
+      route: '/houses/:id',
+      source: 'lib/features/kits/view/widgets/kit_chip_card.dart',
+      description:
+          'Card kit nel rendering Flutter a320×640dp e testo160%, senza overflow.',
+      setup: AppSetup(
+        seedWith: _seedHouseKitPreview,
+        viewport: const Size(320, 640),
+        textScale: 1.6,
+      ),
+      steps: (app) async {
+        await _openHouseKitPreview(app);
+        expect(find.byType(KitChipCard), findsOneWidget);
+        expect(app.issues, isEmpty);
+      },
+    ),
+  ]),
 ];
+
+const _kitPreviewIds = ['kit-preview-0', 'kit-preview-1', 'kit-preview-2'];
+
+Future<void> _seedKitSheetPreview(ProviderContainer container) async {
+  await seed(container, SeedLevel.full);
+  final names = ['Cuscino', 'Mascherina', 'Tappi per le orecchie'];
+  await container.read(itemRepositoryProvider).insertMultipleItems([
+    for (var i = 0; i < names.length; i++)
+      ItemModel(
+        id: _kitPreviewIds[i],
+        houseId: kHomeId,
+        name: names[i],
+        category: ItemCategory.varie,
+        quantity: 1,
+        createdAt: DateTime(2026, 11, 9),
+        updatedAt: DateTime(2026, 11, 9),
+      ),
+  ]);
+}
+
+Future<void> _seedHouseKitPreview(ProviderContainer container) async {
+  await _seedKitSheetPreview(container);
+  final repo = container.read(kitRepositoryProvider);
+  final kit = await repo.createKit(
+    houseId: kHomeId,
+    name: 'Kit aereo',
+    transports: ['plane'],
+  );
+  await repo.addItems(kit.id, {for (final id in _kitPreviewIds) id: 1});
+}
+
+Future<void> _openHouseKitPreview(ScreenshotApp app) async {
+  await app.go('/');
+  await app.push('/houses/$kHomeId');
+}
+
+Future<void> _openKitSheetPreview(ScreenshotApp app) async {
+  await app.go('/');
+  await app.push('/houses/$kHomeId');
+  unawaited(
+    app.router.push<bool>('/houses/$kHomeId/kits/new', extra: _kitPreviewIds),
+  );
+  await app.settle();
+  await app.enterText(find.byKey(const Key('kit_name_field')), 'Kit aereo');
+  await app.tap(find.byKey(const Key('kit_uses_more')));
+  app.tester.testTextInput.hide();
+  await app.settle();
+}
 
 void main() {
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
     await EasyLocalization.ensureInitialized();
+    // Tipi, usi, attività e alloggi si leggono dal catalogo, come in produzione.
+    caricaCatalogoDelRepo();
     useSystemSqlite();
     await loadRealFonts();
     await createPhotoFixtures();
@@ -2275,21 +3041,25 @@ void main() {
               theme: theme,
               setup: s.setup,
             );
-            await s.steps(app);
-            await app.capture(
-              Shot(
-                flow: flow.id,
-                flowTitle: flow.title,
-                order: s.order,
-                screen: s.screen,
-                state: s.state,
-                source: s.source,
-                description: s.description,
-                route: s.route,
-                theme: theme,
-              ),
-            );
-            await app.finish();
+            try {
+              await s.steps(app);
+              await app.capture(
+                Shot(
+                  flow: flow.id,
+                  flowTitle: flow.title,
+                  order: s.order,
+                  screen: s.screen,
+                  state: s.state,
+                  source: s.source,
+                  description: s.description,
+                  route: s.route,
+                  theme: theme,
+                  viewport: s.setup.viewport,
+                ),
+              );
+            } finally {
+              await app.finish();
+            }
           });
         }
       }

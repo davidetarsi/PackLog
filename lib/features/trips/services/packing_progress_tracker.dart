@@ -1,7 +1,8 @@
 /// Traduce una spunta della checklist di viaggio negli eventi analytics del
 /// funnel "preparazione della valigia".
 ///
-/// **Perché è puro.** Non conosce Riverpod, il database né il sink analytics:
+/// **Perché è puro.** Il calcolo ([packingEventsFor]) non conosce Riverpod, il
+/// database né il sink analytics ([sendPackingEvent] inoltra a parte):
 /// riceve la transizione (quanti oggetti erano spuntati prima, quanti dopo) e
 /// restituisce gli eventi da emettere. La logica che sbaglia più facilmente —
 /// l'attraversamento delle soglie — è così testabile senza container né mock,
@@ -14,6 +15,10 @@
 /// evento ripetuto è chi despunta e rispunta oscillando attorno a una soglia,
 /// che è comportamento reale e raro — non vale una tabella in più.
 library;
+
+import 'package:flutter/foundation.dart';
+
+import '../../../core/analytics/core_analytics_service.dart';
 
 /// Soglie intermedie di completamento, in percentuale.
 const List<int> kPackingThresholds = [25, 50, 75];
@@ -46,6 +51,48 @@ class PackingEvent {
     }
     return true;
   }
+}
+
+/// Inoltra [event] al suo metodo tipato di [analytics]. Restituisce false,
+/// senza mandare niente e senza lanciare, per un nome che non conosce o
+/// proprietà malformate: una spunta non deve mai fallire per l'analytics, e
+/// un evento nuovo del tracker non mappato qui si vede nel log di debug.
+bool sendPackingEvent(CoreAnalyticsService analytics, PackingEvent event) {
+  final p = event.properties;
+  final tripId = p['trip_id'];
+  final days = p['days_to_departure'];
+  if (tripId is! String || (days != null && days is! int)) {
+    return _unsent(event);
+  }
+  final total = p['total_items'];
+  switch (event.name) {
+    case 'packing_started' when total is int:
+      analytics.trackPackingStarted(
+        tripId: tripId,
+        totalItems: total,
+        daysToDeparture: days as int?,
+      );
+    case 'packing_completed' when total is int:
+      analytics.trackPackingCompleted(
+        tripId: tripId,
+        totalItems: total,
+        daysToDeparture: days as int?,
+      );
+    case 'packing_progress' when p['threshold'] is int:
+      analytics.trackPackingProgress(
+        tripId: tripId,
+        threshold: p['threshold'] as int,
+        daysToDeparture: days as int?,
+      );
+    default:
+      return _unsent(event);
+  }
+  return true;
+}
+
+bool _unsent(PackingEvent event) {
+  debugPrint('[Packing] evento non inoltrato: $event');
+  return false;
 }
 
 /// Calcola gli eventi del funnel della valigia per una singola spunta.

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
+import '../monitoring/monitoring_service.dart';
 import '../../bootstrap.dart';
 import '../../features/onboarding/providers/onboarding_status_provider.dart';
 import '../analytics/core_analytics_service.dart';
@@ -17,8 +18,11 @@ import '../../features/auth/view/login_screen.dart';
 import '../../features/houses/view/houses_screen.dart';
 import '../../features/houses/view/add_edit_house_screen.dart';
 import '../../features/houses/view/house_detail_screen.dart';
+import '../../features/kits/view/kit_detail_screen.dart';
+import '../../features/kits/view/kit_editor_screen.dart';
 import '../../features/profile/view/profile_screen.dart';
 import '../../features/trips/view/ai_packing_wait_screen.dart';
+import '../../features/trips/view/to_buy_screen.dart';
 import '../../features/trips/view/trips_screen.dart';
 import '../../features/trips/view/trip_detail_screen.dart';
 import '../../features/trips/view/new_trip_screen.dart';
@@ -34,12 +38,28 @@ import '../../features/tour/widgets/tour_trigger_wrapper.dart';
 import '../../shared/dev/ds_theme_showcase_screen.dart';
 import '../../shared/widgets/main_shell.dart';
 import '../../shared/widgets/ds_not_found_state.dart';
+import '../../shared/widgets/ds_form_sheet.dart';
 
 part 'app_router.g.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _housesNavigatorKey = GlobalKey<NavigatorState>();
 final _tripsNavigatorKey = GlobalKey<NavigatorState>();
+
+/// Dove portare un account al primo avvio: "Dove vai?" (`/new-trip?first=1`),
+/// da ogni rotta tranne quelle in cui sta già
+/// facendo il suo percorso (nuovo viaggio, i viaggi e la loro valigia, il
+/// primo onboarding) e il login. `null` se non serve nessun redirect.
+@visibleForTesting
+String? firstTripRedirect({
+  required OnboardingStep? step,
+  required String location,
+}) {
+  if (step != OnboardingStep.firstTrip) return null;
+  const exempt = ['/new-trip', '/trips', '/onboarding', '/login'];
+  if (exempt.any(location.startsWith)) return null;
+  return '/new-trip?first=1';
+}
 
 class _AuthChangeNotifier extends ChangeNotifier {
   _AuthChangeNotifier(Ref ref) {
@@ -67,7 +87,10 @@ GoRouter appRouter(Ref ref) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/',
-    observers: [AnalyticsNavigatorObserver(analytics)],
+    observers: [
+      AnalyticsNavigatorObserver(analytics),
+      appSentryNavigatorObserver(),
+    ],
     refreshListenable: authChangeNotifier,
     redirect: (context, state) {
       // 1. Wait for bootstrap
@@ -106,6 +129,12 @@ GoRouter appRouter(Ref ref) {
         final isOnAiIntro = state.matchedLocation.startsWith(
           '/onboarding-ai-intro',
         );
+
+        final firstTripTarget = firstTripRedirect(
+          step: postLoginStep,
+          location: state.matchedLocation,
+        );
+        if (firstTripTarget != null) return firstTripTarget;
 
         if (postLoginStep == OnboardingStep.aiIntro && !isOnAiIntro) {
           return '/onboarding-ai-intro';
@@ -210,6 +239,69 @@ GoRouter appRouter(Ref ref) {
           );
         },
       ),
+      // `kits/new` prima di `kits/:kitId`, che altrimenti la prenderebbe per
+      // un id. Gli oggetti già dentro il kit nuovo arrivano in `extra`.
+      GoRoute(
+        path: '/houses/:id/kits/new',
+        name: 'kit-new',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) {
+          final id = state.pathParameters['id'];
+          if (id == null || id.isEmpty) {
+            return MaterialPage<void>(
+              key: state.pageKey,
+              child: _ErrorScreen(message: 'common.content_unavailable'.tr()),
+            );
+          }
+          final extra = state.extra;
+          return DsFormSheetPage<bool>(
+            key: state.pageKey,
+            name: state.name,
+            builder: (_) => KitEditorScreen(
+              houseId: id,
+              initialItemIds: extra is List<String> ? extra : const [],
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/houses/:id/kits/:kitId',
+        name: 'kit-detail',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          final kitId = state.pathParameters['kitId'];
+          if (id == null || id.isEmpty || kitId == null || kitId.isEmpty) {
+            return _ErrorScreen(message: 'common.content_unavailable'.tr());
+          }
+          return KitDetailScreen(houseId: id, kitId: kitId);
+        },
+      ),
+      GoRoute(
+        path: '/houses/:id/kits/:kitId/edit',
+        name: 'kit-edit',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) {
+          final id = state.pathParameters['id'];
+          final kitId = state.pathParameters['kitId'];
+          if (id == null || id.isEmpty || kitId == null || kitId.isEmpty) {
+            return MaterialPage<void>(
+              key: state.pageKey,
+              child: _ErrorScreen(message: 'common.content_unavailable'.tr()),
+            );
+          }
+          return DsFormSheetPage<bool>(
+            key: state.pageKey,
+            name: state.name,
+            builder: (_) => KitEditorScreen(
+              houseId: id,
+              kitId: kitId,
+              // `?add=1` arriva da "Aggiungi oggetti": tastiera già su.
+              focusAdd: state.uri.queryParameters['add'] == '1',
+            ),
+          );
+        },
+      ),
       GoRoute(
         path: '/houses/:id/ai-import/results',
         name: 'ai-import-results',
@@ -222,6 +314,29 @@ GoRouter appRouter(Ref ref) {
           return AiResultsScreen(houseId: id, isFirstTimeOnboarding: false);
         },
       ),
+      // Prima di `/trips/:id`, che altrimenti la prenderebbe per un id.
+      GoRoute(
+        path: '/trips/to-buy',
+        name: 'trips-to-buy',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ToBuyScreen(),
+      ),
+      GoRoute(
+        path: '/trips/:id/needs',
+        name: 'trip-needs',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          if (id == null || id.isEmpty) {
+            return _ErrorScreen(message: 'common.content_unavailable'.tr());
+          }
+          return TripDetailScreen(
+            tripId: id,
+            showNeeds: true,
+            initialSlotId: state.uri.queryParameters['slot'],
+          );
+        },
+      ),
       GoRoute(
         path: '/trips/:id',
         name: 'trip-detail',
@@ -231,7 +346,12 @@ GoRouter appRouter(Ref ref) {
           if (id == null || id.isEmpty) {
             return _ErrorScreen(message: 'common.content_unavailable'.tr());
           }
-          return TripDetailScreen(tripId: id);
+          // `?slot=<id>` apre la barra per riempire quel posto della valigia.
+          return TripDetailScreen(
+            tripId: id,
+            initialSlotId: state.uri.queryParameters['slot'],
+            firstReview: state.uri.queryParameters['review'] == '1',
+          );
         },
       ),
       GoRoute(
@@ -244,7 +364,8 @@ GoRouter appRouter(Ref ref) {
           body: 'tour.trip_creation_tooltip.body'.tr(),
           advancesOnOk: true,
           child: NewTripScreen(
-            aiIntent: state.uri.queryParameters['ai'] == '1',
+            firstRun: state.uri.queryParameters['first'] == '1',
+            reuseFromId: state.uri.queryParameters['reuseFrom'],
           ),
         ),
       ),
@@ -258,10 +379,7 @@ GoRouter appRouter(Ref ref) {
             return _ErrorScreen(message: 'common.content_unavailable'.tr());
           }
           // Stessa pagina del nuovo viaggio, in modifica.
-          return NewTripScreen(
-            tripId: id,
-            discardOnExit: state.uri.queryParameters['reuse'] == '1',
-          );
+          return NewTripScreen(tripId: id);
         },
       ),
       GoRoute(
@@ -276,7 +394,6 @@ GoRouter appRouter(Ref ref) {
           return PackSuitcaseScreen(
             tripId: id,
             fromNewTrip: state.uri.queryParameters['from'] == 'new',
-            startAi: state.uri.queryParameters['ai'] == '1',
           );
         },
       ),
@@ -297,17 +414,10 @@ GoRouter appRouter(Ref ref) {
         },
       ),
       GoRoute(
-        path: '/trips/:id/ai-packing',
+        path: '/ai-packing',
         name: 'trip-ai-packing',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
-          final id = state.pathParameters['id'];
-          final job = state.extra;
-          if (id == null || id.isEmpty || job is! PackTripJob) {
-            return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
-          }
-          return AiPackingWaitScreen(tripId: id, job: job);
-        },
+        builder: (context, state) => const AiPackingWaitScreen(),
       ),
       GoRoute(
         path: '/dev/ds-showcase',

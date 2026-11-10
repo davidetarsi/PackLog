@@ -13,6 +13,7 @@ void main() {
     IconData? icon,
     bool iconAtEnd = false,
     bool destructive = false,
+    bool accent = false,
   }) {
     return tester.pumpWidget(
       MaterialApp(
@@ -25,6 +26,7 @@ void main() {
               icon: icon,
               iconAtEnd: iconAtEnd,
               destructive: destructive,
+              accent: accent,
             ),
           ),
         ),
@@ -102,5 +104,28 @@ void main() {
     await pumpButton(tester, onPressed: () {}, icon: Icons.add);
 
     expect(contentOrder(tester), [Icon, Text]);
+  });
+
+  testWidgets('accentato: testo e icona in primary', (tester) async {
+    await pumpButton(tester, onPressed: () {}, icon: Icons.add, accent: true);
+
+    final primary = colorsOf(tester).primary;
+    expect(labelText(tester).style?.color, primary);
+    expect(tester.widget<Icon>(find.byIcon(Icons.add)).color, primary);
+  });
+
+  testWidgets('distruttivo vince su accentato', (tester) async {
+    await pumpButton(tester, onPressed: () {}, destructive: true, accent: true);
+
+    expect(labelText(tester).style?.color, colorsOf(tester).error);
+  });
+
+  testWidgets('accentato ma spento: resta al 50% di onSurface', (tester) async {
+    await pumpButton(tester, onPressed: null, accent: true);
+
+    final expected = colorsOf(
+      tester,
+    ).onSurface.withValues(alpha: AppOpacity.disabled);
+    expect(labelText(tester).style?.color, expected);
   });
 }

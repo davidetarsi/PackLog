@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import '../../../features/items/model/item_model.dart';
 import '../database.dart';
 import '../tables/items_table.dart';
 import '../tables/mixins/syncable_table.dart';
@@ -35,6 +36,13 @@ class ItemsDao extends DatabaseAccessor<AppDatabase>
   /// Ottiene tutti gli oggetti non eliminati
   Future<List<Item>> getAllItems() =>
       (select(items)..where((i) => i.isDeleted.equals(false))).get();
+
+  /// Gli oggetti con questi [ids], in una sola query (anche se eliminati:
+  /// serve solo a leggerne la scheda).
+  Future<List<Item>> getItemsByIds(List<String> ids) {
+    if (ids.isEmpty) return Future.value(const []);
+    return (select(items)..where((i) => i.id.isIn(ids))).get();
+  }
 
   /// Ottiene tutti gli oggetti non eliminati come stream
   Stream<List<Item>> watchAllItems() =>
@@ -91,11 +99,67 @@ class ItemsDao extends DatabaseAccessor<AppDatabase>
     return count > 0;
   }
 
+  /// Aggiorna solo i metadati AI (e la categoria, se [compute] la dà) di un
+  /// oggetto, dentro una transazione.
+  ///
+  /// La riga si rilegge nella transazione e [compute] decide su quella: così
+  /// un salvataggio della scheda concorrente non viene annullato, perché le
+  /// altre colonne (nome, quantità, spazio, nota) non si toccano mai. Scrive
+  /// `ai_metadata`, `category` (se data), `updated_at` e
+  /// `syncStatus = pendingUpdate`, come [updateItem], per far partire il sync.
+  ///
+  /// Restituisce la riga scritta; `null` se l'oggetto non c'è più (o è
+  /// eliminato) o se [compute] risponde `null` (niente da scrivere).
+  Future<Item?> updateAiMetadata(
+    String id,
+    ({String aiMetadata, ItemCategory? category})? Function(Item current)
+    compute, {
+    DateTime? updatedAt,
+  }) {
+    return transaction(() async {
+      final current = await getItemById(id);
+      if (current == null) return null;
+      final change = compute(current);
+      if (change == null) return null;
+      final now = updatedAt ?? DateTime.now();
+      await (update(items)..where((i) => i.id.equals(id))).write(
+        ItemsCompanion(
+          aiMetadata: Value(change.aiMetadata),
+          category: change.category == null
+              ? const Value.absent()
+              : Value(change.category!),
+          updatedAt: Value(now),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+        ),
+      );
+      return current.copyWith(
+        aiMetadata: Value(change.aiMetadata),
+        category: change.category ?? current.category,
+        updatedAt: now,
+        syncStatus: SyncStatus.pendingUpdate,
+      );
+    });
+  }
+
   /// Soft-delete di un singolo oggetto
   Future<int> deleteItem(String id) {
     return (update(items)..where((i) => i.id.equals(id))).write(
       ItemsCompanion(
         isDeleted: const Value(true),
+        syncStatus: const Value(SyncStatus.pendingUpdate),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Annulla il soft-delete di un singolo oggetto ("Annulla" dopo lo swipe).
+  ///
+  /// Rimette `isDeleted = false` e segna l'oggetto da sincronizzare: il
+  /// cloud riceve la rimozione dell'eliminazione, come per ogni modifica.
+  Future<int> restoreItem(String id) {
+    return (update(items)..where((i) => i.id.equals(id))).write(
+      ItemsCompanion(
+        isDeleted: const Value(false),
         syncStatus: const Value(SyncStatus.pendingUpdate),
         updatedAt: Value(DateTime.now()),
       ),
@@ -247,15 +311,19 @@ class ItemsDao extends DatabaseAccessor<AppDatabase>
     String? spaceId,
   }) async {
     if (itemIds.isEmpty) return;
-    await (update(
-      items,
-    )..where((t) => t.id.isIn(itemIds) & t.houseId.equals(fromHouseId))).write(
-      ItemsCompanion(
-        houseId: Value(toHouseId),
-        spaceId: Value(spaceId),
-        syncStatus: const Value(SyncStatus.pendingUpdate),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
+    await (update(items)..where(
+          (t) =>
+              t.id.isIn(itemIds) &
+              t.houseId.equals(fromHouseId) &
+              t.isDeleted.equals(false),
+        ))
+        .write(
+          ItemsCompanion(
+            houseId: Value(toHouseId),
+            spaceId: Value(spaceId),
+            syncStatus: const Value(SyncStatus.pendingUpdate),
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
   }
 }

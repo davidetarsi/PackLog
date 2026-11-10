@@ -5,13 +5,14 @@ import 'package:sqlite3/sqlite3.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/core/database/database.dart';
 
-/// Colonne aggiunte dalla v12: il confronto dei dati le ignora.
-const _colonneAi = {'ai_packing_setup', 'ai_packing_result'};
+/// Colonne aggiunte dalla v12 (AI) e dalla v13 (mezzi): il confronto dei dati
+/// le ignora.
+const _colonneAi = {'ai_packing_setup', 'ai_packing_result', 'transports'};
 
 void main() {
   for (final version in [8, 9, 10]) {
     test(
-      'v$version → v12 conserva inventario, viaggi e sync senza bagagli',
+      'v$version → v13 conserva inventario, viaggi e sync senza bagagli',
       () async {
         final directory = await Directory.systemTemp.createTemp(
           'packlog-migration-',
@@ -105,8 +106,13 @@ void main() {
           );
           CREATE INDEX idx_luggages_house_id ON luggages(house_id);
         """);
-          // Le colonne AI arrivano nella v12: ogni versione qui è anteriore.
+          // Le colonne AI arrivano nella v12, i kit e i mezzi nella v13: ogni
+          // versione qui è anteriore.
           raw.execute('''
+            DROP TABLE suitcase_edits;
+            DROP TABLE kit_items;
+            DROP TABLE kits;
+            ALTER TABLE trips DROP COLUMN transports;
             ALTER TABLE trips DROP COLUMN ai_packing_setup;
             ALTER TABLE trips DROP COLUMN ai_packing_result;
           ''');
@@ -135,6 +141,7 @@ void main() {
             if (table == 'trips') {
               expect(row.remove('ai_packing_setup'), isNull);
               expect(row.remove('ai_packing_result'), isNull);
+              expect(row.remove('transports'), isNull);
             }
           }
           expect(
@@ -151,14 +158,14 @@ void main() {
         expect(
           (await migrated.customSelect('PRAGMA user_version').getSingle())
               .data['user_version'],
-          12,
+          14,
         );
       },
     );
   }
 
   test(
-    'v10 → v12 conserva bagagli, metadati sync e collegamenti ai viaggi',
+    'v10 → v13 conserva bagagli, metadati sync e collegamenti ai viaggi',
     () async {
       final db = AppDatabase.forTesting(
         NativeDatabase.memory(
@@ -166,6 +173,7 @@ void main() {
             raw.execute('''
         CREATE TABLE houses (id TEXT PRIMARY KEY);
         CREATE TABLE trips (id TEXT PRIMARY KEY);
+        CREATE TABLE items (id TEXT PRIMARY KEY);
         CREATE TABLE luggages (
           id TEXT PRIMARY KEY NOT NULL,
           house_id TEXT NOT NULL REFERENCES houses(id) ON DELETE CASCADE,
@@ -201,7 +209,7 @@ void main() {
                   .get())
               .first
               .data;
-      expect(db.schemaVersion, 12);
+      expect(db.schemaVersion, 14);
       expect(row['id'], 'l1');
       expect(row['house_id'], 'h1');
       expect(row['name'], 'Zaino');

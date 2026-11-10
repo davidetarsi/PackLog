@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/features/tour/model/onboarding_state.dart';
 import 'package:pack_log/features/tour/providers/post_login_onboarding_provider.dart';
@@ -54,6 +55,94 @@ void _setupDefaultMock(
 void main() {
   setUpAll(() {
     registerFallbackValue(OnboardingStep.aiIntro);
+  });
+
+  group('PostLoginOnboarding — completeFirstTrip', () {
+    test('da firstTrip salva done', () async {
+      final repo = MockOnboardingRepository();
+      _setupDefaultMock(repo, step: OnboardingStep.firstTrip);
+      final container = makeContainer(repo: repo);
+      addTearDown(container.dispose);
+      await container.read(postLoginOnboardingProvider.future);
+
+      await container
+          .read(postLoginOnboardingProvider.notifier)
+          .completeFirstTrip();
+
+      verify(() => repo.saveStep(OnboardingStep.done)).called(1);
+      expect(
+        container.read(postLoginOnboardingProvider).valueOrNull?.step,
+        OnboardingStep.done,
+      );
+    });
+
+    test('dai passi del tour non cambia niente', () async {
+      for (final step in [
+        OnboardingStep.aiIntro,
+        OnboardingStep.houseDetailTooltip,
+        OnboardingStep.createTripTooltip,
+        OnboardingStep.tripCreationTooltip,
+      ]) {
+        final repo = MockOnboardingRepository();
+        _setupDefaultMock(repo, step: step);
+        final container = makeContainer(repo: repo);
+        addTearDown(container.dispose);
+        await container.read(postLoginOnboardingProvider.future);
+
+        await container
+            .read(postLoginOnboardingProvider.notifier)
+            .completeFirstTrip();
+
+        verifyNever(() => repo.saveStep(any()));
+        expect(
+          container.read(postLoginOnboardingProvider).valueOrNull?.step,
+          step,
+          reason: step.name,
+        );
+      }
+    });
+
+    test('da done non scrive nulla', () async {
+      final repo = MockOnboardingRepository();
+      _setupDefaultMock(repo, step: OnboardingStep.done);
+      final container = makeContainer(repo: repo);
+      addTearDown(container.dispose);
+      await container.read(postLoginOnboardingProvider.future);
+
+      await container
+          .read(postLoginOnboardingProvider.notifier)
+          .completeFirstTrip();
+
+      verifyNever(() => repo.saveStep(any()));
+    });
+  });
+
+  group('SharedPrefsOnboardingRepository — passo iniziale', () {
+    test('prefs vuote → firstTrip', () async {
+      SharedPreferences.setMockInitialValues({});
+      expect(
+        await SharedPrefsOnboardingRepository().loadStep(),
+        OnboardingStep.firstTrip,
+      );
+    });
+
+    test('aiIntro salvato (Ripeti il tour) → resta aiIntro', () async {
+      SharedPreferences.setMockInitialValues({});
+      final repo = SharedPrefsOnboardingRepository();
+      await repo.saveStep(OnboardingStep.aiIntro);
+      expect(await repo.loadStep(), OnboardingStep.aiIntro);
+    });
+
+    test('done salvato → done; gli indici salvati non cambiano', () async {
+      SharedPreferences.setMockInitialValues({'onboarding_step_v2': 6});
+      expect(
+        await SharedPrefsOnboardingRepository().loadStep(),
+        OnboardingStep.done,
+      );
+      expect(OnboardingStep.done.index, 6);
+      expect(OnboardingStep.houseDetailTooltip.index, 7);
+      expect(OnboardingStep.firstTrip.index, 8);
+    });
   });
 
   group('PostLoginOnboarding', () {
@@ -271,7 +360,7 @@ void main() {
     });
 
     test(
-      'reset(hasExistingHouses: false) returns to aiIntro with skippedAi=false',
+      'reset(hasExistingHouses: false) riparte da "Dove vai?" come il primo avvio',
       () async {
         final repo = MockOnboardingRepository();
         _setupDefaultMock(repo, step: OnboardingStep.done);
@@ -284,10 +373,12 @@ void main() {
             .reset(hasExistingHouses: false);
 
         final state = container.read(postLoginOnboardingProvider).valueOrNull!;
-        expect(state.step, OnboardingStep.aiIntro);
+        expect(state.step, OnboardingStep.firstTrip);
         expect(state.skippedAi, isFalse);
         expect(state.hasExistingHouses, isFalse);
         expect(state.defaultHouseId, isNull);
+        // Salvato: alla prossima apertura il router porta ancora lì.
+        verify(() => repo.saveStep(OnboardingStep.firstTrip)).called(1);
       },
     );
 
@@ -305,7 +396,9 @@ void main() {
             .reset(hasExistingHouses: true);
 
         final state = container.read(postLoginOnboardingProvider).valueOrNull!;
-        expect(state.step, OnboardingStep.aiIntro);
+        // Anche chi ha già delle case: niente prova con la foto, che
+        // creerebbe una casa nuova "Casa".
+        expect(state.step, OnboardingStep.firstTrip);
         expect(state.hasExistingHouses, isTrue);
       },
     );

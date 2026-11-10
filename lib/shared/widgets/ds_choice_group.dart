@@ -28,6 +28,9 @@ class DsChoiceGroup<T> extends StatelessWidget {
 
   /// Già tradotta dal chiamante.
   final String? note;
+
+  /// Con false la nota resta inline, come nei gruppi esistenti.
+  final bool noteBelow;
   final bool doubt;
   final Widget? trailing;
 
@@ -45,6 +48,7 @@ class DsChoiceGroup<T> extends StatelessWidget {
     this.multiple = false,
     this.required = true,
     this.note,
+    this.noteBelow = false,
     this.doubt = false,
     this.trailing,
     this.onTouched,
@@ -75,41 +79,78 @@ class DsChoiceGroup<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final noteContent = Row(
+      children: [
+        if (doubt)
+          Icon(
+            Icons.help_outline,
+            size: context.iconSizeSm,
+            color: cs.onSurface,
+          ),
+        if (doubt && note != null) SizedBox(width: context.spacingXxs),
+        if (note != null)
+          Flexible(
+            child: Text(
+              note!,
+              maxLines: noteBelow ? null : 1,
+              overflow: noteBelow ? null : TextOverflow.ellipsis,
+              style: tt.bodySmall?.copyWith(
+                color: doubt ? cs.onSurface : cs.onSurfaceVariant,
+              ),
+            ),
+          ),
+      ],
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: EdgeInsets.only(top: context.spacingLg),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // I titoli lunghi ("Cosa farai a Milano?") vanno a capo.
-              Flexible(
-                child: Text(title, style: DsFieldLabel.prominentStyle(context)),
-              ),
-              if (doubt || note != null) ...[
-                SizedBox(width: context.spacingSm),
-                if (doubt)
-                  Icon(
-                    Icons.help_outline,
-                    size: context.iconSizeSm,
-                    color: cs.onSurface,
-                  ),
-                if (doubt && note != null) SizedBox(width: context.spacingXxs),
-                if (note != null)
-                  Flexible(
-                    child: Text(
-                      note!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: tt.bodySmall?.copyWith(
-                        color: doubt ? cs.onSurface : cs.onSurfaceVariant,
+          child: noteBelow
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: DsFieldLabel.prominentStyle(context)),
+                    if (doubt || note != null) ...[
+                      SizedBox(height: context.spacingXxs),
+                      noteContent,
+                    ],
+                  ],
+                )
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // I titoli lunghi ("Cosa farai a Milano?") vanno a capo.
+                    Flexible(
+                      child: Text(
+                        title,
+                        style: DsFieldLabel.prominentStyle(context),
                       ),
                     ),
-                  ),
-              ],
-            ],
-          ),
+                    if (doubt || note != null) ...[
+                      SizedBox(width: context.spacingSm),
+                      if (doubt)
+                        Icon(
+                          Icons.help_outline,
+                          size: context.iconSizeSm,
+                          color: cs.onSurface,
+                        ),
+                      if (doubt && note != null)
+                        SizedBox(width: context.spacingXxs),
+                      if (note != null)
+                        Flexible(
+                          child: Text(
+                            note!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: tt.bodySmall?.copyWith(
+                              color: doubt ? cs.onSurface : cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ],
+                ),
         ),
         Wrap(
           spacing: context.spacingXs,

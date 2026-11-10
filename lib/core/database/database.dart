@@ -15,12 +15,18 @@ import 'tables/trips_table.dart';
 import 'tables/trip_items_table.dart';
 import 'tables/spaces_table.dart';
 import 'tables/luggages_table.dart';
+import 'tables/kits_table.dart';
+import 'tables/kit_items_table.dart';
 import 'tables/trip_luggage_entries_table.dart';
+import 'tables/suitcase_edits_table.dart';
 import 'daos/houses_dao.dart';
 import 'daos/items_dao.dart';
 import 'daos/trips_dao.dart';
 import 'daos/spaces_dao.dart';
 import 'daos/luggages_dao.dart';
+import 'daos/kits_dao.dart';
+import 'daos/kit_items_dao.dart';
+import 'daos/suitcase_edits_dao.dart';
 // Tipi e converter referenziati dal codice Drift generato (database.g.dart).
 // I part file non ereditano gli import transitivi, quindi questi devono
 // essere dichiarati esplicitamente nel file principale del database.
@@ -40,21 +46,35 @@ part 'database.g.dart';
 /// - [Houses]: le case/luoghi dove sono conservati gli oggetti
 /// - [Items]: gli oggetti, ognuno appartiene a una casa
 /// - [Spaces]: spazi/armadi all'interno delle case (flat structure)
+/// - [Kits], [KitItems]: gruppi di oggetti della casa che partono insieme
 /// - [Luggages]: bagagli riutilizzabili dell'utente
 /// - [Trips]: i viaggi
 /// - [TripItemEntries]: gli oggetti associati a ogni viaggio (snapshot pattern)
 /// - [TripLuggageEntries]: junction table per la relazione M:N trips-luggages
+/// - [SuitcaseEdits]: coda locale delle modifiche alla valigia proposta
 @DriftDatabase(
   tables: [
     Houses,
     Items,
     Spaces,
     Luggages,
+    Kits,
+    KitItems,
     Trips,
     TripItemEntries,
     TripLuggageEntries,
+    SuitcaseEdits,
   ],
-  daos: [HousesDao, ItemsDao, SpacesDao, LuggagesDao, TripsDao],
+  daos: [
+    HousesDao,
+    ItemsDao,
+    SpacesDao,
+    LuggagesDao,
+    KitsDao,
+    KitItemsDao,
+    TripsDao,
+    SuitcaseEditsDao,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   /// Costruisce `AppDatabase` con la passphrase letta lazily da
@@ -76,7 +96,7 @@ class AppDatabase extends _$AppDatabase {
   /// Versione dello schema del database.
   /// Incrementa quando modifichi la struttura delle tabelle.
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 14;
 
   /// Gestione delle migrazioni del database.
   @override
@@ -358,6 +378,20 @@ class AppDatabase extends _$AppDatabase {
           // Due colonne nullable in coda, come `legs`: nessuna riscrittura.
           await m.addColumn(trips, trips.aiPackingSetup);
           await m.addColumn(trips, trips.aiPackingResult);
+        }
+        if (from < 13) {
+          // Kit: due tabelle nuove (con i loro indici) e i mezzi del viaggio,
+          // una colonna nullable in coda come `legs`.
+          await m.createTable(kits);
+          await m.createTable(kitItems);
+          await m.createIndex(idxKitsHouseId);
+          await m.createIndex(idxKitItemsKitId);
+          await m.createIndex(idxKitItemsItemId);
+          await m.addColumn(trips, trips.transports);
+        }
+        if (from < 14) {
+          // Coda locale delle modifiche alla valigia proposta: tabella nuova.
+          await m.createTable(suitcaseEdits);
         }
       },
       beforeOpen: (details) async {

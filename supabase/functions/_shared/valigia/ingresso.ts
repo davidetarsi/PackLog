@@ -10,7 +10,19 @@ export const MAX_TESTO = 80;
 /** Oltre questi giorni di fila senza lavatrice la valigia deve averne una. */
 export const GIORNI_MAX_SENZA_LAVATRICE = 5;
 
+/** Limiti dei kit (come MAX_CAPI: oltre, la richiesta e' rifiutata). */
+export const MAX_KIT = 50;
+export const MAX_OGGETTI_KIT = 50;
+export const MAX_COPIE_KIT = 99;
+
 export class IngressoNonValido extends Error {}
+
+/** L'armadio vuoto e' ammesso solo per l'app che chiede i posti (`posti: true`):
+ * le versioni vecchie ignorano i posti e ricevono ancora il 422 "Wardrobe is empty",
+ * senza consumare un credito AI. */
+export function armadioVuotoAmmesso(body: Record<string, unknown>): boolean {
+  return body.posti === true;
+}
 
 const no = (m: string): never => { throw new IngressoNonValido(m); };
 
@@ -134,4 +146,50 @@ export function validaViaggio(x: unknown, oggi: string, conDettagli = true): Via
     out.lavatrice = lavatriceViaggio ?? false;
   }
   return out;
+}
+
+/** Gli id dei mezzi del viaggio (`trip.mezzi`): elenco di testi, facoltativo. */
+export function validaMezzi(x: unknown): string[] {
+  return attivita(x, "mezzi");
+}
+
+/** Le attivita' del viaggio e di ogni tappa come le manda l'app (id del catalogo), prima di
+ *  `traduciViaggio`: servono ai kit, che le confrontano con le proprie pillole d'uso. */
+export function attivitaGrezze(trip: unknown): string[] {
+  if (!trip || typeof trip !== "object") return [];
+  const v = trip as Record<string, unknown>;
+  const dei = (x: unknown): string[] => Array.isArray(x) ? x.filter((a): a is string => typeof a === "string") : [];
+  const tappe = Array.isArray(v.tappe) ? v.tappe : [];
+  return [...new Set([
+    ...dei(v.attivita),
+    ...tappe.flatMap((t) => t && typeof t === "object" ? dei((t as Record<string, unknown>).attivita) : []),
+  ])];
+}
+
+/** I kit del corpo (`kit`): null se il corpo non ne ha (l'app vecchia), altrimenti l'elenco controllato. */
+export function validaKit(x: unknown): { id: string; attivita: string[]; mezzi: string[]; oggetti: { item_id: string; copie: number }[] }[] | null {
+  if (x == null) return null;
+  if (!Array.isArray(x)) return no("'kit' deve essere un elenco");
+  if (x.length > MAX_KIT) return no(`'kit': al massimo ${MAX_KIT} kit`);
+  return x.map((k, i) => {
+    if (!k || typeof k !== "object" || Array.isArray(k)) return no(`'kit[${i}]' non valido`);
+    const r = k as Record<string, unknown>;
+    const oggetti = r.oggetti ?? [];
+    if (!Array.isArray(oggetti)) return no(`'kit[${i}].oggetti' deve essere un elenco`);
+    if (oggetti.length > MAX_OGGETTI_KIT) return no(`'kit[${i}].oggetti': al massimo ${MAX_OGGETTI_KIT} oggetti`);
+    return {
+      id: testo(r.id, `kit[${i}].id`, true)!,
+      attivita: attivita(r.attivita, `kit[${i}].attivita`),
+      mezzi: attivita(r.mezzi, `kit[${i}].mezzi`),
+      oggetti: oggetti.map((o, j) => {
+        if (!o || typeof o !== "object" || Array.isArray(o)) return no(`'kit[${i}].oggetti[${j}]' non valido`);
+        const ro = o as Record<string, unknown>;
+        const copie = ro.copie ?? 1;
+        if (typeof copie !== "number" || !Number.isInteger(copie) || copie < 1 || copie > MAX_COPIE_KIT) {
+          return no(`'kit[${i}].oggetti[${j}].copie' deve essere un intero fra 1 e ${MAX_COPIE_KIT}`);
+        }
+        return { item_id: testo(ro.item_id, `kit[${i}].oggetti[${j}].item_id`, true)!, copie };
+      }),
+    };
+  });
 }

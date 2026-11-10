@@ -8,6 +8,7 @@ import '../../../../../shared/theme/theme.dart';
 import '../../../../../shared/helpers/snack_bar_helper.dart';
 import '../../../../../shared/widgets/ds_icon_button.dart';
 import '../../../../../shared/widgets/ds_section_title.dart';
+import '../../../../../shared/widgets/packlog_gradient.dart';
 import '../../../model/trip_model.dart';
 import '../../../model/trip_weather.dart';
 import '../../../providers/trip_weather_provider.dart';
@@ -26,6 +27,9 @@ const _kColdMaxC = 3.0;
 const _kRainyShare = 0.5;
 const _kCloudyShare = 0.2;
 
+/// Giri del bordo quando la stima arriva mentre la pagina è aperta.
+const _kEstimateLoops = 2;
+
 /// Durata del giro dell'icona "Aggiorna".
 const _kRefreshSpin = Duration(milliseconds: 600);
 
@@ -34,15 +38,28 @@ const _kRefreshSpin = Duration(milliseconds: 600);
 ///
 /// Per un viaggio senza meteo possibile (finito, senza date) non mostra
 /// niente, nemmeno il titolo.
-class PackWeatherSection extends ConsumerWidget {
+class PackWeatherSection extends ConsumerStatefulWidget {
   const PackWeatherSection({super.key, required this.trip});
 
   final TripModel trip;
 
+  @override
+  ConsumerState<PackWeatherSection> createState() => _PackWeatherSectionState();
+}
+
+class _PackWeatherSectionState extends ConsumerState<PackWeatherSection> {
+  /// Quando la sezione si è aperta. Il bordo fa i suoi giri solo se il meteo
+  /// è stato preso dopo: la stima arriva mentre la pagina è aperta. Un meteo
+  /// già in cache (anche se la prima lettura passa per il caricamento) ha un
+  /// `fetchedAt` più vecchio, e il bordo resta fermo.
+  final DateTime _mountedAt = DateTime.now();
+
+  TripModel get trip => widget.trip;
+
   String get tripId => trip.id;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     // Un viaggio finito non ha meteo da guardare né da aggiornare. Si decide
     // qui, all'ora esatta, senza leggere il meteo: quello in memoria può
     // essere di quando il viaggio era ancora in corso.
@@ -65,6 +82,7 @@ class PackWeatherSection extends ConsumerWidget {
         TripWeatherReady(:final weather) => _WeatherCard(
           tripId: tripId,
           weather: weather,
+          loops: weather.fetchedAt.isAfter(_mountedAt) ? _kEstimateLoops : 0,
           onRefresh: notifier.refresh,
         ),
         TripWeatherNotAvailable(:final reason) =>
@@ -94,11 +112,15 @@ class _WeatherCard extends StatelessWidget {
   const _WeatherCard({
     required this.tripId,
     required this.weather,
+    required this.loops,
     required this.onRefresh,
   });
 
   final String tripId;
   final TripWeather weather;
+
+  /// Giri del bordo: 0 se il meteo era già lì all'apertura della pagina.
+  final int loops;
   final Future<bool> Function() onRefresh;
 
   @override
@@ -106,20 +128,28 @@ class _WeatherCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _WeatherSurface(
-          child: Column(
-            children: [
-              for (var i = 0; i < weather.stops.length; i++) ...[
-                if (i > 0) const DsDivider(),
-                _StopRow(
-                  stop: weather.stops[i],
-                  // Con i giorni di previsione la tappa apre il dettaglio.
-                  onTap: weather.stops[i].forecastDays.isEmpty
-                      ? null
-                      : () => context.push('/trips/$tripId/weather?stop=$i'),
+        PackLogGradientBorder(
+          radius: AppConstants.cardBorderRadius,
+          loops: loops,
+          child: _WeatherSurface(
+            child: Column(
+              children: [
+                _SourceHeader(
+                  isForecast: weather.source == WeatherSource.forecast,
                 ),
+                for (var i = 0; i < weather.stops.length; i++) ...[
+                  if (i > 0) const DsDivider(),
+                  _StopRow(
+                    stop: weather.stops[i],
+                    // Con un giorno per giorno (previsione o media degli
+                    // anni passati) la tappa apre il dettaglio.
+                    onTap: !weather.stops[i].hasDailyDetail
+                        ? null
+                        : () => context.push('/trips/$tripId/weather?stop=$i'),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
         _WeatherFooter(text: _sourceLine(context), onRefresh: onRefresh),
@@ -142,6 +172,41 @@ class _WeatherCard extends StatelessWidget {
       locale: context.locale.toString(),
     );
     return '$source · $updated';
+  }
+}
+
+/// In cima alla card: la scintilla di PackLog e "Stima" (clima o misto) o
+/// "Previsione", in grigio.
+class _SourceHeader extends StatelessWidget {
+  const _SourceHeader({required this.isForecast});
+
+  final bool isForecast;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        context.spacingMd,
+        context.spacingMd,
+        context.spacingMd,
+        0,
+      ),
+      child: Row(
+        children: [
+          PackLogSparkle(size: context.iconSizeSm, breathing: false),
+          SizedBox(width: context.spacingXs),
+          Text(
+            isForecast
+                ? 'trips.weather.forecast_label'.tr()
+                : 'trips.weather.estimate'.tr(),
+            style: tt.labelLarge?.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -296,9 +361,11 @@ class _WeatherLoading extends StatelessWidget {
               child: const CircularProgressIndicator(strokeWidth: 2),
             ),
             SizedBox(width: context.spacingMd),
-            Text(
-              'trips.weather.loading'.tr(),
-              style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+            Expanded(
+              child: Text(
+                'trips.weather.loading'.tr(),
+                style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+              ),
             ),
           ],
         ),

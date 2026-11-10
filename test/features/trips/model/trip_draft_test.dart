@@ -341,6 +341,51 @@ void main() {
     });
   });
 
+  group('TripDraft mezzi', () {
+    test('i mezzi scelti arrivano al viaggio salvato', () {
+      final draft = TripDraft.empty()
+          .withDestination(lisbona())
+          .withFirstDates(d(1), d(5))
+          .withTransports(const ['plane', 'train']);
+
+      final trip = draft.toTripModel(id: 't', now: DateTime(2026));
+
+      expect(trip.transports, ['plane', 'train']);
+    });
+
+    test('senza scelte il viaggio non ha mezzi', () {
+      final trip = TripDraft.empty()
+          .withDestination(lisbona())
+          .toTripModel(id: 't', now: DateTime(2026));
+
+      expect(trip.transports, isEmpty);
+    });
+
+    test('la bozza di un viaggio esistente conserva i mezzi', () {
+      final original = TripModel(
+        id: 't',
+        name: 'Lisbona',
+        transports: const ['car'],
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+
+      final draft = TripDraft.fromTrip(original);
+
+      expect(draft.transports, ['car']);
+      expect(draft.toTripModel(id: 't', now: DateTime(2026)).transports, [
+        'car',
+      ]);
+    });
+
+    test('scegliere solo i mezzi non conta come modulo compilato', () {
+      expect(
+        TripDraft.empty().withTransports(const ['plane']).hasUserInput,
+        isFalse,
+      );
+    });
+  });
+
   group('TripDraft.fromTrip', () {
     final milano = LocationSuggestionModel(
       placeId: 'm',
@@ -431,6 +476,139 @@ void main() {
       );
       expect(draft.destination?.houseId, 'h1');
       expect(draft.destination?.name, 'Baita');
+    });
+  });
+
+  group('TripDraft.reuseOf', () {
+    TripModel past() => TripModel(
+      id: 'past',
+      name: 'Estate in Portogallo',
+      departureDateTime: d(1),
+      returnDateTime: d(10),
+      destinationLocation: LocationSuggestionModel(
+        placeId: 'lisbona',
+        displayName: 'Lisbona, Portogallo',
+        city: 'Lisbona',
+        lat: 38.72,
+        lon: -9.14,
+      ),
+      legs: [
+        TripLeg(
+          id: 'l1',
+          locationDisplayName: 'Porto, Portogallo',
+          from: d(5),
+          to: d(10),
+          lat: 41.15,
+          lon: -8.61,
+        ),
+      ],
+      transports: const ['plane', 'train'],
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+    );
+
+    test('trip_draft_reuse_of_drops_dates', () {
+      final draft = TripDraft.reuseOf(past());
+
+      expect(draft.departure, isNull);
+      expect(draft.returnDate, isNull);
+      expect(draft.hasDates, isFalse);
+      expect(draft.stops, isEmpty);
+      expect(draft.canSave, isFalse);
+      expect(draft.destination?.shortName, 'Lisbona');
+      expect(draft.name, 'Estate in Portogallo');
+      expect(draft.nameEdited, isTrue);
+      expect(draft.transports, ['plane', 'train']);
+      expect(draft.pendingStops.map((p) => p.name), ['Porto, Portogallo']);
+    });
+
+    test('scegliendo le date le tappe tornano, a zero notti da sistemare', () {
+      final draft = TripDraft.reuseOf(past()).withFirstDates(d(20), d(24));
+
+      expect(draft.stops.map((s) => s.place.name), [
+        'Lisbona, Portogallo',
+        'Porto, Portogallo',
+      ]);
+      expect(draft.pendingStops, isEmpty);
+      expect(draft.stopsWithoutNights, {1});
+      expect(draft.canSave, isFalse);
+
+      final fixed = draft.updateStop(1, end: d(27));
+      expect(fixed.canSave, isTrue);
+      final trip = fixed.toTripModel(id: 'new', now: DateTime(2026));
+      expect(trip.legs.single.from, d(24));
+      expect(trip.legs.single.to, d(27));
+    });
+
+    test('togliere la meta lascia andare anche le tappe in attesa', () {
+      final draft = TripDraft.reuseOf(past()).clearDestination();
+
+      expect(draft.pendingStops, isEmpty);
+    });
+  });
+
+  group('TripDraft.withTripDates', () {
+    TripDraft twoStops() => TripDraft.empty()
+        .withDestination(lisbona())
+        .withFirstDates(d(10), d(12))
+        .addStop(porto(), d(15));
+
+    test('with_trip_dates_moves_departure_and_last_end', () {
+      final next = twoStops().withTripDates(d(9), d(18))!;
+
+      expect(next.departure, d(9));
+      expect(next.returnDate, d(18));
+      expect(next.stops.map((s) => s.end), [d(12), d(18)]);
+      expect(next.stopsWithoutNights, isEmpty);
+    });
+
+    test('one_stop_is_with_first_dates', () {
+      final base = TripDraft.empty()
+          .withDestination(lisbona())
+          .withFirstDates(d(10), d(12));
+      final next = base.withTripDates(d(11), d(14))!;
+
+      expect(next.departure, d(11));
+      expect(next.stops.single.end, d(14));
+    });
+
+    test('with_trip_dates_rejects_cut_stop', () {
+      // Partenza non prima della fine della prima tappa.
+      expect(twoStops().withTripDates(d(12), d(18)), isNull);
+      expect(twoStops().withTripDates(d(13), d(18)), isNull);
+      // Ritorno non dopo l'inizio dell'ultima.
+      expect(twoStops().withTripDates(d(10), d(12)), isNull);
+      expect(twoStops().withTripDates(d(10), d(11)), isNull);
+    });
+
+    test('with_trip_dates_ignores_pending_stops', () {
+      // Le tappe di Riusa in attesa non sono tappe vere: il campo vale per la
+      // sola meta (come withFirstDates) e le tappe nascono a zero notti.
+      final reused = TripDraft.reuseOf(
+        TripModel(
+          id: 't',
+          name: 'Lisbona',
+          destinationLocation: lisbona().location,
+          legs: [
+            TripLeg(
+              id: 'l1',
+              locationDisplayName: 'Porto, Portogallo',
+              from: d(5),
+              to: d(8),
+            ),
+          ],
+          createdAt: o29,
+          updatedAt: o29,
+        ),
+      );
+      expect(reused.pendingStops, hasLength(1));
+
+      final next = reused.withTripDates(d(10), d(14))!;
+
+      expect(next.pendingStops, isEmpty);
+      expect(next.stops, hasLength(2));
+      expect(next.stops.map((s) => s.end), [d(14), d(14)]);
+      expect(next.stopsWithoutNights, {1});
     });
   });
 }

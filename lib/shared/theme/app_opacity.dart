@@ -26,4 +26,14 @@ abstract final class AppOpacity {
   /// Colore di fondo al bordo dello schermo nell'effetto in fondo
   /// (DsGlassBand): il contenuto si intuisce appena.
   static const double edgeTint = 0.85;
+
+  /// Bordo col gradiente PackLog quando sta fermo (non è mai partito, o i
+  /// giri sono finiti): più morbido di quello che si muove.
+  static const double restingGradientBorder = 0.6;
+
+  /// Bordo a gradiente dei proposti: sotto l'arancione degli importanti.
+  static const double subtleGradientBorder = 0.35;
+
+  /// Scintilla PackLog nel punto più spento del respiro.
+  static const double sparkleDim = 0.75;
 }

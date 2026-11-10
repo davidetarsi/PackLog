@@ -99,7 +99,7 @@ void main() {
       ),
     );
 
-    // Come in ai_home_group: l'intestazione è allineata al bordo del blocco.
+    // Come in ai_wardrobe_row: l'intestazione è allineata al bordo del blocco.
     expect(
       tester.getTopLeft(find.text('Gruppo A')).dx,
       tester.getTopLeft(find.byType(DsSettingsGroup)).dx,

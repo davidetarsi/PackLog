@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/config/app_config.dart';
+import '../../items/model/item_model.dart';
 import '../model/ai_packing.dart';
 
 part 'pack_trip_service.g.dart';
@@ -26,8 +29,8 @@ class PackTripWardrobeTooLargeException implements Exception {
   const PackTripWardrobeTooLargeException();
 }
 
-/// Valigia non arrivata: rete, sessione, errore della funzione o risposta
-/// illeggibile.
+/// Valigia non arrivata: sessione, errore della funzione o risposta
+/// illeggibile (la mancanza di rete è la sottoclasse [PackTripNetworkException]).
 class PackTripException implements Exception {
   const PackTripException(this.message);
 
@@ -37,14 +40,35 @@ class PackTripException implements Exception {
   String toString() => 'PackTripException: $message';
 }
 
+/// Nessuna risposta dal server: l'utente è offline (o la rete è caduta).
+/// Non è un errore da segnalare al monitoraggio.
+class PackTripNetworkException extends PackTripException {
+  const PackTripNetworkException(super.message);
+}
+
+/// La funzione ha risposto 200 ma il corpo non è una valigia leggibile: il
+/// credito è stato scalato, quindi non va detto che non lo è stato.
+class PackTripInvalidResponseException extends PackTripException {
+  const PackTripInvalidResponseException(super.message);
+}
+
+/// Dopo questo tempo senza risposta la chiamata a `pack-trip` è persa: si
+/// tratta come un errore di rete.
+const kPackTripTimeout = Duration(seconds: 90);
+
 /// La valigia AI dalla funzione `pack-trip`.
 class PackTripService {
-  PackTripService({http.Client Function()? client, String? Function()? token})
-    : _newClient = client ?? http.Client.new,
-      _token = token ?? _sessionToken;
+  PackTripService({
+    http.Client Function()? client,
+    String? Function()? token,
+    Duration timeout = kPackTripTimeout,
+  }) : _newClient = client ?? http.Client.new,
+       _token = token ?? _sessionToken,
+       _timeout = timeout;
 
   final http.Client Function() _newClient;
   final String? Function() _token;
+  final Duration _timeout;
 
   _PackTripAttempt? _attempt;
 
@@ -69,18 +93,25 @@ class PackTripService {
 
     final http.Response response;
     try {
-      response = await client.post(
-        Uri.parse('${AppConfig.supabaseUrl}/functions/v1/pack-trip'),
-        headers: {
-          'Authorization': 'Bearer $jwt',
-          'apikey': AppConfig.supabaseAnonKey,
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(body),
-      );
+      response = await client
+          .post(
+            Uri.parse('${AppConfig.supabaseUrl}/functions/v1/pack-trip'),
+            headers: {
+              'Authorization': 'Bearer $jwt',
+              'apikey': AppConfig.supabaseAnonKey,
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(_timeout);
     } catch (e) {
       if (attempt.cancelled) throw const PackTripException('annullata');
-      throw PackTripException('rete: $e');
+      if (e is SocketException ||
+          e is http.ClientException ||
+          e is TimeoutException) {
+        throw PackTripNetworkException('rete: $e');
+      }
+      throw PackTripException('richiesta fallita: $e');
     } finally {
       if (identical(_attempt, attempt)) _attempt = null;
       client.close();
@@ -108,10 +139,12 @@ class PackTripService {
     try {
       decoded = jsonDecode(response.body);
     } catch (e) {
-      throw PackTripException('risposta non valida: $e');
+      throw PackTripInvalidResponseException('risposta non valida: $e');
     }
     if (decoded is! Map<String, dynamic>) {
-      throw const PackTripException('risposta non valida: non è un oggetto');
+      throw const PackTripInvalidResponseException(
+        'risposta non valida: non è un oggetto',
+      );
     }
     return parsePackTripResponse(
       decoded,
@@ -156,7 +189,7 @@ class _PackTripAttempt {
 
 /// Traduce la risposta di `pack-trip` (chiavi italiane, snake_case) nel
 /// modello [AiPackingResult], campo per campo. Un avviso con livello
-/// sconosciuto si scarta; un array opzionale mancante vale come lista vuota;
+/// sconosciuto si scarta, come un posto con livello o categoria sconosciuti; un array opzionale mancante vale come lista vuota;
 /// una struttura illeggibile solleva [PackTripException].
 AiPackingResult parsePackTripResponse(
   Map<String, dynamic> json, {
@@ -177,17 +210,44 @@ AiPackingResult parsePackTripResponse(
       for (final raw in _lista(json['perche']))
         _punto(raw as Map<String, dynamic>),
     ];
+    // `posti` assente (funzione vecchia) = nessun posto, non lista vuota.
+    final rawSlots = json['posti'];
+    final slots = rawSlots == null
+        ? null
+        : [
+            for (final raw in _lista(rawSlots))
+              if (_postoNoto(raw as Map<String, dynamic>)) _posto(raw),
+          ];
+    final notes = [
+      for (final raw in _lista(json['informazioni']))
+        _informazione(raw as Map<String, dynamic>),
+    ];
+    // `kit` c'è solo se il corpo aveva i kit: assente = campi vuoti.
+    final kit = json['kit'] as Map<String, dynamic>?;
+    final kitAdded = [
+      for (final raw in _lista(kit?['aggiunti']))
+        _kitAggiunto(raw as Map<String, dynamic>),
+    ];
+    final kitSuggestions = [
+      for (final raw in _lista(kit?['suggeriti']))
+        _kitSuggerito(raw as Map<String, dynamic>),
+    ];
     return AiPackingResult(
       generatedAt: now,
       houseId: houseId,
       proposal: proposal,
       warnings: warnings,
       reasons: reasons,
+      slots: slots,
+      notes: notes,
+      kitAdded: kitAdded,
+      kitSuggestions: kitSuggestions,
+      generatorVersion: json['versione_generatore'] as String?,
     );
   } on PackTripException {
     rethrow;
   } catch (e) {
-    throw PackTripException('risposta non valida: $e');
+    throw PackTripInvalidResponseException('risposta non valida: $e');
   }
 }
 
@@ -224,6 +284,60 @@ AiWarning _avviso(Map<String, dynamic> json) => AiWarning(
   title: json['titolo'] as String,
   why: json['perche'] as String,
   search: json['cerca'] as String?,
+);
+
+ItemCategory? _categoriaPosto(Object? raw) => switch (raw) {
+  'vestiti' => ItemCategory.vestiti,
+  'toiletries' => ItemCategory.toiletries,
+  _ => null,
+};
+
+bool _postoNoto(Map<String, dynamic> json) =>
+    _livello(json['livello']) != null &&
+    _categoriaPosto(json['categoria']) != null;
+
+AiSlot _posto(Map<String, dynamic> json) {
+  final copie = (json['copie'] as num).toInt();
+  return AiSlot(
+    id: json['id'] as String,
+    type: json['tipo'] as String,
+    category: _categoriaPosto(json['categoria'])!,
+    level: switch (_livello(json['livello'])!) {
+      AiWarningLevel.important => AiSlotLevel.important,
+      AiWarningLevel.useful => AiSlotLevel.useful,
+    },
+    name: json['nome'] as String,
+    copies: copie,
+    remaining: copie,
+    reason: json['motivo'] as String?,
+    addLabel: json['aggiungi'] as String,
+    boughtLabel: json['comprato'] as String?,
+  );
+}
+
+AiKitAdded _kitAggiunto(Map<String, dynamic> json) => AiKitAdded(
+  kitId: json['kit_id'] as String,
+  itemId: json['item_id'] as String,
+  copies: (json['copie'] as num).toInt(),
+);
+
+AiKitSuggestion _kitSuggerito(Map<String, dynamic> json) => AiKitSuggestion(
+  kitId: json['kit_id'] as String,
+  taken: (json['presi'] as num).toInt(),
+  total: (json['totale'] as num).toInt(),
+  missing: [
+    for (final raw in _lista(json['mancanti']))
+      KitItemRef(
+        itemId: (raw as Map<String, dynamic>)['item_id'] as String,
+        copies: (raw['copie'] as num).toInt(),
+      ),
+  ],
+);
+
+AiTripNote _informazione(Map<String, dynamic> json) => AiTripNote(
+  code: json['codice'] as String,
+  title: json['titolo'] as String,
+  why: json['perche'] as String,
 );
 
 AiReasonPoint _punto(Map<String, dynamic> json) => AiReasonPoint(

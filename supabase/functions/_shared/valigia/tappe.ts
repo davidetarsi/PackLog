@@ -1,3 +1,5 @@
+import { eCammino, interoCammino, ammessoCammino, armadioCammino, vincoliCammino, limitaDotazioneCammino, lacuneCammino } from "./cammino.ts";
+import { preparaContestoTappe } from "./contesto_viaggio.ts";
 // Viaggi a piu' tappe: porting di serve_per_tappa, diversifica_copie,
 // conta_pezzi e strategy_slots_multitappa (packlog_checklist_bench_48.py).
 // La tappa piu' calda costruisce la valigia base con una sola chiamata al
@@ -5,18 +7,19 @@
 import * as K from "./costanti.ts";
 import * as rc from "./regole_capi.ts";
 import type { Capo } from "./capo.ts";
-import { eAttivitaAcqua, giorniDiMare, normIntensita, quantityFor, usiSottoSoglia } from "./quantita.ts";
+import { armadioTipico } from "./armadio_tipico.ts";
+import { tutteTappeCalde, viaggioCaldoAlMare, eAttivitaAcqua, giorniDiMare, normIntensita, quantityFor, usiSottoSoglia } from "./quantita.ts";
 import {
-  capoLeggero, capoRiservato, eTrekking, insieme, interseca, penalitaCulto, quantiStratiMedi, type Record_,
+  capoLeggero, capoRiservato, eTrekking, insieme, interseca, penalitaCulto, quantiStratiMedi, type Record_, riverbero,
   segnaCapiDaNeve, slotCapiNuovi, sottoinsieme, stratiInTracolla, caloreMaxStrato, viaggioDiLavoro,
 } from "./inject.ts";
 import {
-  applicaBudgetRotazione, applicaTettoVolume, applicaVestiti, berrettoColFreddo, caloreEfficace, canonicalizeGaps, capienzaBagaglio,
-  capienzaPotabile, consolidaBloccoViaggio, estivoFuoriStagione, minimoCapiLeggeri, score, segnaInPartenza,
-  segnalaScarpeCammino, segnalaVolume, togliDoppioni,
+  limitaPantaloniDaSera, applicaBudgetRotazione, applicaTettoVolume, applicaVestiti, berrettoColFreddo, caloreEfficace, canonicalizeGaps, capienzaBagaglio,
+  capienzaPotabile, consolidaBloccoViaggio, estivoFuoriStagione, minimoCapiLeggeri, rispettaCopie, score,
+  segnaInPartenza, segnalaScarpeCammino, segnalaVolume, togliDoppioni,
 } from "./dopo.ts";
 import {
-  get, ordinaTappe, pavimentoDi, pilaDiTappa, ripartisciCopie, round2, strategySlots, tettoCopie, tettoCopieMorbido,
+  get, coperturaTermica, pavimentoDi, pilaDiTappa, ripartisciCopie, round2, strategySlots, tettoCopie, tettoCopieMorbido,
   tettoDi, tettoMorbidoPer,
 } from "./slots.ts";
 import { massimo, minimo, pf, vero } from "./py.ts";
@@ -53,12 +56,20 @@ function contiene(xs: Record_[], x: Record_): boolean {
 const eRecord = (x: any) => "item_id" in x || !("sub_category" in x);
 
 export function servePerTappa(t: Record_, capi: Record_[], items: Capo[], used: Set<string>, bulkPress: number,
-  minimoT = false, profiliCapi: Record<string, any> | null = null, soloTrekking = false): Record_[] {
+  minimoT = false, profiliCapi: Record<string, any> | null = null, soloTrekking = false,
+  mancanti?: Record_[], copertoDalGeneratore?: (capo: Record_, bisogno: Record_) => boolean,
+  pantaloniDaSera = true): Record_[] {
+  const cammino = eCammino(t.attivita);
+  const mite = t.meteo.temp_min_media != null && t.meteo.temp_min_media >= 18;
+  if (cammino) items = armadioCammino(items, mite, eAttivitaAcqua(t.attivita));
+  const tipici = mancanti ? (cammino ? armadioCammino(armadioTipico(), mite, eAttivitaAcqua(t.attivita)) : armadioTipico()) : [];
+  segnaCapiDaNeve(tipici, t.attivita || []);
   const nome = t.destinazione, meteo = t.meteo;
   const ceiling = tettoDi(meteo);
   const tmaxTappa = meteo.temp_max_media;
   const acquaTappa = eAttivitaAcqua(t.attivita || []);
   const perId = new Map(items.map((g) => [g.id, g]));
+  if (cammino) capi = capi.filter((x) => perId.has(x.item_id));
   const capoDi = (x: any): Capo | undefined => (eRecord(x) ? perId.get(x.item_id) : x);
   const estivoQui = (x: any) => { const g = capoDi(x); return g != null && estivoFuoriStagione(g, tmaxTappa, acquaTappa, profiliCapi); };
 
@@ -153,13 +164,18 @@ export function servePerTappa(t: Record_, capi: Record_[], items: Capo[], used: 
     richieste.push({ slot: K.SLOT_CIABATTE, category: "Shoes", subCategories: [...K.SOTTOCAT_CIABATTE], minWaterResistance: 0,
       frequency: "once", reason: `${nome}: attivita' in acqua, ciabatte o sandali` });
   }
-  if (interseca(attNorm, K.ATTIVITA_RIVERBERO)) {
+  if (riverbero(attNorm, null, t.geo?.altitudine_m ?? null)) {
     richieste.push({ slot: "occhiali da sole", category: "Accessory", subCategories: ["Sunglasses"], minWaterResistance: 0,
       reason: `${nome}: neve, ghiacciaio o quota, riverbero` });
   }
   if (!minimoT) {
-    richieste.push(...slotCapiNuovi(items, meteo.temp_min_media, t.attivita, meteo.giorni_di_pioggia, null,
+    richieste.push(...slotCapiNuovi(mancanti ? [...items, ...tipici] : items, meteo.temp_min_media, t.attivita, meteo.giorni_di_pioggia, null,
       [...richieste, ...capi.map((c) => ({ subCategories: [get(c, "subCategory")] }))], nome));
+  }
+  if (cammino) {
+    richieste = richieste.map((r) => vincoliCammino(r, acquaTappa));
+    richieste.push(vincoliCammino({ slot: "ciabatte per il riposo", category: "Shoes", subCategories: ["Flip-Flops", "Sandals"],
+      minWaterResistance: 0, reason: "dopo il cammino: ciabatte per il riposo" }));
   }
   if (soloTrekking) richieste = richieste.filter((r) => K.SLOT_DEL_TREKKING.has(r.slot));
 
@@ -171,7 +187,7 @@ export function servePerTappa(t: Record_, capi: Record_[], items: Capo[], used: 
     const minWr = Math.trunc(Number(req.minWaterResistance || 0));
     const culto = K.SLOT_CULTO.includes(req.slot);
     const tettoReq = vero(req.senza_tetto) ? Math.min(5, Math.trunc(Number(req.maxWarmth || 5))) : ceiling;
-    const minW = Math.trunc(Number(req.minWarmth || 0));
+    const minW = Math.trunc(Number(req.minWarmth || (mancanti && req._preferisci_calore ? 3 : 0)));
     const tagReq = insieme(req.activityTags || []);
     const haTag = (x: any) => {
       if (!tagReq.size) return true;
@@ -184,11 +200,15 @@ export function servePerTappa(t: Record_, capi: Record_[], items: Capo[], used: 
     };
     const ok = (x: Record_) => {
       if (vero(req.ruolo) && x.category === "Shoes" && diRuolo(x)) return true;
-      return (x.warmth || 0) >= minW && subs.has(x.subCategory) && haTag(x) && (!cov.size || cov.has(x.coverage)) &&
-        (!fm.size || fm.has(x.formality)) && (x.waterResistance || 0) >= minWr && !(culto && capoRiservato(x, profiliCapi)) &&
+      // Nell'analisi dei posti un'assegnazione gia' accettata puo' coprire le preferenze di tipo/stile.
+      const preferenze = (subs.has(x.subCategory) && (!fm.size || fm.has(x.formality))) ||
+        (Boolean(mancanti) && (!vero(req.ruolo) || diRuolo(x)) &&
+          (x.warmth || 1) <= tettoReq && Boolean(copertoDalGeneratore?.(x, req)));
+      return (x.warmth || 0) >= minW && preferenze && haTag(x) && (!cov.size || cov.has(x.coverage)) &&
+        (x.waterResistance || 0) >= minWr && !(culto && capoRiservato(x, profiliCapi)) &&
         !(culto && K.CULTO_LEGGERO_IN_TAPPA && rc.cultoLeggero(tmaxTappa) && !capoLeggero(x, profiliCapi));
     };
-    const n = Math.trunc(Number(req.n || 1));
+    const n = Math.trunc(Number(req.n || (mancanti ? req._restano : 0) || 1));
     for (let k = 0; k < n; k++) {
       const pool = [...capi, ...aggiunti];
       const giaInTappa = pool.filter((x) => (x.tappe || []).includes(nome) && ok(x));
@@ -198,13 +218,28 @@ export function servePerTappa(t: Record_, capi: Record_[], items: Capo[], used: 
       const larghe = new Set([...subs, ...[...subs].flatMap((s) => K.SUBSTITUTIONS[s] ?? [])]);
       const scR = (g: Capo) => score(g, 1, ceiling, new Set(), new Set(), minWr, bulkPress) +
         penalitaCulto(req.slot, g, profiliCapi, rc.cultoLeggero(tmaxTappa));
-      const candidati = (p: Set<string>) => items.filter((g) => g.has_metadata && !g.sempre_in_valigia && !used.has(g.id) &&
+      const candidati = (p: Set<string>, lista = items, virtuale = false) => lista.filter((g) => g.has_metadata && !g.sempre_in_valigia && (virtuale || !used.has(g.id)) &&
         p.has(g.sub_category) && (!cov.size || cov.has(g.coverage)) && (!fm.size || fm.has(g.formality)) &&
-        (g.water_resistance || 0) >= minWr && (g.warmth || 1) >= minW && (g.warmth || 1) <= tettoReq && !estivoQui(g) &&
+        (g.water_resistance || 0) >= minWr && (g.warmth || 1) >= minW && (g.warmth || 1) <= tettoReq && (req._riposo_cammino || !estivoQui(g)) &&
         haTag(g) && (!vero(req.ruolo) || diRuolo(g)) && scR(g) <= K.MAX_PENALTY_COMPROMESSO);
       let cands = candidati(subs);
       if (!cands.length) cands = candidati(larghe);
-      if (!cands.length) break;
+      if (!cands.length) {
+        if (mancanti) {
+          const virtuali = candidati(subs, tipici, true);
+          const scelto = minimo(virtuali.length ? virtuali : candidati(larghe, tipici, true), scR);
+          const richiesto = { ...req, minWarmth: Math.max(1, minW), maxWarmth: tettoReq,
+            capoTipico: scelto ? { sub: scelto.sub_fine, categoria: scelto.category,
+              ...(pantaloniDaSera && !cammino && !viaggioDiLavoro(t.attivita) && rc.caldoUnCapoAlGiorno(tmaxTappa) && ["Trousers", "Jeans"].includes(scelto.sub_category)
+                ? { leggero: (scelto.warmth ?? 3) <= 2 } : {}) } : null };
+          mancanti.push({ ...req, tipo: "assente", imposto: true, essential: true, tappe: [nome],
+            ...(minW > 1 || tettoReq < 5 ? { warmth_richiesto: [richiesto.minWarmth, tettoReq] } : {}),
+            impermeabilita_richiesta: minWr,
+            copie_coperte: giaInTappa.reduce((tot, x) => tot + q(x), 0),
+            copie_minime: n - k, requiredActivityTags: [...tagReq], richiesto });
+        }
+        break;
+      }
       const g = minimo(cands, scR)!;
       used.add(g.id);
       aggiunti.push({
@@ -226,12 +261,14 @@ export function diversificaCopie(liste: Record_[][], items: Capo[], capienza: nu
   vietato: ((g: Capo, tappe: string[]) => boolean) | null = null): number {
   if (!K.DIVERSIFICA_COPIE_TAPPE) return 0;
   const inValigia = new Set(liste.flatMap((l) => l.map((x) => get(x, "item_id"))));
+  const copie = new Map(items.map((g) => [g.id, g.copie]));
   let spostate = 0;
   for (const lista of liste) {
     for (const r of [...lista]) {
       const sub = get(r, "subCategory"), form = get(r, "formality");
       const elegante = vero(r._slot_elegante) || form === "Business" || form === "Formal";
-      const morbido = sub === "Swimwear" || (elegante && K.CAPI_DIVERSI_ELEGANTI) ? 1 : tettoMorbidoPer(q(r), form, sub, capienza);
+      const morbido = sub === "Swimwear" || (elegante && K.CAPI_DIVERSI_ELEGANTI) ? 1
+        : tettoMorbidoPer(q(r), form, sub, capienza, copie.get(r.item_id) ?? null);
       while (q(r) > morbido) {
         const simili = elegante && (sub === "Trousers" || sub === "Skirt") ? new Set(["Trousers", "Skirt"]) : new Set([sub]);
         const wr = r.warmth || 2;
@@ -258,7 +295,8 @@ export function diversificaCopie(liste: Record_[][], items: Capo[], capienza: nu
 
 export function contaPezzi(capi: Record_[], giorniPerTappa: Record<string, number>, lavatrice: boolean,
   intensita: string | null = null, tempMaxPerTappa: Record<string, number | null> | null = null,
-  giorniMare: number | null = null, minimoEleganti: number | null = null): void {
+  giorniMare: number | null = null, minimoEleganti: number | null = null,
+  copie: Map<string, number | null> | null = null): void {
   const gruppi = new Map<unknown, Record_[]>();
   for (const x of capi) {
     const k = x._gruppo_capo != null ? x._gruppo_capo : x;
@@ -288,9 +326,11 @@ export function contaPezzi(capi: Record_[], giorniPerTappa: Record<string, numbe
     if (membri.some((x) => (vero(x.assegnazioni) ? x.assegnazioni : [x]).some((a: Record_) => a.slot === K.SLOT_SERA_PRESENTABILE))) {
       serve = Math.max(serve, membri.length);
     }
+    // Oltre le copie possedute di un capo solo ci pensa rispettaCopie, alla fine.
     if (membri.length === 1) { primo.quantita = serve; continue; }
+    const cp = (x: Record_) => copie?.get(x.item_id) ?? null;
     const [qq] = ripartisciCopie(serve, membri.map((x) =>
-      [tettoCopieMorbido(x.formality, x.subCategory), tettoCopie(x.formality, x.subCategory)] as [number, number]));
+      [tettoCopieMorbido(x.formality, x.subCategory, cp(x)), tettoCopie(x.formality, x.subCategory, cp(x))] as [number, number]));
     membri.forEach((x, i) => { x.quantita = Math.max(qq[i], 0); });
   }
 }
@@ -306,17 +346,18 @@ export interface ArgomentiTappe {
 }
 
 export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: ArgomentiTappe): Record_ {
-  const sc = a.sc, perTappa: Record_[] = a.geo.per_tappa, bagaglio = a.bagaglio ?? "";
+  const sc = a.sc, bagaglio = a.bagaglio ?? "";
+  const perTappa: Record_[] = eCammino(sc.attivita) ? a.geo.per_tappa.map((t: Record_) =>
+    ({ ...t, attivita: [...new Set([...(sc.attivita ?? []), ...(t.attivita ?? [])])] })) : a.geo.per_tappa;
+  const cammino = interoCammino({ ...sc, legs: perTappa });
+  if (cammino) items = armadioCammino(items, perTappa.every((t) => t.meteo.temp_min_media >= 18),
+    perTappa.some((t) => eAttivitaAcqua(t.attivita)));
   const profiliCapi = a.profili_capi ?? null;
   segnaCapiDaNeve(items, [...(sc.attivita || []), ...perTappa.flatMap((t) => t.attivita || []),
     ...(sc.legs || []).flatMap((l: Record_) => l.attivita || [])]);
   const nomi: string[] = perTappa.map((t) => t.destinazione);
-  const giorniTot = perTappa.reduce((s, t) => s + Math.trunc(Number(t.giorni || 1)), 0);
-  const ordinate = ordinaTappe(perTappa);
-  const base = ordinate[0];
-  let attBase: string[] = [...(sc.attivita || []), ...(base.attivita || [])];
-  const trekkingDiTappa = K.SLOT_TREKKING && perTappa.length > 1 && !eTrekking(sc.attivita) && eTrekking(base.attivita);
-  if (trekkingDiTappa) attBase = attBase.filter((x) => !eTrekking([x]));
+  const { giorni: giorniTot, ordinate, base, attivitaBase: attBase, trekkingDiTappa,
+    lavatriceEssenziali: lavEss, lavatriceTappe: lavMt } = preparaContestoTappe(sc, perTappa, bagaglio);
   const attContesto: string[] = [];
   const visti = new Set<string>();
   for (const att of [...(sc.attivita || []), ...perTappa.flatMap((t) => t.attivita || [])]) {
@@ -326,12 +367,13 @@ export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: 
     attContesto.push(att);
   }
   const capienza = capienzaBagaglio(bagaglio);
-  const lavEss = Boolean(get(sc, "lavatrice", false));
-  const lavMt = lavEss ||
-    (K.CAMMINO_LAVA_A_MANO && rc.camminoAPiedi(sc.attivita, bagaglio, giorniTot));
+  const pantaloniDaSera = !eCammino(attContesto) && !viaggioDiLavoro(attContesto, a.classi_viaggio) &&
+    tutteTappeCalde(perTappa.map((t) => t.meteo.temp_max_media));
   const r = strategySlots(testoModello, items, {
     giorni: giorniTot, lavatrice: lavMt, attivita: attBase, attivita_viaggio: attContesto,
-    lavatrice_essenziali: lavEss,
+    lavatrice_essenziali: lavEss, cammino_essenziali: cammino,
+    mare_caldo_essenziali: viaggioCaldoAlMare(attContesto, perTappa.map((t) => t.meteo.temp_max_media)),
+    pantaloni_da_sera: pantaloniDaSera,
     temp_max_essenziali: (() => {
       const m = perTappa.map((t) => t.meteo.temp_max_media).filter((x) => x != null);
       return m.length ? Math.min(...m) : null;
@@ -340,7 +382,7 @@ export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: 
     temp_min: base.meteo.temp_min_media ?? null, temp_max: base.meteo.temp_max_media ?? null, bagaglio,
     giorni_pioggia: base.meteo.giorni_di_pioggia ?? null, intensita: sc.intensita ?? null, voti_scarpe: a.voti_scarpe ?? null,
     temp_min_assoluta: base.meteo.temp_min_assoluta ?? null, profili_capi: profiliCapi, scarti_capi: a.scarti_capi ?? null,
-    classi_viaggio: a.classi_viaggio ?? null,
+    classi_viaggio: a.classi_viaggio ?? null, quota_m: base.geo?.altitudine_m ?? null,
   });
   for (const rec of [...r.ideali, ...r.ripieghi, ...(r.essenziali || [])]) rec.tappe = [...nomi];
   const perId = new Map(items.map((g) => [g.id, g]));
@@ -349,7 +391,11 @@ export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: 
     if (g == null) continue;
     const restano = perTappa.filter((t) => !estivoFuoriStagione(g, t.meteo.temp_max_media, eAttivitaAcqua(t.attivita || []),
       profiliCapi)).map((t) => t.destinazione);
-    if (restano.length) rec.tappe = restano;
+    const ammesse = restano.filter((nome) => {
+      const t = perTappa.find((t) => t.destinazione === nome)!;
+      return !eCammino(t.attivita) || armadioCammino([g], t.meteo.temp_min_media >= 18, eAttivitaAcqua(t.attivita)).length > 0;
+    });
+    if (ammesse.length || restano.length) rec.tappe = ammesse;
   }
   for (const gp of r.mancanti || []) {
     const dette = K.TAPPE_DEI_MANCANTI ? tappeDelMancante(gp, perTappa) : [];
@@ -371,16 +417,18 @@ export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: 
     const nuovi = servePerTappa(t, capi, items, used, bulkPress, giorniTot <= 2 || capienza <= 8, profiliCapi);
     r.ripieghi.push(...nuovi);
     capi.push(...nuovi);
+    const itemsTappa = eCammino(t.attivita) ? armadioCammino(items, meteo.temp_min_media >= 18, eAttivitaAcqua(t.attivita)) : items;
+    const idTappa = new Set(itemsTappa.map((g) => g.id));
     const floor = pavimentoDi(meteo), ceiling = tettoDi(meteo);
     const isoMin = floor >= 5 ? 4 : K.CALORE_ISOLANTE;
     let aggiunti = 0;
     while (caloreEfficace(pilaDiTappa(capi, nome), isoMin) < floor && aggiunti < 2) {
       const pila = pilaDiTappa(capi, nome);
-      const gia = capi.filter((x) => !(x.tappe || []).includes(nome) && K.ZONE_STRATIFICABILI.has(x.category) &&
+      const gia = capi.filter((x) => idTappa.has(x.item_id) && !(x.tappe || []).includes(nome) && K.ZONE_STRATIFICABILI.has(x.category) &&
         (x.warmth || 1) <= ceiling && caloreEfficace([...pila, x], isoMin) > caloreEfficace(pila, isoMin));
       if (gia.length) { massimo(gia, (x) => x.warmth || 0)!.tappe.push(nome); aggiunti += 1; continue; }
       const scStr = (g: Capo) => score(g, 1, floor, new Set(), new Set(), 0, bulkPress);
-      let cands = items.filter((g) => g.has_metadata && !g.sempre_in_valigia && !used.has(g.id) &&
+      let cands = itemsTappa.filter((g) => g.has_metadata && !g.sempre_in_valigia && !used.has(g.id) &&
         K.ZONE_STRATIFICABILI.has(g.category) && 2 <= (g.warmth || 0) && (g.warmth || 0) <= floor &&
         (g.warmth || 1) <= ceiling && scStr(g) <= K.MAX_PENALTY);
       const isolanti = cands.filter((g) => g.category === "Outerwear" && (g.warmth || 0) >= isoMin);
@@ -402,7 +450,7 @@ export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: 
       aggiunti += 1;
     }
     if (caloreEfficace(pilaDiTappa(capi, nome), isoMin) < floor) {
-      const posseduti = items.filter((g) => g.has_metadata && g.category === "Outerwear");
+      const posseduti = itemsTappa.filter((g) => g.has_metadata && g.category === "Outerwear");
       const gap: Record_ = {
         slot: `strato caldo mancante a ${nome}`, category: "Outerwear", essential: true, imposto: false, tappe: [nome],
         subCategories: ["Coat", "Down Jacket"], warmth_richiesto: [isoMin, Math.max(isoMin, ceiling)],
@@ -421,11 +469,16 @@ export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: 
     Object.fromEntries(perTappa.map((t) => [t.destinazione, t.meteo.temp_max_media ?? null])),
     perTappa.reduce((s, t) => s + giorniDiMare(t.giorni || 0, t.attivita), 0),
     (giorniTot >= 2 && capienza > 8 && viaggioDiLavoro(perTappa.flatMap((t) => t.attivita || []), a.classi_viaggio ?? null))
-      ? K.MINIMO_FORMALI_LAVORO : null);
+      ? K.MINIMO_FORMALI_LAVORO : null,
+    new Map(items.map((g) => [g.id, g.copie])));
   const climaTappe = new Map<string, [number | null, boolean]>(perTappa.map((t) =>
     [t.destinazione, [t.meteo.temp_max_media ?? null, eAttivitaAcqua(t.attivita || [])]]));
   diversificaCopie([r.ideali, r.ripieghi], items, capienza, (g, tappe) =>
-    tappe.some((t) => climaTappe.has(t) && estivoFuoriStagione(g, climaTappe.get(t)![0], climaTappe.get(t)![1], profiliCapi)));
+    tappe.some((nome) => {
+      const t = perTappa.find((t) => t.destinazione === nome);
+      return (t && eCammino(t.attivita) && !ammessoCammino(g, t.meteo.temp_min_media >= 18, eAttivitaAcqua(t.attivita))) ||
+        (climaTappe.has(nome) && estivoFuoriStagione(g, climaTappe.get(nome)![0], climaTappe.get(nome)![1], profiliCapi));
+    }));
   const minime = perTappa.map((t) => t.meteo.temp_min_media).filter((x) => x != null);
   const tempMinMin = minime.length ? Math.min(...minime) : null;
   togliDoppioni([...r.ideali, ...r.ripieghi], items, giorniTot, tempMinMin);
@@ -446,7 +499,20 @@ export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: 
     attContesto, tappeV.map((t) => t.destinazione), capienzaBagaglio(get(sc, "bagaglio", ""))));
   r.ideali = r.ideali.filter((x: Record_) => q(x) >= 1);
   r.ripieghi = r.ripieghi.filter((x: Record_) => q(x) >= 1);
-  applicaTettoVolume([...r.ideali, ...r.ripieghi], capienzaPotabile(get(sc, "bagaglio", "")));
+  if (pantaloniDaSera) {
+    limitaPantaloniDaSera([...r.ideali, ...r.ripieghi], undefined, (g) => capoLeggero(g, profiliCapi) ||
+      (perId.get(g.item_id)?.activity_tags.includes("Hiking") ?? false));
+    r.ideali = r.ideali.filter((g: Record_) => q(g) > 0);
+    r.ripieghi = r.ripieghi.filter((g: Record_) => q(g) > 0);
+  }
+  if (rispettaCopie([r.ideali, r.ripieghi], items, r.mancanti)) {
+    r.ideali = r.ideali.filter((x: Record_) => q(x) >= 1);
+    r.ripieghi = r.ripieghi.filter((x: Record_) => q(x) >= 1);
+  }
+  applicaTettoVolume([...r.ideali, ...r.ripieghi], capienzaPotabile(get(sc, "bagaglio", "")),
+    items.some((g) => g.copie != null));
+  r.ideali = r.ideali.filter((x: Record_) => q(x) >= 1);
+  r.ripieghi = r.ripieghi.filter((x: Record_) => q(x) >= 1);
   r.mancanti = r.mancanti.filter((g: Record_) => g.tipo !== "volume_eccedente");
   const avvisoVolume = segnalaVolume([...r.ideali, ...r.ripieghi], capienzaPotabile(get(sc, "bagaglio", "")));
   if (avvisoVolume) r.mancanti.push(avvisoVolume);
@@ -454,7 +520,23 @@ export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: 
   const avvisoScarpe = segnalaScarpeCammino([...r.ideali, ...r.ripieghi], items, perTappa.flatMap((t) => t.attivita || []));
   if (avvisoScarpe) r.mancanti.push(avvisoScarpe);
   berrettoColFreddo([...r.ideali, ...r.ripieghi], items, tempMinMin);
+  if (cammino) {
+    const capi = [...r.ideali, ...r.ripieghi];
+    limitaDotazioneCammino(capi, items, r.richiesti, (g) => !perTappa.some((t) =>
+      coperturaTermica(capi.filter((c) => c.quantita > 0), t.meteo, t.destinazione).coperta &&
+      !coperturaTermica(capi.filter((c) => c !== g && c.quantita > 0), t.meteo, t.destinazione).coperta));
+    r.mancanti = lacuneCammino(r.mancanti, [...r.ideali, ...r.ripieghi], items);
+    r.ideali = r.ideali.filter((g: Record_) => g.quantita > 0);
+    r.ripieghi = r.ripieghi.filter((g: Record_) => g.quantita > 0);
+  }
   segnaInPartenza([...r.ideali, ...r.ripieghi]);
+  if (pantaloniDaSera) {
+    for (const g of [...r.ideali, ...r.ripieghi]) {
+      if (g.category === "Lower Body" && ["Trousers", "Jeans"].includes(g.subCategory)) {
+        g.leggero = capoLeggero(g, profiliCapi) || (perId.get(g.item_id)?.activity_tags.includes("Hiking") ?? false);
+      }
+    }
+  }
   r.mancanti_canonici = canonicalizeGaps(r.mancanti);
   return r;
 }

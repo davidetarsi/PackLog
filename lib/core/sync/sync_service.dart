@@ -1,12 +1,17 @@
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
 import '../analytics/core_analytics_service.dart';
 import '../database/daos/houses_dao.dart';
 import '../database/daos/items_dao.dart';
 import '../database/daos/luggages_dao.dart';
+import '../database/daos/kit_items_dao.dart';
+import '../database/daos/kits_dao.dart';
 import '../database/daos/spaces_dao.dart';
+import '../database/daos/suitcase_edits_dao.dart';
+import '../../features/trips/model/suitcase_edit.dart';
 import '../database/daos/trips_dao.dart';
 import '../database/database.dart';
 import '../database/tables/mixins/syncable_table.dart';
@@ -38,7 +43,10 @@ class SyncService {
   final ItemsDao _itemsDao;
   final SpacesDao _spacesDao;
   final LuggagesDao _luggagesDao;
+  final KitsDao _kitsDao;
+  final KitItemsDao _kitItemsDao;
   final TripsDao _tripsDao;
+  final SuitcaseEditsDao _suitcaseEditsDao;
   final SupabaseRepository _remote;
   final AppMonitoringService _monitoring;
   final TombstoneConfigService _tombstoneConfig;
@@ -49,7 +57,10 @@ class SyncService {
     required ItemsDao itemsDao,
     required SpacesDao spacesDao,
     required LuggagesDao luggagesDao,
+    required KitsDao kitsDao,
+    required KitItemsDao kitItemsDao,
     required TripsDao tripsDao,
+    required SuitcaseEditsDao suitcaseEditsDao,
     required SupabaseRepository remote,
     required AppMonitoringService monitoring,
     required TombstoneConfigService tombstoneConfig,
@@ -58,7 +69,10 @@ class SyncService {
        _itemsDao = itemsDao,
        _spacesDao = spacesDao,
        _luggagesDao = luggagesDao,
+       _kitsDao = kitsDao,
+       _kitItemsDao = kitItemsDao,
        _tripsDao = tripsDao,
+       _suitcaseEditsDao = suitcaseEditsDao,
        _remote = remote,
        _monitoring = monitoring,
        _tombstoneConfig = tombstoneConfig,
@@ -76,6 +90,8 @@ class SyncService {
       _spacesDao.countUnsynced(),
       _luggagesDao.countUnsynced(),
       _itemsDao.countUnsynced(),
+      _kitsDao.countUnsynced(),
+      _kitItemsDao.countUnsynced(),
       _tripsDao.countUnsynced(),
     ]);
     return counts.fold<int>(0, (sum, n) => sum + n);
@@ -93,6 +109,8 @@ class SyncService {
       _spacesDao.getPendingSyncRecords(),
       _luggagesDao.getPendingSyncRecords(),
       _itemsDao.getPendingSyncRecords(),
+      _kitsDao.getPendingSyncRecords(),
+      _kitItemsDao.getPendingSyncRecords(),
       _tripsDao.getPendingSyncRecords(),
     ]);
     return results.fold<int>(0, (sum, list) => sum + list.length);
@@ -117,6 +135,8 @@ class SyncService {
       _spacesDao.getAllUnsyncedRecords(),
       _luggagesDao.getAllUnsyncedRecords(),
       _itemsDao.getAllUnsyncedRecords(),
+      _kitsDao.getAllUnsyncedRecords(),
+      _kitItemsDao.getAllUnsyncedRecords(),
       _tripsDao.getAllUnsyncedRecords(),
     ]);
 
@@ -125,6 +145,8 @@ class SyncService {
       'spaces.title',
       'luggages.title',
       'profile.sync_entity_items',
+      'profile.sync_entity_kits',
+      'profile.sync_entity_kit_items',
       'trips.title',
     ];
 
@@ -157,6 +179,10 @@ class SyncService {
   /// l'ordine esplicito tiene la semantica chiara e non dipende da PRAGMA.
   Future<void> wipeAllUserData() async {
     debugPrint('[SyncService] wipeAllUserData: clearing local DB');
+    // La coda delle modifiche alla valigia è dell'utente precedente.
+    await _suitcaseEditsDao.deleteAll();
+    await _kitItemsDao.wipeAll();
+    await _kitsDao.wipeAll();
     await _itemsDao.wipeAll();
     await _spacesDao.wipeAll();
     await _luggagesDao.wipeAll();
@@ -179,6 +205,8 @@ class SyncService {
         await _spacesDao.resetSyncRetries() +
         await _luggagesDao.resetSyncRetries() +
         await _itemsDao.resetSyncRetries() +
+        await _kitsDao.resetSyncRetries() +
+        await _kitItemsDao.resetSyncRetries() +
         await _tripsDao.resetSyncRetries();
     if (count > 0) {
       debugPrint('[SyncService] Reset retry state on $count records');
@@ -203,6 +231,8 @@ class SyncService {
         await _spacesDao.markDeletedAsPendingSync() +
         await _luggagesDao.markDeletedAsPendingSync() +
         await _itemsDao.markDeletedAsPendingSync() +
+        await _kitsDao.markDeletedAsPendingSync() +
+        await _kitItemsDao.markDeletedAsPendingSync() +
         await _tripsDao.markDeletedAsPendingSync();
     if (count > 0) {
       debugPrint(
@@ -228,6 +258,8 @@ class SyncService {
         _remote.fetchAllSpacesByUserId(userId),
         _remote.fetchAllLuggagesByUserId(userId),
         _remote.fetchAllItemsByUserId(userId),
+        _remote.fetchAllKitsByUserId(userId),
+        _remote.fetchAllKitItemsByUserId(userId),
         _remote.fetchAllTripsByUserId(userId),
       ]);
 
@@ -235,7 +267,9 @@ class SyncService {
       final remoteSpaces = results[1];
       final remoteLuggages = results[2];
       final remoteItems = results[3];
-      final remoteTrips = results[4];
+      final remoteKits = results[4];
+      final remoteKitItems = results[5];
+      final remoteTrips = results[6];
       final now = DateTime.now();
       int inserted = 0, updated = 0, skipped = 0;
 
@@ -280,7 +314,7 @@ class SyncService {
         }
       }
 
-      // FK-safe order: houses → spaces → luggages → items → trips.
+      // FK-safe order: houses → spaces → luggages → items → kits → kit_items → trips.
       for (final r in remoteSpaces) {
         final id = r['id'] as String;
         try {
@@ -391,6 +425,107 @@ class SyncService {
         }
       }
 
+      for (final r in remoteKits) {
+        final id = r['id'] as String;
+        try {
+          final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
+          final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
+          final local = await _kitsDao.findKitById(id);
+          if (local == null) {
+            if (remoteIsDeleted) {
+              skipped++;
+              continue;
+            }
+            await _kitsDao.insertKit(
+              SyncSerializers.buildKitCompanion(r, syncedAt: now),
+            );
+            inserted++;
+          } else if (local.isDeleted && !remoteIsDeleted) {
+            skipped++; // delete-wins: vedi loop houses
+          } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+            await _kitsDao.updateKit(
+              SyncSerializers.buildKitCompanion(r, syncedAt: now),
+            );
+            updated++;
+          } else {
+            skipped++;
+          }
+        } catch (e, st) {
+          debugPrint('[SyncService] fullPull: skip kit $id — ${e.runtimeType}');
+          _monitoring.captureException(
+            e,
+            stackTrace: st,
+            tags: {'operation': 'fullPull_kit', 'kit_id': id},
+          );
+        }
+      }
+
+      for (final r in remoteKitItems) {
+        final id = r['id'] as String;
+        try {
+          final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
+          final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
+          final local = await _kitItemsDao.findKitItemById(id);
+          if (local == null) {
+            if (remoteIsDeleted) {
+              skipped++;
+              continue;
+            }
+            // Oggetto o kit assente in locale (cancellato e purgato): la riga
+            // non ha dove stare, ed è un caso normale, non un errore.
+            final itemId = r['item_id'] as String;
+            final kitId = r['kit_id'] as String;
+            if (await _itemsDao.findItemById(itemId) == null ||
+                await _kitsDao.findKitById(kitId) == null) {
+              skipped++;
+              continue;
+            }
+            // Una sola riga per coppia (kit, oggetto): se questo dispositivo
+            // ha la stessa coppia con un altro id, l'insert violerebbe
+            // l'unicità. Una riga già sincronizzata cede al remoto; una con
+            // modifiche non spedite resta se è più recente (il push poi la
+            // allinea al server con l'upsert sulla coppia), altrimenti cede.
+            final samePair = await _kitItemsDao.findKitItemByPair(
+              kitId,
+              itemId,
+            );
+            if (samePair != null && samePair.id != id) {
+              final keepLocal =
+                  samePair.syncStatus != SyncStatus.synced &&
+                  samePair.updatedAt.toUtc().isAfter(remoteTs);
+              if (keepLocal) {
+                skipped++;
+                continue;
+              }
+              await _kitItemsDao.purgeRecord(samePair.id);
+            }
+            await _kitItemsDao.insertKitItem(
+              SyncSerializers.buildKitItemCompanion(r, syncedAt: now),
+            );
+            inserted++;
+          } else if (local.isDeleted && !remoteIsDeleted) {
+            skipped++; // delete-wins: vedi loop houses
+          } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+            await _kitItemsDao.updateKitItem(
+              SyncSerializers.buildKitItemCompanion(r, syncedAt: now),
+            );
+            updated++;
+          } else {
+            skipped++;
+          }
+        } catch (e, st) {
+          // Resta un errore vero (non l'oggetto o il kit assenti, già saltati).
+          debugPrint(
+            '[SyncService] fullPull: skip kit item $id — ${e.runtimeType}',
+          );
+          _monitoring.captureException(
+            e,
+            stackTrace: st,
+            tags: {'operation': 'fullPull_kit_item', 'kit_item_id': id},
+          );
+        }
+      }
+
       for (final r in remoteTrips) {
         final id = r['id'] as String;
         try {
@@ -467,7 +602,7 @@ class SyncService {
     }
   }
 
-  /// FK-safe order: houses → spaces → luggages → items → trips (create/update).
+  /// FK-safe order: houses → spaces → luggages → items → kits → kit_items → trips (create/update).
   /// Purge order is reversed: trips/items/luggages/spaces first, houses last
   /// (FK safety: items reference spaces; trips reference luggages via junction).
   Future<void> processQueue() async {
@@ -476,17 +611,22 @@ class SyncService {
     final spaces = await _spacesDao.getPendingSyncRecords();
     final luggages = await _luggagesDao.getPendingSyncRecords();
     final items = await _itemsDao.getPendingSyncRecords();
+    final kits = await _kitsDao.getPendingSyncRecords();
+    final kitItems = await _kitItemsDao.getPendingSyncRecords();
     final trips = await _tripsDao.getPendingSyncRecords();
 
     _monitoring.logBreadcrumb(
       'Avvio batch sync: ${houses.length} case, ${spaces.length} spazi, '
-      '${luggages.length} bagagli, ${items.length} item, ${trips.length} viaggi',
+      '${luggages.length} bagagli, ${items.length} item, ${kits.length} kit, '
+      '${kitItems.length} righe di kit, ${trips.length} viaggi',
       category: 'sync',
       data: {
         'houses_count': houses.length,
         'spaces_count': spaces.length,
         'luggages_count': luggages.length,
         'items_count': items.length,
+        'kits_count': kits.length,
+        'kit_items_count': kitItems.length,
         'trips_count': trips.length,
       },
     );
@@ -596,6 +736,59 @@ class SyncService {
       );
     }
 
+    for (final kit in kits) {
+      await _syncRecord(
+        id: kit.id,
+        localUpdatedAt: kit.updatedAt,
+        localIsDeleted: kit.isDeleted,
+        sentryTraceId: kit.sentryTraceId,
+        toJson: () => SyncSerializers.kitToJson(kit),
+        fetchRemote: (trace) =>
+            _remote.fetchKitById(kit.id, sentryTrace: trace),
+        upsert: (data, trace) => _remote.upsertKit(data, sentryTrace: trace),
+        pullLocal: (remote) => _kitsDao.updateKit(
+          SyncSerializers.buildKitCompanion(remote, includeSyncFields: false),
+        ),
+        markSynced: (ts, localAt) =>
+            _kitsDao.markAsSynced(kit.id, ts, localUpdatedAt: localAt),
+        incrementRetry: (e) => _kitsDao.incrementSyncRetry(kit.id, e),
+        onPurge: () => pendingPurges.add(() => _kitsDao.purgeRecord(kit.id)),
+        syncStatus: kit.syncStatus,
+        lastSyncedAt: kit.lastSyncedAt,
+        createdAt: kit.createdAt,
+        entity: 'kit',
+      );
+    }
+
+    for (final row in kitItems) {
+      await _syncRecord(
+        id: row.id,
+        localUpdatedAt: row.updatedAt,
+        localIsDeleted: row.isDeleted,
+        sentryTraceId: row.sentryTraceId,
+        toJson: () => SyncSerializers.kitItemToJson(row),
+        fetchRemote: (trace) =>
+            _remote.fetchKitItemById(row.id, sentryTrace: trace),
+        upsert: (data, trace) =>
+            _remote.upsertKitItem(data, sentryTrace: trace),
+        pullLocal: (remote) => _kitItemsDao.updateKitItem(
+          SyncSerializers.buildKitItemCompanion(
+            remote,
+            includeSyncFields: false,
+          ),
+        ),
+        markSynced: (ts, localAt) =>
+            _kitItemsDao.markAsSynced(row.id, ts, localUpdatedAt: localAt),
+        incrementRetry: (e) => _kitItemsDao.incrementSyncRetry(row.id, e),
+        onPurge: () =>
+            pendingPurges.add(() => _kitItemsDao.purgeRecord(row.id)),
+        syncStatus: row.syncStatus,
+        lastSyncedAt: row.lastSyncedAt,
+        createdAt: row.createdAt,
+        entity: 'kit_item',
+      );
+    }
+
     for (final trip in trips) {
       // Prefetch della checklist + luggage_ids: vengono serializzati nel
       // payload del trip su Supabase, così un nuovo device ritrova items
@@ -642,6 +835,89 @@ class SyncService {
         );
       }
     }
+
+    await _sendSuitcaseEdits();
+  }
+
+  /// Dimensione di un blocco di modifiche alla valigia inviate in un colpo.
+  static const int _suitcaseEditsBlock = 200;
+
+  /// Codici Postgres per cui riprovare non serve mai: dati non validi (classe
+  /// 22), vincoli violati (classe 23) e RLS che rifiuta la riga, per esempio
+  /// di un altro account (42501).
+  static bool _isPoisonError(Object e) {
+    if (e is! PostgrestException) return false;
+    final code = e.code;
+    return code != null &&
+        (code.startsWith('22') || code.startsWith('23') || code == '42501');
+  }
+
+  /// Invia la coda delle modifiche alla valigia, a blocchi, e toglie in locale
+  /// ciò che è arrivato. Gira dopo le entità e non fa mai fallire il resto
+  /// della sync: se un invio non riesce le righe restano in coda per il giro
+  /// successivo (l'id è la chiave primaria, quindi riprovare non duplica).
+  ///
+  /// Se un blocco viene rifiutato per un errore di dati o di vincolo (una riga
+  /// "avvelenata" bloccherebbe per sempre anche le altre), il blocco si rimanda
+  /// una riga alla volta: quelle arrivate e quelle rifiutate si tolgono in
+  /// locale, quelle che falliscono per altri motivi (rete) restano.
+  Future<void> _sendSuitcaseEdits() async {
+    try {
+      while (true) {
+        final block = await _suitcaseEditsDao.pending(
+          limit: _suitcaseEditsBlock,
+        );
+        if (block.isEmpty) return;
+        try {
+          await _remote.insertSuitcaseEdits([
+            for (final e in block) SyncSerializers.suitcaseEditToJson(e),
+          ]);
+          await _suitcaseEditsDao.deleteByIds([for (final e in block) e.id]);
+        } catch (e) {
+          if (!_isPoisonError(e)) rethrow;
+          if (!await _sendSuitcaseEditsOneByOne(block)) return;
+        }
+        if (block.length < _suitcaseEditsBlock) return;
+      }
+    } catch (e, st) {
+      debugPrint('[SyncService] Invio modifiche valigia fallito: $e');
+      _monitoring.captureException(
+        e,
+        stackTrace: st,
+        tags: const {'operation': 'suitcase_edits_send'},
+      );
+    }
+  }
+
+  /// Rimanda [block] una riga alla volta. Ritorna false se almeno una riga è
+  /// rimasta in coda (errore non di dati): il giro si ferma e riprova al
+  /// prossimo.
+  Future<bool> _sendSuitcaseEditsOneByOne(List<SuitcaseEdit> block) async {
+    var allDone = true;
+    for (final edit in block) {
+      try {
+        await _remote.insertSuitcaseEdits([
+          SyncSerializers.suitcaseEditToJson(edit),
+        ]);
+        await _suitcaseEditsDao.deleteByIds([edit.id]);
+      } catch (e, st) {
+        if (_isPoisonError(e)) {
+          await _suitcaseEditsDao.deleteByIds([edit.id]);
+        } else {
+          allDone = false;
+        }
+        debugPrint('[SyncService] Modifica valigia ${edit.id} rifiutata: $e');
+        _monitoring.captureException(
+          e,
+          stackTrace: st,
+          tags: {
+            'operation': 'suitcase_edits_send',
+            'poison': '${_isPoisonError(e)}',
+          },
+        );
+      }
+    }
+    return allDone;
   }
 
   Future<void> _syncRecord({
@@ -808,7 +1084,10 @@ class SyncService {
 
   /// Colonne AI del viaggio che il locale non ha e il remoto sì. Non sovrascrive
   /// mai un dato AI già presente in locale e non tocca nessun'altra colonna.
-  Future<bool> _riempiAiMancante(Trip local, Map<String, dynamic> remoto) async {
+  Future<bool> _riempiAiMancante(
+    Trip local,
+    Map<String, dynamic> remoto,
+  ) async {
     final ricevuto = SyncSerializers.buildTripCompanion(
       remoto,
       includeSyncFields: false,

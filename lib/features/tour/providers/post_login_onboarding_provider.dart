@@ -1,6 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../core/analytics/analytics_service.dart';
+import '../../../core/analytics/core_analytics_service.dart';
 import '../model/onboarding_state.dart';
 import '../repositories/shared_prefs_onboarding_repository.dart';
 
@@ -44,6 +44,18 @@ class PostLoginOnboarding extends _$PostLoginOnboarding {
     }
   }
 
+  /// Chiude il passo "Dove vai?": la X, il salvataggio del passo 1 o la prima
+  /// valigia generata. Agisce solo dal passo `firstTrip`: da `done` e da
+  /// qualunque passo del tour (chi sta rifacendo il tour, un tip di casa o
+  /// viaggio) non scrive nulla e il tour continua.
+  Future<void> completeFirstTrip() async {
+    final current = await future;
+    if (current.step != OnboardingStep.firstTrip) return;
+    final repo = ref.read(onboardingRepositoryProvider);
+    await repo.saveStep(OnboardingStep.done);
+    state = AsyncData(current.copyWith(step: OnboardingStep.done));
+  }
+
   /// "Salta" sulla AI intro chiude l'INTERO tour, non solo la demo AI.
   ///
   /// Chi preme Salta sta dicendo "non voglio essere guidato", non "saltiamo
@@ -80,13 +92,10 @@ class PostLoginOnboarding extends _$PostLoginOnboarding {
     // ha finito il tour da chi lo ha chiuso al primo tip.
     if (next == OnboardingStep.done) {
       ref
-          .read(analyticsServiceProvider)
-          .logEvent(
-            'tour_completed',
-            properties: {
-              'skipped_ai': current.skippedAi,
-              'last_step_index': current.step.tourStepIndex,
-            },
+          .read(coreAnalyticsServiceProvider)
+          .trackTourCompleted(
+            skippedAi: current.skippedAi,
+            lastStepIndex: current.step.tourStepIndex,
           );
     }
   }
@@ -99,13 +108,21 @@ class PostLoginOnboarding extends _$PostLoginOnboarding {
     state = AsyncData(current.copyWith(step: OnboardingStep.done));
   }
 
+  /// "Ripeti il tour": si riparte come al primo avvio, da "Dove vai?" (il
+  /// router ci porta da solo con il passo [OnboardingStep.firstTrip]). Niente
+  /// prova con la foto: per chi ha già delle case creerebbe una casa nuova.
   Future<void> reset({required bool hasExistingHouses}) async {
     final repo = ref.read(onboardingRepositoryProvider);
-    await repo.saveStep(OnboardingStep.aiIntro);
+    await repo.saveStep(OnboardingStep.firstTrip);
     await repo.saveSkippedAi(false);
     await repo.saveHasExistingHouses(hasExistingHouses);
     await repo.saveDefaultHouseId(null);
-    state = AsyncData(OnboardingState(hasExistingHouses: hasExistingHouses));
+    state = AsyncData(
+      OnboardingState(
+        step: OnboardingStep.firstTrip,
+        hasExistingHouses: hasExistingHouses,
+      ),
+    );
   }
 
   static OnboardingStep _nextStep(OnboardingState s) {

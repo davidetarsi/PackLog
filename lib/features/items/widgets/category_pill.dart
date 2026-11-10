@@ -29,23 +29,34 @@ class CategoryPill extends StatelessWidget {
     final Color foregroundColor;
     final Color borderColor;
 
+    // Tutti gli stati hanno un fondo pieno: la lista degli oggetti scorre sotto
+    // le pillole e non deve vedersi attraverso. In chiaro il bianco delle
+    // card, staccato dalla pagina grigia. In scuro sulla pagina è un fondo più
+    // scuro; in un foglio, più chiaro del foglio, come i campi accanto.
+    final base =
+        Theme.of(context).brightness == Brightness.light || context.isInSheet
+        ? context.groupSurface
+        : colorScheme.surfaceContainerLow;
+
     switch (pillState) {
       case CategoryPillState.inactive:
-        // In chiaro il bianco delle card, staccato dalla pagina grigia.
-        backgroundColor = Theme.of(context).brightness == Brightness.light
-            ? context.groupSurface
-            : colorScheme.surfaceContainerLow;
+        backgroundColor = base;
         foregroundColor = colorScheme.onSurfaceVariant;
         borderColor = Colors.transparent;
-      // Proposta dall'app: solo il contorno, si legge come un suggerimento.
+      // Proposta dall'app: il contorno la distingue, il fondo è quello delle
+      // pillole inattive. Si legge come un suggerimento.
       case CategoryPillState.inferred:
-        backgroundColor = Colors.transparent;
+        backgroundColor = base;
         foregroundColor = categoryColor;
         borderColor = categoryColor.withValues(alpha: AppOpacity.mutedBorder);
-      // Scelta: fondo tenue, mai pieno. L'arancio pieno resta all'azione
-      // principale dello schermo (regola "un solo arancio").
+      // Scelta: velo tenue sopra il fondo pieno, mai arancio pieno. L'arancio
+      // pieno resta all'azione principale dello schermo (regola "un solo
+      // arancio").
       case CategoryPillState.forced:
-        backgroundColor = categoryColor.withValues(alpha: AppOpacity.selected);
+        backgroundColor = Color.alphaBlend(
+          categoryColor.withValues(alpha: AppOpacity.selected),
+          base,
+        );
         foregroundColor = categoryColor;
         borderColor = categoryColor;
     }
@@ -80,14 +91,16 @@ class CategoryPill extends StatelessWidget {
               SizedBox(height: context.spacingXxs),
               // scaleDown: con caratteri di sistema grandi o in inglese
               // ("Electronics") il nome si stringe invece di sforare.
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  category.displayName,
-                  maxLines: 1,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelSmall?.copyWith(color: foregroundColor),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    category.displayName,
+                    maxLines: 1,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: foregroundColor),
+                  ),
                 ),
               ),
             ],
