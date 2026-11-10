@@ -8,6 +8,7 @@ import 'package:pack_log/core/monitoring/monitoring_service.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/core/sync/sync_service.dart';
+import 'package:pack_log/core/sync/sync_session.dart';
 
 class _Service extends Mock implements SyncService {}
 
@@ -15,17 +16,22 @@ class _Connectivity extends Mock implements Connectivity {}
 
 class _Monitoring extends Mock implements AppMonitoringService {}
 
+class _BarrierFake extends Fake implements SyncLocalWriteBarrier {}
+
 void main() {
   test(
     'derived pull flag uses owner snapshot before stream data arrives',
     () async {
       TestWidgetsFlutterBinding.ensureInitialized();
+      registerFallbackValue(_BarrierFake());
       final service = _Service();
       final connectivity = _Connectivity();
       final monitoring = _Monitoring();
       final pullStarted = Completer<void>();
       final finishPull = Completer<void>();
 
+      when(() => service.bindSessionBarrier(any())).thenReturn(null);
+      when(() => service.drainLocalWrites()).thenAnswer((_) async {});
       when(
         () => connectivity.checkConnectivity(),
       ).thenAnswer((_) async => [ConnectivityResult.wifi]);
@@ -40,7 +46,10 @@ void main() {
         monitoring,
         connectivity: connectivity,
       );
-      orchestrator.requestFullPull('user');
+      await orchestrator.replaceSession(
+        'user',
+        prepareLocalData: () async => false,
+      );
       await pullStarted.future;
 
       final container = ProviderContainer(

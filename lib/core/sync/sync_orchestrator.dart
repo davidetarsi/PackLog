@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 
 import '../monitoring/monitoring_service.dart';
 import 'sync_run_state.dart';
+import 'sync_session.dart';
 import 'sync_service.dart';
 
 class SyncOrchestrator with WidgetsBindingObserver {
@@ -17,12 +18,21 @@ class SyncOrchestrator with WidgetsBindingObserver {
   SyncRunState _state = const SyncIdle();
   bool _disposed = false;
   bool _running = false;
+  int? _runningOperationId;
+  int? _runningEpoch;
+  int _sessionEpoch = 0;
+  bool _sessionReady = false;
+  bool _needsRestore = false;
+  Future<bool> Function()? _prepareCurrentSession;
+  final SyncLocalWriteBarrier _writeBarrier = SyncLocalWriteBarrier();
+  Future<void> _sessionQueue = Future<void>.value();
   bool _pullPending = false;
   bool _pushPending = false;
   bool _resetRetriesPending = false;
   String? _pendingPullUserId;
   String? _currentUserId;
   int _operationId = 0;
+  int _drainToken = 0;
   String _pushTrigger = 'local_mutation';
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
@@ -36,9 +46,15 @@ class SyncOrchestrator with WidgetsBindingObserver {
     this._syncService,
     this._monitoring, {
     Connectivity? connectivity,
-  }) : _connectivity = connectivity ?? Connectivity();
+  }) : _connectivity = connectivity ?? Connectivity() {
+    _syncService.bindSessionBarrier(_writeBarrier);
+  }
 
   SyncRunState get state => _state;
+  bool get needsRestore => _needsRestore;
+  bool get sessionReady => _sessionReady;
+  String? get currentUserId => _currentUserId;
+  int get sessionEpoch => _sessionEpoch;
   Stream<SyncRunState> get states => Stream<SyncRunState>.multi((controller) {
     // Attach first, then read the snapshot: this closes the gap where a state
     // could change after the snapshot read but before stream subscription.
@@ -66,6 +82,11 @@ class SyncOrchestrator with WidgetsBindingObserver {
 
   void dispose() {
     _disposed = true;
+    _writeBarrier.dispose();
+    _sessionEpoch++;
+    _sessionReady = false;
+    _pullPending = false;
+    _pushPending = false;
     WidgetsBinding.instance.removeObserver(this);
     _connectivitySubscription?.cancel();
     _connectivitySubscription = null;
@@ -76,17 +97,17 @@ class SyncOrchestrator with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       final userId = _currentUserId;
-      if (userId != null) _requestPull(userId, resetRetries: true);
+      if (userId != null && _sessionReady) {
+        _requestPull(userId, resetRetries: true, epoch: _sessionEpoch);
+      }
     }
   }
 
   void _onConnectivityChanged(List<ConnectivityResult> results) {
     if (!_hasNetwork(results)) return;
     final userId = _currentUserId;
-    if (userId != null) {
-      _requestPull(userId, resetRetries: true);
-    } else {
-      _requestPush('connectivity_restored');
+    if (userId != null && _sessionReady) {
+      _requestPull(userId, resetRetries: true, epoch: _sessionEpoch);
     }
   }
 
@@ -94,13 +115,92 @@ class SyncOrchestrator with WidgetsBindingObserver {
 
   void requestForcedSync() => _requestPush('forced_sync', resetRetries: true);
 
-  void requestFullPull(String userId) {
+  Future<void> replaceSession(
+    String? userId, {
+    required Future<bool> Function() prepareLocalData,
+  }) {
+    final epoch = ++_sessionEpoch;
+    _sessionReady = false;
+    _needsRestore = false;
     _currentUserId = userId;
-    _requestPull(userId);
+    _prepareCurrentSession = userId == null ? null : prepareLocalData;
+    _pullPending = false;
+    _pendingPullUserId = null;
+    _pushPending = false;
+    _resetRetriesPending = false;
+    _running = false;
+    _runningEpoch = null;
+    _runningOperationId = null;
+    _writeBarrier.beginSwitch(epoch);
+    _publish(
+      userId == null ? const SyncSignedOut() : const SyncSwitchingSession(),
+    );
+
+    final previous = _sessionQueue;
+    final completed = Completer<void>();
+    _sessionQueue = completed.future;
+    return () async {
+      try {
+        await previous;
+        if (!_isCurrentEpoch(epoch)) return;
+        await _syncService.drainLocalWrites();
+        if (!_isCurrentEpoch(epoch)) return;
+        if (userId == null) {
+          await prepareLocalData();
+          if (!_isCurrentEpoch(epoch)) return;
+          _writeBarrier.signOut(epoch);
+          _publish(const SyncSignedOut());
+          return;
+        }
+        _needsRestore = await prepareLocalData();
+        if (!_isCurrentEpoch(epoch)) return;
+        final context = _writeBarrier.createContext(epoch, userId);
+        _writeBarrier.activate(context);
+        _sessionReady = true;
+        _publish(const SyncIdle());
+        if (_isCurrentEpoch(epoch) && _sessionReady) {
+          _requestPull(userId, epoch: epoch);
+        }
+      } catch (e, st) {
+        if (_isCurrentEpoch(epoch)) {
+          _sessionReady = false;
+          _needsRestore = userId != null;
+          _publish(
+            const SyncFailed(
+              SyncFailureCode.service,
+              isPreparationFailure: true,
+            ),
+          );
+          _captureFailure(e, st, 'orchestrator_prepare_session');
+        }
+      } finally {
+        completed.complete();
+      }
+    }();
   }
 
+  Future<void> retrySessionPreparation() {
+    final userId = _currentUserId;
+    final prepare = _prepareCurrentSession;
+    if (userId == null || prepare == null || _sessionReady) {
+      return Future<void>.value();
+    }
+    return replaceSession(userId, prepareLocalData: prepare);
+  }
+
+  void requestFullPull(String userId) {
+    if (_sessionReady && userId == _currentUserId) {
+      _requestPull(userId, epoch: _sessionEpoch);
+    }
+  }
+
+  bool _isCurrentEpoch(int epoch) => !_disposed && epoch == _sessionEpoch;
+
   Future<void> _requestPush(String trigger, {bool resetRetries = false}) async {
-    final online = await _isOnline();
+    if (!_sessionReady || _currentUserId == null) return;
+    final epoch = _sessionEpoch;
+    final online = await _isOnline(epoch);
+    if (!_isCurrentEpoch(epoch) || !_sessionReady) return;
     if (online == null) return;
     if (!online) {
       if (!_running) _publish(const SyncOffline());
@@ -112,8 +212,15 @@ class SyncOrchestrator with WidgetsBindingObserver {
     unawaited(_drain());
   }
 
-  Future<void> _requestPull(String userId, {bool resetRetries = false}) async {
-    final online = await _isOnline();
+  Future<void> _requestPull(
+    String userId, {
+    bool resetRetries = false,
+    required int epoch,
+  }) async {
+    final online = await _isOnline(epoch);
+    if (!_isCurrentEpoch(epoch) || !_sessionReady || userId != _currentUserId) {
+      return;
+    }
     if (online == null) return;
     if (!online) {
       if (!_running) _publish(const SyncOffline());
@@ -125,59 +232,72 @@ class SyncOrchestrator with WidgetsBindingObserver {
     unawaited(_drain());
   }
 
-  Future<bool?> _isOnline() async {
+  Future<bool?> _isOnline(int epoch) async {
     try {
       return _hasNetwork(await _connectivity.checkConnectivity());
     } catch (e, st) {
-      _monitoring.captureException(
-        e,
-        stackTrace: st,
-        tags: const {'operation': 'orchestrator_connectivity'},
-      );
-      if (!_running) _publish(const SyncFailed(SyncFailureCode.network));
+      if (_isCurrentEpoch(epoch)) {
+        _monitoring.captureException(
+          e,
+          stackTrace: st,
+          tags: const {'operation': 'orchestrator_connectivity'},
+        );
+      }
+      if (_isCurrentEpoch(epoch) && !_running) {
+        _publish(const SyncFailed(SyncFailureCode.network));
+      }
       return null;
     }
   }
 
   Future<void> _drain() async {
-    if (_running || _disposed) return;
+    if (_disposed || !_sessionReady) return;
+    if (_running && _runningEpoch == _sessionEpoch) return;
+    final epoch = _sessionEpoch;
+    final drainToken = ++_drainToken;
     _running = true;
+    _runningEpoch = epoch;
+    _runningOperationId = drainToken;
     var failed = false;
     try {
-      while (!_disposed && (_pullPending || _pushPending)) {
+      while (_isCurrentEpoch(epoch) &&
+          _sessionReady &&
+          (_pullPending || _pushPending)) {
         if (_pullPending) {
           final userId = _pendingPullUserId!;
           _pullPending = false;
           _pendingPullUserId = null;
           final reset = _takeResetIntent();
-          if (!await _runPull(userId, resetRetries: reset)) {
-            if (!_pullPending && !_pushPending) {
+          if (!await _runPull(userId, epoch: epoch, resetRetries: reset)) {
+            if (_isCurrentEpoch(epoch) && !_pullPending && !_pushPending) {
               failed = true;
               break;
             }
             continue;
           }
+          if (!_isCurrentEpoch(epoch)) break;
           failed = false;
-          // Il pull può produrre record locali pending. Accoda un solo push.
           try {
             final pending = await _syncService.countPendingChanges();
-            if (pending > 0) {
+            if (_isCurrentEpoch(epoch) && pending > 0) {
               _pushPending = true;
               _pushTrigger = 'full_pull_auto_flush';
             }
           } catch (e, st) {
-            _monitoring.captureException(
-              e,
-              stackTrace: st,
-              tags: const {'operation': 'orchestrator_autoFlush_count'},
-            );
+            if (_isCurrentEpoch(epoch)) {
+              _monitoring.captureException(
+                e,
+                stackTrace: st,
+                tags: const {'operation': 'orchestrator_autoFlush_count'},
+              );
+            }
           }
         } else if (_pushPending) {
           _pushPending = false;
           final trigger = _pushTrigger;
           final reset = _takeResetIntent();
-          if (!await _runPush(trigger, resetRetries: reset)) {
-            if (!_pullPending && !_pushPending) {
+          if (!await _runPush(trigger, epoch: epoch, resetRetries: reset)) {
+            if (_isCurrentEpoch(epoch) && !_pullPending && !_pushPending) {
               failed = true;
               break;
             }
@@ -187,14 +307,18 @@ class SyncOrchestrator with WidgetsBindingObserver {
         }
       }
     } finally {
-      _running = false;
-      if (!_disposed && !failed) {
-        _publish(const SyncIdle());
-      }
-      // Pending explicit work can only be left by a concurrent request during
-      // the final state publication; failures deliberately stop this drain.
-      if (!_disposed && !failed && (_pullPending || _pushPending)) {
-        unawaited(_drain());
+      if (_runningOperationId == drainToken) {
+        _running = false;
+        _runningEpoch = null;
+        _runningOperationId = null;
+        if (_isCurrentEpoch(epoch) && !failed) {
+          _publish(const SyncIdle());
+        }
+        if (_isCurrentEpoch(epoch) &&
+            !failed &&
+            (_pullPending || _pushPending)) {
+          unawaited(_drain());
+        }
       }
     }
   }
@@ -205,36 +329,51 @@ class SyncOrchestrator with WidgetsBindingObserver {
     return reset;
   }
 
-  Future<bool> _runPull(String userId, {required bool resetRetries}) async {
+  Future<bool> _runPull(
+    String userId, {
+    required int epoch,
+    required bool resetRetries,
+  }) async {
     final operationId = ++_operationId;
     _publish(
       SyncRunning(
         operation: SyncOperationKind.pull,
         operationId: operationId,
-        sessionEpoch: 0,
+        sessionEpoch: epoch,
       ),
     );
     onFullPullStart?.call();
     _monitoring.logBreadcrumb('Avvio fullPull', category: 'sync');
     try {
       if (resetRetries) await _syncService.resetAllSyncRetries();
+      if (!_isCurrentEpoch(epoch)) return false;
       await _syncService.fullPull(userId);
+      if (!_isCurrentEpoch(epoch)) return false;
+      _needsRestore = false;
       onFullPullComplete?.call();
       return true;
+    } on SyncSessionInvalid {
+      return false;
     } catch (e, st) {
-      _captureFailure(e, st, 'orchestrator_fullPull');
-      _publish(SyncFailed(_failureCode(e)));
+      if (_isCurrentEpoch(epoch)) {
+        _captureFailure(e, st, 'orchestrator_fullPull');
+        _publish(SyncFailed(_failureCode(e)));
+      }
       return false;
     }
   }
 
-  Future<bool> _runPush(String trigger, {required bool resetRetries}) async {
+  Future<bool> _runPush(
+    String trigger, {
+    required int epoch,
+    required bool resetRetries,
+  }) async {
     final operationId = ++_operationId;
     _publish(
       SyncRunning(
         operation: SyncOperationKind.push,
         operationId: operationId,
-        sessionEpoch: 0,
+        sessionEpoch: epoch,
       ),
     );
     onSyncStarted?.call();
@@ -245,14 +384,19 @@ class SyncOrchestrator with WidgetsBindingObserver {
     );
     try {
       if (resetRetries) await _syncService.resetAllSyncRetries();
+      if (!_isCurrentEpoch(epoch)) return false;
       await _syncService.processQueue();
-      return true;
+      return _isCurrentEpoch(epoch);
+    } on SyncSessionInvalid {
+      return false;
     } catch (e, st) {
-      _captureFailure(e, st, 'orchestrator_processQueue', trigger: trigger);
-      _publish(SyncFailed(_failureCode(e)));
+      if (_isCurrentEpoch(epoch)) {
+        _captureFailure(e, st, 'orchestrator_processQueue', trigger: trigger);
+        _publish(SyncFailed(_failureCode(e)));
+      }
       return false;
     } finally {
-      onProcessQueueComplete?.call();
+      if (_isCurrentEpoch(epoch)) onProcessQueueComplete?.call();
     }
   }
 

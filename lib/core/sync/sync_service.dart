@@ -19,6 +19,7 @@ import '../monitoring/monitoring_service.dart';
 import '../../shared/helpers/sync_error_reason.dart';
 import 'supabase_repository.dart';
 import 'sync_serializers.dart';
+import 'sync_session.dart';
 import 'tombstone_config_service.dart';
 
 /// Snapshot leggibile dall'utente dello stato "non sincronizzato" per un
@@ -51,6 +52,8 @@ class SyncService {
   final AppMonitoringService _monitoring;
   final TombstoneConfigService _tombstoneConfig;
   final CoreAnalyticsService? _analytics;
+  SyncLocalWriteBarrier? _sessionBarrier;
+  final Set<SyncLocalWriteBarrier> _sessionBarriers = {};
 
   SyncService({
     required HousesDao housesDao,
@@ -77,6 +80,57 @@ class SyncService {
        _monitoring = monitoring,
        _tombstoneConfig = tombstoneConfig,
        _analytics = analytics;
+
+  void bindSessionBarrier(SyncLocalWriteBarrier barrier) {
+    for (final previous in _sessionBarriers) {
+      previous.dispose();
+    }
+    _sessionBarriers.add(barrier);
+    _sessionBarrier = barrier;
+  }
+
+  Future<void> drainLocalWrites() async {
+    while (true) {
+      final boundBarrier = _sessionBarrier;
+      final barriers = List<SyncLocalWriteBarrier>.of(_sessionBarriers);
+      await Future.wait([
+        for (final barrier in barriers) barrier.drainLocalWrites(),
+      ]);
+      if (identical(boundBarrier, _sessionBarrier) &&
+          barriers.length == _sessionBarriers.length) {
+        _sessionBarriers.removeWhere(
+          (barrier) => !identical(barrier, boundBarrier),
+        );
+        return;
+      }
+    }
+  }
+
+  SyncSessionContext? _captureSession([String? owner]) {
+    final barrier = _sessionBarrier;
+    if (barrier == null) return null; // Legacy direct service tests only.
+    final context = barrier.capture(owner ?? barrierUserId);
+    return context;
+  }
+
+  String? get barrierUserId => _sessionBarrier?.userId;
+
+  Future<T> _commit<T>(
+    SyncSessionContext? context,
+    Future<T> Function() write,
+  ) {
+    final barrier = _sessionBarrier;
+    if (barrier == null) return write();
+    if (context == null) throw const SyncSessionInvalid();
+    return barrier.commit(context, write);
+  }
+
+  void _checkSession(SyncSessionContext? context) {
+    final barrier = _sessionBarrier;
+    if (barrier != null && (context == null || !barrier.isCurrent(context))) {
+      throw const SyncSessionInvalid();
+    }
+  }
 
   /// Conta tutti i record non sincronizzati (syncStatus != synced) su tutte
   /// le tabelle, indipendentemente dal retry count o dal backoff.
@@ -200,46 +254,68 @@ class SyncService {
   /// ripresa: dà una nuova chance ai record bloccati oltre la soglia di 5
   /// retry, che altrimenti `getPendingSync*` continuerebbe a filtrare.
   Future<int> resetAllSyncRetries() async {
-    final count =
-        await _housesDao.resetSyncRetries() +
-        await _spacesDao.resetSyncRetries() +
-        await _luggagesDao.resetSyncRetries() +
-        await _itemsDao.resetSyncRetries() +
-        await _kitsDao.resetSyncRetries() +
-        await _kitItemsDao.resetSyncRetries() +
-        await _tripsDao.resetSyncRetries();
-    if (count > 0) {
-      debugPrint('[SyncService] Reset retry state on $count records');
-      _monitoring.logBreadcrumb(
-        'Reset retry state on $count blocked records',
-        category: 'sync',
-        data: {'count': count},
-      );
-    }
-    return count;
+    final session = _captureSession();
+    return _commit(session, () async {
+      final count =
+          await _housesDao.resetSyncRetries() +
+          await _spacesDao.resetSyncRetries() +
+          await _luggagesDao.resetSyncRetries() +
+          await _itemsDao.resetSyncRetries() +
+          await _kitsDao.resetSyncRetries() +
+          await _kitItemsDao.resetSyncRetries() +
+          await _tripsDao.resetSyncRetries();
+      if (count > 0) {
+        debugPrint('[SyncService] Reset retry state on $count records');
+        _monitoring.logBreadcrumb(
+          'Reset retry state on $count blocked records',
+          category: 'sync',
+          data: {'count': count},
+        );
+      }
+      return count;
+    });
   }
 
   /// One-time recovery: re-marks soft-deleted records that were incorrectly
   /// left as "synced" (due to a prior timezone bug that caused pulls instead
   /// of pushes). After this runs, processQueue will pick them up.
-  bool _recoveryDone = false;
-  Future<void> _recoverStaleSoftDeletes() async {
-    if (_recoveryDone) return;
-    _recoveryDone = true;
-    final count =
-        await _housesDao.markDeletedAsPendingSync() +
-        await _spacesDao.markDeletedAsPendingSync() +
-        await _luggagesDao.markDeletedAsPendingSync() +
-        await _itemsDao.markDeletedAsPendingSync() +
-        await _kitsDao.markDeletedAsPendingSync() +
-        await _kitItemsDao.markDeletedAsPendingSync() +
-        await _tripsDao.markDeletedAsPendingSync();
+  SyncSessionContext? _recoverySession;
+  bool _legacyRecoveryDone = false;
+  Future<void> _recoverStaleSoftDeletes(SyncSessionContext? session) async {
+    if (session == null
+        ? _legacyRecoveryDone
+        : _sameSession(_recoverySession, session)) {
+      return;
+    }
+    final count = await _commit(
+      session,
+      () async =>
+          await _housesDao.markDeletedAsPendingSync() +
+          await _spacesDao.markDeletedAsPendingSync() +
+          await _luggagesDao.markDeletedAsPendingSync() +
+          await _itemsDao.markDeletedAsPendingSync() +
+          await _kitsDao.markDeletedAsPendingSync() +
+          await _kitItemsDao.markDeletedAsPendingSync() +
+          await _tripsDao.markDeletedAsPendingSync(),
+    );
+    if (session == null) {
+      _legacyRecoveryDone = true;
+    } else {
+      _checkSession(session);
+      _recoverySession = session;
+    }
     if (count > 0) {
       debugPrint(
         '[SyncService] Recovery: $count stale soft-deleted records re-queued',
       );
     }
   }
+
+  bool _sameSession(SyncSessionContext? a, SyncSessionContext b) =>
+      a != null &&
+      identical(a.ownerToken, b.ownerToken) &&
+      a.epoch == b.epoch &&
+      a.userId == b.userId;
 
   /// Scarica tutti i record dell'utente da Supabase e li applica localmente.
   ///
@@ -250,6 +326,7 @@ class SyncService {
   ///
   /// Ordine FK-safe: case → items → viaggi.
   Future<void> fullPull(String userId) async {
+    final session = _captureSession(userId);
     debugPrint('[SyncService] fullPull: avvio per userId=$userId');
 
     try {
@@ -263,334 +340,349 @@ class SyncService {
         _remote.fetchAllTripsByUserId(userId),
       ]);
 
-      final remoteHouses = results[0];
-      final remoteSpaces = results[1];
-      final remoteLuggages = results[2];
-      final remoteItems = results[3];
-      final remoteKits = results[4];
-      final remoteKitItems = results[5];
-      final remoteTrips = results[6];
-      final now = DateTime.now();
-      int inserted = 0, updated = 0, skipped = 0;
+      _checkSession(session);
+      await _commit(session, () async {
+        final remoteHouses = results[0];
+        final remoteSpaces = results[1];
+        final remoteLuggages = results[2];
+        final remoteItems = results[3];
+        final remoteKits = results[4];
+        final remoteKitItems = results[5];
+        final remoteTrips = results[6];
+        final now = DateTime.now();
+        int inserted = 0, updated = 0, skipped = 0;
 
-      for (final r in remoteHouses) {
-        final id = r['id'] as String;
-        try {
-          final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
-          final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
-          final local = await _housesDao.findHouseById(id);
-          if (local == null) {
-            // Tombstone per record mai conosciuto: niente da soft-deletare.
-            if (remoteIsDeleted) {
-              skipped++;
-              continue;
-            }
-            await _housesDao.insertHouse(
-              SyncSerializers.buildHouseCompanion(r, syncedAt: now),
-            );
-            inserted++;
-          } else if (local.isDeleted && !remoteIsDeleted) {
-            // Delete-wins (stessa regola di _syncRecord): il tombstone locale
-            // non viene mai sovrascritto da un remoto vivo, anche se più
-            // recente. processQueue pusherà la cancellazione al prossimo giro.
-            skipped++;
-          } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
-            await _housesDao.updateHouse(
-              SyncSerializers.buildHouseCompanion(r, syncedAt: now),
-            );
-            updated++;
-          } else {
-            skipped++;
-          }
-        } catch (e, st) {
-          debugPrint(
-            '[SyncService] fullPull: skip house $id — ${e.runtimeType}',
-          );
-          _monitoring.captureException(
-            e,
-            stackTrace: st,
-            tags: {'operation': 'fullPull_house', 'house_id': id},
-          );
-        }
-      }
-
-      // FK-safe order: houses → spaces → luggages → items → kits → kit_items → trips.
-      for (final r in remoteSpaces) {
-        final id = r['id'] as String;
-        try {
-          final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
-          final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
-          final local = await _spacesDao.findSpaceById(id);
-          if (local == null) {
-            if (remoteIsDeleted) {
-              skipped++;
-              continue;
-            }
-            await _spacesDao.insertSpace(
-              SyncSerializers.buildSpaceCompanion(r, syncedAt: now),
-            );
-            inserted++;
-          } else if (local.isDeleted && !remoteIsDeleted) {
-            skipped++; // delete-wins: vedi loop houses
-          } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
-            await _spacesDao.updateSpace(
-              SyncSerializers.buildSpaceCompanion(r, syncedAt: now),
-            );
-            updated++;
-          } else {
-            skipped++;
-          }
-        } catch (e, st) {
-          debugPrint(
-            '[SyncService] fullPull: skip space $id — ${e.runtimeType}',
-          );
-          _monitoring.captureException(
-            e,
-            stackTrace: st,
-            tags: {'operation': 'fullPull_space', 'space_id': id},
-          );
-        }
-      }
-
-      for (final r in remoteLuggages) {
-        final id = r['id'] as String;
-        try {
-          final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
-          final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
-          final local = await _luggagesDao.findLuggageById(id);
-          if (local == null) {
-            if (remoteIsDeleted) {
-              skipped++;
-              continue;
-            }
-            await _luggagesDao.insertLuggage(
-              SyncSerializers.buildLuggageCompanion(r, syncedAt: now),
-            );
-            inserted++;
-          } else if (local.isDeleted && !remoteIsDeleted) {
-            skipped++; // delete-wins: vedi loop houses
-          } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
-            await _luggagesDao.updateLuggage(
-              SyncSerializers.buildLuggageCompanion(r, syncedAt: now),
-            );
-            updated++;
-          } else {
-            skipped++;
-          }
-        } catch (e, st) {
-          debugPrint(
-            '[SyncService] fullPull: skip luggage $id — ${e.runtimeType}',
-          );
-          _monitoring.captureException(
-            e,
-            stackTrace: st,
-            tags: {'operation': 'fullPull_luggage', 'luggage_id': id},
-          );
-        }
-      }
-
-      for (final r in remoteItems) {
-        final id = r['id'] as String;
-        try {
-          final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
-          final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
-          final local = await _itemsDao.findItemById(id);
-          if (local == null) {
-            if (remoteIsDeleted) {
-              skipped++;
-              continue;
-            }
-            await _persistItemWithFkFallback(r, syncedAt: now, isInsert: true);
-            inserted++;
-          } else if (local.isDeleted && !remoteIsDeleted) {
-            skipped++; // delete-wins: vedi loop houses
-          } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
-            await _persistItemWithFkFallback(r, syncedAt: now, isInsert: false);
-            updated++;
-          } else {
-            skipped++;
-          }
-        } catch (e, st) {
-          // FK violation residua: tipicamente la casa di questo item non
-          // esiste ancora localmente. Tracciamo per visibilità — il silent
-          // skip storico nascondeva perdite di dati al primo restore.
-          debugPrint(
-            '[SyncService] fullPull: skip item $id — ${e.runtimeType}',
-          );
-          _monitoring.captureException(
-            e,
-            stackTrace: st,
-            tags: {'operation': 'fullPull_item', 'item_id': id},
-          );
-        }
-      }
-
-      for (final r in remoteKits) {
-        final id = r['id'] as String;
-        try {
-          final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
-          final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
-          final local = await _kitsDao.findKitById(id);
-          if (local == null) {
-            if (remoteIsDeleted) {
-              skipped++;
-              continue;
-            }
-            await _kitsDao.insertKit(
-              SyncSerializers.buildKitCompanion(r, syncedAt: now),
-            );
-            inserted++;
-          } else if (local.isDeleted && !remoteIsDeleted) {
-            skipped++; // delete-wins: vedi loop houses
-          } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
-            await _kitsDao.updateKit(
-              SyncSerializers.buildKitCompanion(r, syncedAt: now),
-            );
-            updated++;
-          } else {
-            skipped++;
-          }
-        } catch (e, st) {
-          debugPrint('[SyncService] fullPull: skip kit $id — ${e.runtimeType}');
-          _monitoring.captureException(
-            e,
-            stackTrace: st,
-            tags: {'operation': 'fullPull_kit', 'kit_id': id},
-          );
-        }
-      }
-
-      for (final r in remoteKitItems) {
-        final id = r['id'] as String;
-        try {
-          final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
-          final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
-          final local = await _kitItemsDao.findKitItemById(id);
-          if (local == null) {
-            if (remoteIsDeleted) {
-              skipped++;
-              continue;
-            }
-            // Oggetto o kit assente in locale (cancellato e purgato): la riga
-            // non ha dove stare, ed è un caso normale, non un errore.
-            final itemId = r['item_id'] as String;
-            final kitId = r['kit_id'] as String;
-            if (await _itemsDao.findItemById(itemId) == null ||
-                await _kitsDao.findKitById(kitId) == null) {
-              skipped++;
-              continue;
-            }
-            // Una sola riga per coppia (kit, oggetto): se questo dispositivo
-            // ha la stessa coppia con un altro id, l'insert violerebbe
-            // l'unicità. Una riga già sincronizzata cede al remoto; una con
-            // modifiche non spedite resta se è più recente (il push poi la
-            // allinea al server con l'upsert sulla coppia), altrimenti cede.
-            final samePair = await _kitItemsDao.findKitItemByPair(
-              kitId,
-              itemId,
-            );
-            if (samePair != null && samePair.id != id) {
-              final keepLocal =
-                  samePair.syncStatus != SyncStatus.synced &&
-                  samePair.updatedAt.toUtc().isAfter(remoteTs);
-              if (keepLocal) {
+        for (final r in remoteHouses) {
+          final id = r['id'] as String;
+          try {
+            final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
+            final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
+            final local = await _housesDao.findHouseById(id);
+            if (local == null) {
+              // Tombstone per record mai conosciuto: niente da soft-deletare.
+              if (remoteIsDeleted) {
                 skipped++;
                 continue;
               }
-              await _kitItemsDao.purgeRecord(samePair.id);
-            }
-            await _kitItemsDao.insertKitItem(
-              SyncSerializers.buildKitItemCompanion(r, syncedAt: now),
-            );
-            inserted++;
-          } else if (local.isDeleted && !remoteIsDeleted) {
-            skipped++; // delete-wins: vedi loop houses
-          } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
-            await _kitItemsDao.updateKitItem(
-              SyncSerializers.buildKitItemCompanion(r, syncedAt: now),
-            );
-            updated++;
-          } else {
-            skipped++;
-          }
-        } catch (e, st) {
-          // Resta un errore vero (non l'oggetto o il kit assenti, già saltati).
-          debugPrint(
-            '[SyncService] fullPull: skip kit item $id — ${e.runtimeType}',
-          );
-          _monitoring.captureException(
-            e,
-            stackTrace: st,
-            tags: {'operation': 'fullPull_kit_item', 'kit_item_id': id},
-          );
-        }
-      }
-
-      for (final r in remoteTrips) {
-        final id = r['id'] as String;
-        try {
-          final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
-          final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
-          final local = await _tripsDao.findTripById(id);
-          if (local == null) {
-            if (remoteIsDeleted) {
+              await _housesDao.insertHouse(
+                SyncSerializers.buildHouseCompanion(r, syncedAt: now),
+              );
+              inserted++;
+            } else if (local.isDeleted && !remoteIsDeleted) {
+              // Delete-wins (stessa regola di _syncRecord): il tombstone locale
+              // non viene mai sovrascritto da un remoto vivo, anche se più
+              // recente. processQueue pusherà la cancellazione al prossimo giro.
               skipped++;
-              continue;
-            }
-            await _tripsDao.insertTrip(
-              SyncSerializers.buildTripCompanion(r, syncedAt: now),
-            );
-            await _replaceTripItemsFromJson(id, r['items']);
-            await _replaceTripLuggagesFromJson(id, r['luggage_ids']);
-            inserted++;
-          } else if (local.isDeleted && !remoteIsDeleted) {
-            skipped++; // delete-wins: vedi loop houses
-          } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
-            await _tripsDao.updateTrip(
-              SyncSerializers.buildTripCompanion(r, syncedAt: now),
-            );
-            await _replaceTripItemsFromJson(id, r['items']);
-            await _replaceTripLuggagesFromJson(id, r['luggage_ids']);
-            updated++;
-          } else {
-            // Il remoto non è più recente, ma il locale può non avere il
-            // risultato AI (viaggio modificato offline mentre un altro
-            // dispositivo lo generava): si riempie solo quella colonna.
-            final riempiti =
-                !remoteIsDeleted && await _riempiAiMancante(local, r);
-            if (riempiti) {
+            } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+              await _housesDao.updateHouse(
+                SyncSerializers.buildHouseCompanion(r, syncedAt: now),
+              );
               updated++;
             } else {
               skipped++;
             }
+          } catch (e, st) {
+            debugPrint(
+              '[SyncService] fullPull: skip house $id — ${e.runtimeType}',
+            );
+            _monitoring.captureException(
+              e,
+              stackTrace: st,
+              tags: {'operation': 'fullPull_house', 'house_id': id},
+            );
           }
-        } catch (e, st) {
-          debugPrint(
-            '[SyncService] fullPull: skip trip $id — ${e.runtimeType}',
-          );
-          _monitoring.captureException(
-            e,
-            stackTrace: st,
-            tags: {'operation': 'fullPull_trip', 'trip_id': id},
-          );
         }
-      }
 
-      _monitoring.logBreadcrumb(
-        'fullPull: $inserted inseriti, $updated aggiornati, $skipped invariati',
-        category: 'sync',
-        data: {
-          'inserted': inserted,
-          'updated': updated,
-          'skipped': skipped,
-          'remote_houses': remoteHouses.length,
-          'remote_items': remoteItems.length,
-          'remote_trips': remoteTrips.length,
-        },
-      );
-      debugPrint(
-        '[SyncService] fullPull completato: $inserted inseriti, $updated aggiornati, $skipped invariati',
-      );
+        // FK-safe order: houses → spaces → luggages → items → kits → kit_items → trips.
+        for (final r in remoteSpaces) {
+          final id = r['id'] as String;
+          try {
+            final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
+            final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
+            final local = await _spacesDao.findSpaceById(id);
+            if (local == null) {
+              if (remoteIsDeleted) {
+                skipped++;
+                continue;
+              }
+              await _spacesDao.insertSpace(
+                SyncSerializers.buildSpaceCompanion(r, syncedAt: now),
+              );
+              inserted++;
+            } else if (local.isDeleted && !remoteIsDeleted) {
+              skipped++; // delete-wins: vedi loop houses
+            } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+              await _spacesDao.updateSpace(
+                SyncSerializers.buildSpaceCompanion(r, syncedAt: now),
+              );
+              updated++;
+            } else {
+              skipped++;
+            }
+          } catch (e, st) {
+            debugPrint(
+              '[SyncService] fullPull: skip space $id — ${e.runtimeType}',
+            );
+            _monitoring.captureException(
+              e,
+              stackTrace: st,
+              tags: {'operation': 'fullPull_space', 'space_id': id},
+            );
+          }
+        }
+
+        for (final r in remoteLuggages) {
+          final id = r['id'] as String;
+          try {
+            final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
+            final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
+            final local = await _luggagesDao.findLuggageById(id);
+            if (local == null) {
+              if (remoteIsDeleted) {
+                skipped++;
+                continue;
+              }
+              await _luggagesDao.insertLuggage(
+                SyncSerializers.buildLuggageCompanion(r, syncedAt: now),
+              );
+              inserted++;
+            } else if (local.isDeleted && !remoteIsDeleted) {
+              skipped++; // delete-wins: vedi loop houses
+            } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+              await _luggagesDao.updateLuggage(
+                SyncSerializers.buildLuggageCompanion(r, syncedAt: now),
+              );
+              updated++;
+            } else {
+              skipped++;
+            }
+          } catch (e, st) {
+            debugPrint(
+              '[SyncService] fullPull: skip luggage $id — ${e.runtimeType}',
+            );
+            _monitoring.captureException(
+              e,
+              stackTrace: st,
+              tags: {'operation': 'fullPull_luggage', 'luggage_id': id},
+            );
+          }
+        }
+
+        for (final r in remoteItems) {
+          final id = r['id'] as String;
+          try {
+            final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
+            final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
+            final local = await _itemsDao.findItemById(id);
+            if (local == null) {
+              if (remoteIsDeleted) {
+                skipped++;
+                continue;
+              }
+              await _persistItemWithFkFallback(
+                r,
+                syncedAt: now,
+                isInsert: true,
+              );
+              inserted++;
+            } else if (local.isDeleted && !remoteIsDeleted) {
+              skipped++; // delete-wins: vedi loop houses
+            } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+              await _persistItemWithFkFallback(
+                r,
+                syncedAt: now,
+                isInsert: false,
+              );
+              updated++;
+            } else {
+              skipped++;
+            }
+          } catch (e, st) {
+            // FK violation residua: tipicamente la casa di questo item non
+            // esiste ancora localmente. Tracciamo per visibilità — il silent
+            // skip storico nascondeva perdite di dati al primo restore.
+            debugPrint(
+              '[SyncService] fullPull: skip item $id — ${e.runtimeType}',
+            );
+            _monitoring.captureException(
+              e,
+              stackTrace: st,
+              tags: {'operation': 'fullPull_item', 'item_id': id},
+            );
+          }
+        }
+
+        for (final r in remoteKits) {
+          final id = r['id'] as String;
+          try {
+            final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
+            final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
+            final local = await _kitsDao.findKitById(id);
+            if (local == null) {
+              if (remoteIsDeleted) {
+                skipped++;
+                continue;
+              }
+              await _kitsDao.insertKit(
+                SyncSerializers.buildKitCompanion(r, syncedAt: now),
+              );
+              inserted++;
+            } else if (local.isDeleted && !remoteIsDeleted) {
+              skipped++; // delete-wins: vedi loop houses
+            } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+              await _kitsDao.updateKit(
+                SyncSerializers.buildKitCompanion(r, syncedAt: now),
+              );
+              updated++;
+            } else {
+              skipped++;
+            }
+          } catch (e, st) {
+            debugPrint(
+              '[SyncService] fullPull: skip kit $id — ${e.runtimeType}',
+            );
+            _monitoring.captureException(
+              e,
+              stackTrace: st,
+              tags: {'operation': 'fullPull_kit', 'kit_id': id},
+            );
+          }
+        }
+
+        for (final r in remoteKitItems) {
+          final id = r['id'] as String;
+          try {
+            final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
+            final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
+            final local = await _kitItemsDao.findKitItemById(id);
+            if (local == null) {
+              if (remoteIsDeleted) {
+                skipped++;
+                continue;
+              }
+              // Oggetto o kit assente in locale (cancellato e purgato): la riga
+              // non ha dove stare, ed è un caso normale, non un errore.
+              final itemId = r['item_id'] as String;
+              final kitId = r['kit_id'] as String;
+              if (await _itemsDao.findItemById(itemId) == null ||
+                  await _kitsDao.findKitById(kitId) == null) {
+                skipped++;
+                continue;
+              }
+              // Una sola riga per coppia (kit, oggetto): se questo dispositivo
+              // ha la stessa coppia con un altro id, l'insert violerebbe
+              // l'unicità. Una riga già sincronizzata cede al remoto; una con
+              // modifiche non spedite resta se è più recente (il push poi la
+              // allinea al server con l'upsert sulla coppia), altrimenti cede.
+              final samePair = await _kitItemsDao.findKitItemByPair(
+                kitId,
+                itemId,
+              );
+              if (samePair != null && samePair.id != id) {
+                final keepLocal =
+                    samePair.syncStatus != SyncStatus.synced &&
+                    samePair.updatedAt.toUtc().isAfter(remoteTs);
+                if (keepLocal) {
+                  skipped++;
+                  continue;
+                }
+                await _kitItemsDao.purgeRecord(samePair.id);
+              }
+              await _kitItemsDao.insertKitItem(
+                SyncSerializers.buildKitItemCompanion(r, syncedAt: now),
+              );
+              inserted++;
+            } else if (local.isDeleted && !remoteIsDeleted) {
+              skipped++; // delete-wins: vedi loop houses
+            } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+              await _kitItemsDao.updateKitItem(
+                SyncSerializers.buildKitItemCompanion(r, syncedAt: now),
+              );
+              updated++;
+            } else {
+              skipped++;
+            }
+          } catch (e, st) {
+            // Resta un errore vero (non l'oggetto o il kit assenti, già saltati).
+            debugPrint(
+              '[SyncService] fullPull: skip kit item $id — ${e.runtimeType}',
+            );
+            _monitoring.captureException(
+              e,
+              stackTrace: st,
+              tags: {'operation': 'fullPull_kit_item', 'kit_item_id': id},
+            );
+          }
+        }
+
+        for (final r in remoteTrips) {
+          final id = r['id'] as String;
+          try {
+            final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
+            final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
+            final local = await _tripsDao.findTripById(id);
+            if (local == null) {
+              if (remoteIsDeleted) {
+                skipped++;
+                continue;
+              }
+              await _tripsDao.insertTrip(
+                SyncSerializers.buildTripCompanion(r, syncedAt: now),
+              );
+              await _replaceTripItemsFromJson(id, r['items']);
+              await _replaceTripLuggagesFromJson(id, r['luggage_ids']);
+              inserted++;
+            } else if (local.isDeleted && !remoteIsDeleted) {
+              skipped++; // delete-wins: vedi loop houses
+            } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+              await _tripsDao.updateTrip(
+                SyncSerializers.buildTripCompanion(r, syncedAt: now),
+              );
+              await _replaceTripItemsFromJson(id, r['items']);
+              await _replaceTripLuggagesFromJson(id, r['luggage_ids']);
+              updated++;
+            } else {
+              // Il remoto non è più recente, ma il locale può non avere il
+              // risultato AI (viaggio modificato offline mentre un altro
+              // dispositivo lo generava): si riempie solo quella colonna.
+              final riempiti =
+                  !remoteIsDeleted && await _riempiAiMancante(local, r);
+              if (riempiti) {
+                updated++;
+              } else {
+                skipped++;
+              }
+            }
+          } catch (e, st) {
+            debugPrint(
+              '[SyncService] fullPull: skip trip $id — ${e.runtimeType}',
+            );
+            _monitoring.captureException(
+              e,
+              stackTrace: st,
+              tags: {'operation': 'fullPull_trip', 'trip_id': id},
+            );
+          }
+        }
+
+        _monitoring.logBreadcrumb(
+          'fullPull: $inserted inseriti, $updated aggiornati, $skipped invariati',
+          category: 'sync',
+          data: {
+            'inserted': inserted,
+            'updated': updated,
+            'skipped': skipped,
+            'remote_houses': remoteHouses.length,
+            'remote_items': remoteItems.length,
+            'remote_trips': remoteTrips.length,
+          },
+        );
+        debugPrint(
+          '[SyncService] fullPull completato: $inserted inseriti, $updated aggiornati, $skipped invariati',
+        );
+      });
+    } on SyncSessionInvalid {
+      rethrow;
     } catch (e, st) {
       debugPrint('[SyncService] fullPull fallita: $e');
       _monitoring.captureException(
@@ -606,7 +698,9 @@ class SyncService {
   /// Purge order is reversed: trips/items/luggages/spaces first, houses last
   /// (FK safety: items reference spaces; trips reference luggages via junction).
   Future<void> processQueue() async {
-    await _recoverStaleSoftDeletes();
+    final session = _captureSession();
+    _checkSession(session);
+    await _recoverStaleSoftDeletes(session);
     final houses = await _housesDao.getPendingSyncRecords();
     final spaces = await _spacesDao.getPendingSyncRecords();
     final luggages = await _luggagesDao.getPendingSyncRecords();
@@ -635,6 +729,7 @@ class SyncService {
 
     for (final house in houses) {
       await _syncRecord(
+        session: session,
         id: house.id,
         localUpdatedAt: house.updatedAt,
         localIsDeleted: house.isDeleted,
@@ -643,8 +738,14 @@ class SyncService {
         fetchRemote: (trace) =>
             _remote.fetchHouseById(house.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertHouse(data, sentryTrace: trace),
-        pullLocal: (remote) => _housesDao.updateHouse(
-          SyncSerializers.buildHouseCompanion(remote, includeSyncFields: false),
+        pullLocal: (remote) => _commit(
+          session,
+          () => _housesDao.updateHouse(
+            SyncSerializers.buildHouseCompanion(
+              remote,
+              includeSyncFields: false,
+            ),
+          ),
         ),
         markSynced: (ts, localAt) =>
             _housesDao.markAsSynced(house.id, ts, localUpdatedAt: localAt),
@@ -660,6 +761,7 @@ class SyncService {
 
     for (final space in spaces) {
       await _syncRecord(
+        session: session,
         id: space.id,
         localUpdatedAt: space.updatedAt,
         localIsDeleted: space.isDeleted,
@@ -668,8 +770,14 @@ class SyncService {
         fetchRemote: (trace) =>
             _remote.fetchSpaceById(space.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertSpace(data, sentryTrace: trace),
-        pullLocal: (remote) => _spacesDao.updateSpace(
-          SyncSerializers.buildSpaceCompanion(remote, includeSyncFields: false),
+        pullLocal: (remote) => _commit(
+          session,
+          () => _spacesDao.updateSpace(
+            SyncSerializers.buildSpaceCompanion(
+              remote,
+              includeSyncFields: false,
+            ),
+          ),
         ),
         markSynced: (ts, localAt) =>
             _spacesDao.markAsSynced(space.id, ts, localUpdatedAt: localAt),
@@ -685,6 +793,7 @@ class SyncService {
 
     for (final luggage in luggages) {
       await _syncRecord(
+        session: session,
         id: luggage.id,
         localUpdatedAt: luggage.updatedAt,
         localIsDeleted: luggage.isDeleted,
@@ -694,10 +803,13 @@ class SyncService {
             _remote.fetchLuggageById(luggage.id, sentryTrace: trace),
         upsert: (data, trace) =>
             _remote.upsertLuggage(data, sentryTrace: trace),
-        pullLocal: (remote) => _luggagesDao.updateLuggage(
-          SyncSerializers.buildLuggageCompanion(
-            remote,
-            includeSyncFields: false,
+        pullLocal: (remote) => _commit(
+          session,
+          () => _luggagesDao.updateLuggage(
+            SyncSerializers.buildLuggageCompanion(
+              remote,
+              includeSyncFields: false,
+            ),
           ),
         ),
         markSynced: (ts, localAt) =>
@@ -714,6 +826,7 @@ class SyncService {
 
     for (final item in items) {
       await _syncRecord(
+        session: session,
         id: item.id,
         localUpdatedAt: item.updatedAt,
         localIsDeleted: item.isDeleted,
@@ -722,8 +835,14 @@ class SyncService {
         fetchRemote: (trace) =>
             _remote.fetchItemById(item.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertItem(data, sentryTrace: trace),
-        pullLocal: (remote) => _itemsDao.updateItem(
-          SyncSerializers.buildItemCompanion(remote, includeSyncFields: false),
+        pullLocal: (remote) => _commit(
+          session,
+          () => _itemsDao.updateItem(
+            SyncSerializers.buildItemCompanion(
+              remote,
+              includeSyncFields: false,
+            ),
+          ),
         ),
         markSynced: (ts, localAt) =>
             _itemsDao.markAsSynced(item.id, ts, localUpdatedAt: localAt),
@@ -738,6 +857,7 @@ class SyncService {
 
     for (final kit in kits) {
       await _syncRecord(
+        session: session,
         id: kit.id,
         localUpdatedAt: kit.updatedAt,
         localIsDeleted: kit.isDeleted,
@@ -746,8 +866,11 @@ class SyncService {
         fetchRemote: (trace) =>
             _remote.fetchKitById(kit.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertKit(data, sentryTrace: trace),
-        pullLocal: (remote) => _kitsDao.updateKit(
-          SyncSerializers.buildKitCompanion(remote, includeSyncFields: false),
+        pullLocal: (remote) => _commit(
+          session,
+          () => _kitsDao.updateKit(
+            SyncSerializers.buildKitCompanion(remote, includeSyncFields: false),
+          ),
         ),
         markSynced: (ts, localAt) =>
             _kitsDao.markAsSynced(kit.id, ts, localUpdatedAt: localAt),
@@ -762,6 +885,7 @@ class SyncService {
 
     for (final row in kitItems) {
       await _syncRecord(
+        session: session,
         id: row.id,
         localUpdatedAt: row.updatedAt,
         localIsDeleted: row.isDeleted,
@@ -771,10 +895,13 @@ class SyncService {
             _remote.fetchKitItemById(row.id, sentryTrace: trace),
         upsert: (data, trace) =>
             _remote.upsertKitItem(data, sentryTrace: trace),
-        pullLocal: (remote) => _kitItemsDao.updateKitItem(
-          SyncSerializers.buildKitItemCompanion(
-            remote,
-            includeSyncFields: false,
+        pullLocal: (remote) => _commit(
+          session,
+          () => _kitItemsDao.updateKitItem(
+            SyncSerializers.buildKitItemCompanion(
+              remote,
+              includeSyncFields: false,
+            ),
           ),
         ),
         markSynced: (ts, localAt) =>
@@ -797,6 +924,7 @@ class SyncService {
       final tripLuggages = await _luggagesDao.getLuggagesByTrip(trip.id);
       final luggageIds = tripLuggages.map((l) => l.id).toList();
       await _syncRecord(
+        session: session,
         id: trip.id,
         localUpdatedAt: trip.updatedAt,
         localIsDeleted: trip.isDeleted,
@@ -809,7 +937,8 @@ class SyncService {
         fetchRemote: (trace) =>
             _remote.fetchTripById(trip.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertTrip(data, sentryTrace: trace),
-        pullLocal: (remote) => _pullTrip(trip.id, remote),
+        pullLocal: (remote) =>
+            _commit(session, () => _pullTrip(trip.id, remote)),
         markSynced: (ts, localAt) =>
             _tripsDao.markAsSynced(trip.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _tripsDao.incrementSyncRetry(trip.id, e),
@@ -825,7 +954,10 @@ class SyncService {
     // so reversing gives children-first, parents-last (FK-safe).
     for (final purge in pendingPurges.reversed) {
       try {
-        await purge();
+        _checkSession(session);
+        await _commit(session, purge);
+      } on SyncSessionInvalid {
+        rethrow;
       } catch (e, st) {
         debugPrint('[SyncService] Purge failed: $e');
         _monitoring.captureException(
@@ -836,7 +968,7 @@ class SyncService {
       }
     }
 
-    await _sendSuitcaseEdits();
+    await _sendSuitcaseEdits(session);
   }
 
   /// Dimensione di un blocco di modifiche alla valigia inviate in un colpo.
@@ -861,7 +993,7 @@ class SyncService {
   /// "avvelenata" bloccherebbe per sempre anche le altre), il blocco si rimanda
   /// una riga alla volta: quelle arrivate e quelle rifiutate si tolgono in
   /// locale, quelle che falliscono per altri motivi (rete) restano.
-  Future<void> _sendSuitcaseEdits() async {
+  Future<void> _sendSuitcaseEdits(SyncSessionContext? session) async {
     try {
       while (true) {
         final block = await _suitcaseEditsDao.pending(
@@ -869,16 +1001,22 @@ class SyncService {
         );
         if (block.isEmpty) return;
         try {
+          _checkSession(session);
           await _remote.insertSuitcaseEdits([
             for (final e in block) SyncSerializers.suitcaseEditToJson(e),
           ]);
-          await _suitcaseEditsDao.deleteByIds([for (final e in block) e.id]);
+          await _commit(
+            session,
+            () => _suitcaseEditsDao.deleteByIds([for (final e in block) e.id]),
+          );
         } catch (e) {
           if (!_isPoisonError(e)) rethrow;
-          if (!await _sendSuitcaseEditsOneByOne(block)) return;
+          if (!await _sendSuitcaseEditsOneByOne(block, session)) return;
         }
         if (block.length < _suitcaseEditsBlock) return;
       }
+    } on SyncSessionInvalid {
+      rethrow;
     } catch (e, st) {
       debugPrint('[SyncService] Invio modifiche valigia fallito: $e');
       _monitoring.captureException(
@@ -892,17 +1030,26 @@ class SyncService {
   /// Rimanda [block] una riga alla volta. Ritorna false se almeno una riga è
   /// rimasta in coda (errore non di dati): il giro si ferma e riprova al
   /// prossimo.
-  Future<bool> _sendSuitcaseEditsOneByOne(List<SuitcaseEdit> block) async {
+  Future<bool> _sendSuitcaseEditsOneByOne(
+    List<SuitcaseEdit> block,
+    SyncSessionContext? session,
+  ) async {
     var allDone = true;
     for (final edit in block) {
       try {
+        _checkSession(session);
         await _remote.insertSuitcaseEdits([
           SyncSerializers.suitcaseEditToJson(edit),
         ]);
-        await _suitcaseEditsDao.deleteByIds([edit.id]);
+        await _commit(session, () => _suitcaseEditsDao.deleteByIds([edit.id]));
+      } on SyncSessionInvalid {
+        rethrow;
       } catch (e, st) {
         if (_isPoisonError(e)) {
-          await _suitcaseEditsDao.deleteByIds([edit.id]);
+          await _commit(
+            session,
+            () => _suitcaseEditsDao.deleteByIds([edit.id]),
+          );
         } else {
           allDone = false;
         }
@@ -921,6 +1068,7 @@ class SyncService {
   }
 
   Future<void> _syncRecord({
+    required SyncSessionContext? session,
     required String id,
     required DateTime localUpdatedAt,
     required bool localIsDeleted,
@@ -959,7 +1107,9 @@ class SyncService {
       final traceHeader = transaction.toSentryTrace().toString();
 
       try {
+        _checkSession(session);
         final remote = await fetchRemote(traceHeader);
+        _checkSession(session);
 
         // Sentinella locale: il timestamp server-side dell'`updated_at`.
         // Viene popolata in TUTTI i path che fanno upsert/pull, e poi
@@ -978,9 +1128,13 @@ class SyncService {
               '[SyncService] $entity $id: remote not found, never-synced new record -- pushing',
             );
             final data = toJson();
+            _checkSession(session);
             serverUpdatedAt = await upsert(data, traceHeader);
+            _checkSession(session);
           } else {
+            _checkSession(session);
             final retentionDays = await _tombstoneConfig.getRetentionDays();
+            _checkSession(session);
             final cutoff = DateTime.now().toUtc().subtract(
               Duration(days: retentionDays),
             );
@@ -994,7 +1148,10 @@ class SyncService {
               // Niente push qui: marchiamo synced col wall clock locale —
               // il record viene purgato comunque, l'updatedAt non sarà più
               // letto da nessuno.
-              await markSynced(DateTime.now().toUtc(), localUpdatedAt);
+              await _commit(
+                session,
+                () => markSynced(DateTime.now().toUtc(), localUpdatedAt),
+              );
               transaction.status = const SpanStatus.ok();
               return;
             }
@@ -1026,7 +1183,9 @@ class SyncService {
             debugPrint(
               '[SyncService] $entity $id: pushing (is_deleted=${data['is_deleted']})',
             );
+            _checkSession(session);
             serverUpdatedAt = await upsert(data, traceHeader);
+            _checkSession(session);
           } else {
             debugPrint(
               '[SyncService] $entity $id: pulling (is_deleted=$remoteIsDeleted)',
@@ -1043,7 +1202,10 @@ class SyncService {
         // A questo punto tutti i path che non hanno fatto early-return
         // hanno popolato serverUpdatedAt (upsert ritorna il timestamp del
         // trigger; pull lo prende da remote['updated_at']).
-        await markSynced(serverUpdatedAt, localUpdatedAtForWhere);
+        await _commit(
+          session,
+          () => markSynced(serverUpdatedAt!, localUpdatedAtForWhere),
+        );
         if (localIsDeleted) {
           onPurge();
           debugPrint('[SyncService] $entity $id: synced, purge deferred');
@@ -1057,7 +1219,10 @@ class SyncService {
       } finally {
         await transaction.finish();
       }
+    } on SyncSessionInvalid {
+      rethrow;
     } catch (e, st) {
+      _checkSession(session);
       debugPrint('[SyncService] Failed to sync $entity $id: $e');
       _monitoring.captureException(
         e,
@@ -1068,7 +1233,7 @@ class SyncService {
         entity: entity,
         errorType: e.runtimeType.toString(),
       );
-      await incrementRetry(e.toString());
+      await _commit(session, () => incrementRetry(e.toString()));
     }
   }
 

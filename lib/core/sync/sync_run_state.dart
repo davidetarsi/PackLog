@@ -36,7 +36,8 @@ final class SyncRunning extends SyncRunState {
 enum SyncFailureCode { network, service, unknown }
 
 final class SyncFailed extends SyncRunState {
-  const SyncFailed(this.code);
+  const SyncFailed(this.code, {this.isPreparationFailure = false});
 
   final SyncFailureCode code;
+  final bool isPreparationFailure;
 }

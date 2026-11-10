@@ -20,8 +20,10 @@ class SpaceNotifier extends _$SpaceNotifier
   SpaceRepository get _repo => ref.read(spaceRepositoryProvider);
 
   @override
-  Future<List<SpaceModel>> build(String houseId) =>
-      _repo.getSpacesByHouseId(houseId);
+  Future<List<SpaceModel>> build(String houseId) {
+    ref.watch(syncTriggerProvider);
+    return _repo.getSpacesByHouseId(houseId);
+  }
 
   @override
   void onMutationSuccess(List<SpaceModel> updated) {

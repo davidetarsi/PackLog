@@ -10,13 +10,17 @@ import 'package:pack_log/shared/widgets/ds_dialog.dart';
 
 void main() {
   Widget wrap(Widget child, {required List<Override> overrides}) {
+    final testOverrides = [
+      ...overrides,
+      syncPushInProgressProvider.overrideWith((ref) => false),
+    ];
     return EasyLocalization(
       supportedLocales: const [Locale('en'), Locale('it')],
       path: 'assets/translations',
       fallbackLocale: const Locale('en'),
       saveLocale: false,
       child: ProviderScope(
-        overrides: overrides,
+        overrides: testOverrides,
         child: MaterialApp(home: Scaffold(body: child)),
       ),
     );

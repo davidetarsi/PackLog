@@ -31,6 +31,7 @@ import 'package:pack_log/core/database/database_provider.dart';
 import 'package:pack_log/core/routing/app_router.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
+import 'package:pack_log/core/sync/sync_run_state.dart';
 import 'package:pack_log/core/sync/sync_service.dart';
 import 'package:pack_log/features/profile/providers/gpt_usage_provider.dart';
 import 'package:pack_log/features/onboarding/providers/onboarding_status_provider.dart';
@@ -283,6 +284,12 @@ class ScreenshotApp {
     final sync = _MockSyncOrchestrator();
     when(() => sync.requestSync()).thenReturn(null);
     when(() => sync.requestForcedSync()).thenReturn(null);
+    when(() => sync.state).thenReturn(const SyncIdle());
+    when(() => sync.states).thenAnswer((_) => Stream.value(const SyncIdle()));
+    when(() => sync.needsRestore).thenReturn(false);
+    when(() => sync.sessionReady).thenReturn(false);
+    when(() => sync.currentUserId).thenReturn(null);
+    when(() => sync.sessionEpoch).thenReturn(0);
 
     final auth = setup.authenticated
         ? const AuthState.authenticated(

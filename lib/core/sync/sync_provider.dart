@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -21,25 +23,54 @@ part 'sync_provider.g.dart';
 /// Se al login successivo il userId è diverso → cambio account, wipe locale.
 @visibleForTesting
 const kLastKnownUserIdKey = 'sync.last_known_user_id';
+@visibleForTesting
+String pendingRestoreUserKey(String userId) => 'sync.pending_full_pull.$userId';
 
-/// Gestisce un evento di autenticazione: rileva un cambio di account
-/// (userId diverso dal precedente memorizzato in [SharedPreferences]) e
-/// in quel caso ripulisce il DB locale prima di scaricare i dati del nuovo
-/// utente. Idempotente: stesso userId → nessun wipe, solo fullPull.
+@visibleForTesting
+({bool changed, String? userId}) authSessionReplacement(
+  AuthState? previous,
+  AuthState next,
+) {
+  if (next case Authenticated(:final userId)) {
+    final previousUserId = switch (previous) {
+      Authenticated(:final userId) => userId,
+      _ => null,
+    };
+    return (changed: previousUserId != userId, userId: userId);
+  }
+  return (changed: previous is Authenticated, userId: null);
+}
+
+/// Prepara i dati locali all'interno del cambio sessione atomico. Il callback
+/// [replaceSession] invalida subito il proprietario precedente e attende i
+/// commit locali già avviati prima di eseguire questa preparazione.
 @visibleForTesting
 Future<void> handleAuthenticatedUser({
   required String userId,
   required SyncService syncService,
-  required void Function(String userId) requestFullPull,
-  required SharedPreferences prefs,
-}) async {
-  final last = prefs.getString(kLastKnownUserIdKey);
-  if (last != null && last != userId) {
-    debugPrint('[sync_provider] account switch detected: $last → $userId');
-    await syncService.wipeAllUserData();
-  }
-  await prefs.setString(kLastKnownUserIdKey, userId);
-  requestFullPull(userId);
+  required Future<void> Function(Future<bool> Function() prepareLocalData)
+  replaceSession,
+  required Future<SharedPreferences> Function() getPreferences,
+}) {
+  return replaceSession(() async {
+    final prefs = await getPreferences();
+    final last = prefs.getString(kLastKnownUserIdKey);
+    var wiped = false;
+    if (last == null || last != userId) {
+      if (!await prefs.setBool(pendingRestoreUserKey(userId), true)) {
+        throw StateError('Could not persist pending restore marker');
+      }
+      if (last != null) {
+        debugPrint('[sync_provider] account switch detected: $last → $userId');
+        await syncService.wipeAllUserData();
+        wiped = true;
+      }
+    }
+    if (!await prefs.setString(kLastKnownUserIdKey, userId)) {
+      throw StateError('Could not persist current sync owner');
+    }
+    return wiped || (prefs.getBool(pendingRestoreUserKey(userId)) ?? false);
+  });
 }
 
 /// Incrementato ogni volta che un fullPull completa con successo.
@@ -69,6 +100,12 @@ bool syncing(Ref ref) {
 }
 
 /// Alias compatibile e read-only usato dalla tile di stato sync.
+@Riverpod(keepAlive: true)
+bool syncNeedsRestore(Ref ref) {
+  ref.watch(syncRunStateProvider);
+  return ref.read(syncOrchestratorProvider).needsRestore;
+}
+
 @Riverpod(keepAlive: true)
 bool syncPushInProgress(Ref ref) {
   final state =
@@ -117,6 +154,33 @@ SyncOrchestrator syncOrchestrator(Ref ref) {
   // Il trigger resta success-only: sincronizza i notifier solo dopo pull ok.
   orchestrator.onFullPullComplete = () {
     ref.read(syncTriggerProvider.notifier).increment();
+    final userId = orchestrator.currentUserId;
+    final epoch = orchestrator.sessionEpoch;
+    final monitoring = ref.read(monitoringServiceProvider);
+    if (userId != null) {
+      unawaited(
+        SharedPreferences.getInstance()
+            .then((prefs) async {
+              if (orchestrator.currentUserId != userId ||
+                  orchestrator.sessionEpoch != epoch) {
+                return;
+              }
+              await prefs.remove(pendingRestoreUserKey(userId));
+            })
+            .catchError((Object error, StackTrace stackTrace) {
+              // Pull is already committed; cleanup failure keeps restore pending
+              // for the next launch and must not become an unhandled async error.
+              if (orchestrator.currentUserId == userId &&
+                  orchestrator.sessionEpoch == epoch) {
+                monitoring.captureException(
+                  error,
+                  stackTrace: stackTrace,
+                  tags: const {'operation': 'sync_restore_marker_cleanup'},
+                );
+              }
+            }),
+      );
+    }
   };
 
   // Quando un push parte davvero invalida il counter pending, evitando valori
@@ -132,14 +196,23 @@ SyncOrchestrator syncOrchestrator(Ref ref) {
     ref.invalidate(totalUnsyncedCountProvider);
   };
 
-  Future<void> dispatch(String userId) async {
-    final prefs = await SharedPreferences.getInstance();
-
-    await handleAuthenticatedUser(
-      userId: userId,
-      syncService: ref.read(syncServiceProvider),
-      requestFullPull: orchestrator.requestFullPull,
-      prefs: prefs,
+  void dispatch(String userId) {
+    unawaited(
+      handleAuthenticatedUser(
+        userId: userId,
+        syncService: ref.read(syncServiceProvider),
+        replaceSession: (prepare) => orchestrator.replaceSession(
+          userId,
+          prepareLocalData: () async {
+            final needsRestore = await prepare();
+            if (needsRestore) {
+              ref.read(syncTriggerProvider.notifier).increment();
+            }
+            return needsRestore;
+          },
+        ),
+        getPreferences: SharedPreferences.getInstance,
+      ),
     );
   }
 
@@ -151,8 +224,15 @@ SyncOrchestrator syncOrchestrator(Ref ref) {
   }
 
   ref.listen<AuthState>(authNotifierProvider, (prev, next) {
-    if (next is Authenticated && prev is! Authenticated) {
-      dispatch(next.userId);
+    final replacement = authSessionReplacement(prev, next);
+    if (!replacement.changed) return;
+    final userId = replacement.userId;
+    if (userId != null) {
+      dispatch(userId);
+    } else {
+      unawaited(
+        orchestrator.replaceSession(null, prepareLocalData: () async => false),
+      );
     }
   });
 
