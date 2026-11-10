@@ -15,6 +15,7 @@ import '../../features/items/providers/item_metadata_service_provider.dart';
 import '../../features/items/providers/item_provider.dart';
 import '../../features/promo/providers/promo_code_provider.dart';
 import '../sync/sync_provider.dart';
+import '../sync/sync_session.dart';
 import 'auth_repository.dart';
 import 'auth_state.dart';
 import 'supabase_auth_repository.dart';
@@ -34,6 +35,15 @@ class AuthNotifier extends _$AuthNotifier {
 
     final initial = repo.currentAuthState;
     _resolveIdentity(initial);
+    ref.listen(syncTriggerProvider, (_, _) {
+      final current = state;
+      if (current case Authenticated(:final userId)) {
+        final orchestrator = ref.read(syncOrchestratorProvider);
+        if (orchestrator.currentUserId != userId) return;
+        final context = orchestrator.captureLocalWriteContext();
+        if (context != null) unawaited(_backfillItemMetadata(context));
+      }
+    });
 
     AuthState previous = initial;
     final subscription = repo.authStateChanges.listen((authState) {
@@ -58,7 +68,6 @@ class AuthNotifier extends _$AuthNotifier {
         ref.read(analyticsServiceProvider).identifyUser(userId);
         unawaited(_flushConsentToRemote());
         unawaited(_redeemPendingPromo());
-        unawaited(_backfillItemMetadata());
       case Unauthenticated():
         ref.read(monitoringServiceProvider).clearUser();
         ref.read(analyticsServiceProvider).clearUser();
@@ -123,14 +132,25 @@ class AuthNotifier extends _$AuthNotifier {
   /// Completa in background la scheda degli oggetti che non ce l'hanno
   /// (aggiunti offline o prima di `item-metadata`). Gli errori restano dentro:
   /// l'accesso non deve mai dipendere da questo.
-  Future<void> _backfillItemMetadata() async {
+  Future<void> _backfillItemMetadata(SyncSessionContext context) async {
     try {
-      final houses = await ref.read(itemMetadataBackfillProvider).run();
+      final orchestrator = ref.read(syncOrchestratorProvider);
+      final houses = await ref.read(itemMetadataBackfillProvider).run(context);
+      bool isCurrent() {
+        final authState = state;
+        return identical(ref.read(syncOrchestratorProvider), orchestrator) &&
+            orchestrator.isLocalWriteContextCurrent(context) &&
+            authState is Authenticated &&
+            authState.userId == context.userId;
+      }
+
+      if (!isCurrent()) return;
       if (houses.isEmpty) return;
       for (final houseId in houses) {
+        if (!isCurrent()) return;
         ref.invalidate(itemNotifierProvider(houseId));
       }
-      ref.read(syncOrchestratorProvider).requestSync();
+      if (isCurrent()) orchestrator.requestSync();
     } catch (e) {
       debugPrint('[Auth] recupero schede non partito: $e');
     }
