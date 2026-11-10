@@ -11,6 +11,7 @@ import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/ds_field.dart';
 import '../../../shared/widgets/ds_field_label.dart';
 import '../../../shared/widgets/ds_form_sheet.dart';
+import '../../../shared/widgets/ds_error_state.dart';
 import '../../../shared/widgets/ds_inline_error.dart';
 import '../../../shared/widgets/ds_not_found_state.dart';
 import '../../../shared/widgets/ds_settings.dart';
@@ -164,30 +165,55 @@ class _KitEditorScreenState extends ConsumerState<KitEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isNew) {
-      final kits = ref.watch(kitNotifierProvider(widget.houseId)).valueOrNull;
-      if (kits == null) {
-        return _scaffold(const SizedBox.shrink(), hasFooter: false);
-      }
-      final kit = kits.where((k) => k.id == widget.kitId).firstOrNull;
-      if (kit == null && !_hydrated) {
-        return _scaffold(
-          DsNotFoundState(
-            icon: Icons.inventory_2_outlined,
-            title: 'kits.not_found'.tr(),
-            actionLabel: 'common.close'.tr(),
-            onAction: () => context.pop(),
-          ),
-          hasFooter: false,
-          expand: true,
+    if (_isNew) return _scaffold(_form());
+    return ref
+        .watch(kitNotifierProvider(widget.houseId))
+        .when(
+          loading: () => _hydrated
+              ? _scaffold(_form())
+              : _scaffold(
+                  const Center(child: CircularProgressIndicator()),
+                  hasFooter: false,
+                ),
+          error: (error, _) => _hydrated
+              ? _scaffold(_form(), loadError: 'errors.load_failed'.tr())
+              : _scaffold(
+                  DsErrorState(
+                    error: error,
+                    title: 'errors.load_failed'.tr(),
+                    onRetry: _retryLoad,
+                  ),
+                  hasFooter: false,
+                  expand: true,
+                ),
+          data: (kits) {
+            final kit = kits.where((k) => k.id == widget.kitId).firstOrNull;
+            if (kit == null && !_hydrated) {
+              return _scaffold(
+                DsNotFoundState(
+                  icon: Icons.inventory_2_outlined,
+                  title: 'kits.not_found'.tr(),
+                  actionLabel: 'common.close'.tr(),
+                  onAction: () => context.pop(),
+                ),
+                hasFooter: false,
+                expand: true,
+              );
+            }
+            if (kit != null) _hydrate(kit);
+            return _scaffold(_form());
+          },
         );
-      }
-      if (kit != null) _hydrate(kit);
-    }
-    return _scaffold(_form());
   }
 
-  Widget _scaffold(Widget body, {bool hasFooter = true, bool expand = false}) {
+  void _retryLoad() => ref.invalidate(kitNotifierProvider(widget.houseId));
+
+  Widget _scaffold(
+    Widget body, {
+    bool hasFooter = true,
+    bool expand = false,
+    String? loadError,
+  }) {
     final sheet = DsFormSheet(
       title: (_isNew ? 'kits.new_title' : 'kits.edit_title').tr(),
       actions: [
@@ -210,6 +236,8 @@ class _KitEditorScreenState extends ConsumerState<KitEditorScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (loadError != null)
+                    DsInlineError(message: loadError, onRetry: _retryLoad),
                   if (_errorMessage case final message?)
                     DsInlineError(
                       key: _errorKey,
