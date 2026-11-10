@@ -55,6 +55,25 @@ class SyncOrchestrator with WidgetsBindingObserver {
   bool get sessionReady => _sessionReady;
   String? get currentUserId => _currentUserId;
   int get sessionEpoch => _sessionEpoch;
+
+  /// Captures the current authenticated owner for a short local write.
+  SyncSessionContext? captureLocalWriteContext() {
+    if (!_sessionReady || _currentUserId == null || _disposed) return null;
+    try {
+      return _writeBarrier.capture(_currentUserId);
+    } on SyncSessionInvalid {
+      return null;
+    }
+  }
+
+  bool isLocalWriteContextCurrent(SyncSessionContext context) =>
+      _sessionReady && !_disposed && _writeBarrier.isCurrent(context);
+
+  /// Serializes local commit work; the callback owns its database transaction.
+  Future<T> commitLocalWrite<T>(
+    SyncSessionContext context,
+    Future<T> Function() write,
+  ) => _writeBarrier.commit(context, write);
   Stream<SyncRunState> get states => Stream<SyncRunState>.multi((controller) {
     // Attach first, then read the snapshot: this closes the gap where a state
     // could change after the snapshot read but before stream subscription.

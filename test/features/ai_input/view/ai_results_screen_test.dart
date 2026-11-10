@@ -11,7 +11,6 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
-import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/ai_input/model/ai_import_state.dart';
 import 'package:pack_log/features/ai_input/providers/ai_import_notifier.dart';
@@ -23,8 +22,10 @@ import 'package:pack_log/features/items/providers/item_provider.dart';
 import 'package:pack_log/features/items/view/item_sheet.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/widgets/ds_error_state.dart';
 import 'package:pack_log/shared/widgets/universal_action_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../helpers/prepared_sync_orchestrator.dart';
 
 import '../../../screenshots/support/fakes.dart'
     show aiResultsState, createPhotoFixtures, photoShirt;
@@ -39,7 +40,10 @@ class _FakeAiImport extends AiImportNotifier {
   List<File>? processedFiles;
 
   @override
-  AiImportState build() => _initial;
+  AiImportState build() {
+    super.build();
+    return _initial;
+  }
 
   void emit(AiImportState next) => state = next;
 
@@ -72,8 +76,6 @@ class _FakeItemNotifier extends ItemNotifier {
 
 class _MockItemRepository extends Mock implements ItemRepository {}
 
-class _MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
-
 class _MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
 
 class _TestAssetLoader extends AssetLoader {
@@ -89,12 +91,19 @@ class _TestAssetLoader extends AssetLoader {
 late AssetLoader _assetLoader;
 
 class _TestApp {
-  _TestApp(this.tester, this.container, this.router, this.itemRepository);
+  _TestApp(
+    this.tester,
+    this.container,
+    this.router,
+    this.itemRepository,
+    this.syncOrchestrator,
+  );
 
   final WidgetTester tester;
   final ProviderContainer container;
   final GoRouter router;
   final _MockItemRepository itemRepository;
+  final PreparedSyncOrchestrator syncOrchestrator;
 
   Future<void> finish() async {
     await tester.pumpWidget(const SizedBox.shrink());
@@ -186,7 +195,7 @@ Future<_TestApp> _openResults(
       newItems: any(named: 'newItems'),
     ),
   ).thenAnswer((_) async {});
-  final sync = _MockSyncOrchestrator();
+  final sync = PreparedSyncOrchestrator();
   when(() => sync.requestSync()).thenReturn(null);
   final analytics = _MockCoreAnalyticsService();
   final initial = state ?? aiResultsState();
@@ -237,7 +246,7 @@ Future<_TestApp> _openResults(
   router.push('/houses/$kHomeId/ai-import/results');
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 500));
-  return _TestApp(tester, container, router, itemRepository);
+  return _TestApp(tester, container, router, itemRepository, sync);
 }
 
 void main() {
@@ -415,6 +424,8 @@ void main() {
     ).called(1);
 
     saveCompleter.complete();
+    await tester.pump();
+    expect(find.byType(SnackBar), findsOneWidget);
     await tester.pumpAndSettle();
 
     expect(find.text('DETAIL $kHomeId'), findsOneWidget);
@@ -428,6 +439,52 @@ void main() {
     expect(app.router.canPop(), isFalse);
     await app.finish();
   });
+
+  testWidgets(
+    'owner reset during a pending save does not report stale success',
+    (tester) async {
+      final app = await _openResults(tester);
+      final enteredWrite = Completer<void>();
+      final finishWrite = Completer<void>();
+      when(
+        () => app.itemRepository.saveAiItemsToHouse(
+          houseId: any(named: 'houseId'),
+          newItems: any(named: 'newItems'),
+        ),
+      ).thenAnswer((_) {
+        enteredWrite.complete();
+        return finishWrite.future;
+      });
+
+      final onSave = tester
+          .widget<UniversalActionBar>(find.byType(UniversalActionBar))
+          .onPrimaryPressed!;
+      onSave();
+      await enteredWrite.future;
+
+      var accountPrepared = false;
+      final replacement = app.syncOrchestrator.replaceSession(
+        'test-user',
+        prepareLocalData: () async {
+          accountPrepared = true;
+          return false;
+        },
+      );
+      await tester.pump();
+      expect(app.container.read(aiImportNotifierProvider).photoGroups, isEmpty);
+      expect(find.text('Risultati salvati con successo.'), findsNothing);
+      expect(find.byType(AiResultsScreen), findsOneWidget);
+      expect(accountPrepared, isFalse);
+
+      finishWrite.complete();
+      await replacement;
+      await tester.pumpAndSettle();
+      expect(accountPrepared, isTrue);
+      expect(find.text('Risultati salvati con successo.'), findsNothing);
+      expect(find.byType(AiResultsScreen), findsOneWidget);
+      await app.finish();
+    },
+  );
 
   testWidgets('casa vuota nasconde C’è già?', (tester) async {
     final app = await _openResults(
@@ -617,6 +674,19 @@ void main() {
     expect(find.byType(AiResultsScreen), findsOneWidget);
     expect(find.text('Risultati salvati con successo.'), findsNothing);
     await app.finish();
+  });
+
+  testWidgets('post-commit error uses the empty error state without retry', (
+    tester,
+  ) async {
+    await _openResults(
+      tester,
+      state: const AiImportState(errorMessage: 'errore completeAi'),
+    );
+
+    expect(find.byType(DsErrorState), findsOneWidget);
+    expect(find.text('errore completeAi'), findsOneWidget);
+    expect(find.text('Riprova'), findsNothing);
   });
 
   testWidgets('il picker di riprova usa una foto per l ultimo slot', (

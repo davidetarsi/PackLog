@@ -21,6 +21,7 @@ void main() {
   late MockConnectivity mockConnectivity;
   late MockMonitoringService mockMonitoring;
   late StreamController<List<ConnectivityResult>> connectivityController;
+  SyncLocalWriteBarrier? boundBarrier;
 
   setUpAll(() {
     registerFallbackValue(_BarrierFake());
@@ -40,8 +41,13 @@ void main() {
     when(
       () => mockConnectivity.checkConnectivity(),
     ).thenAnswer((_) async => [ConnectivityResult.wifi]);
-    when(() => mockService.bindSessionBarrier(any())).thenReturn(null);
-    when(() => mockService.drainLocalWrites()).thenAnswer((_) async {});
+    when(() => mockService.bindSessionBarrier(any())).thenAnswer((invocation) {
+      boundBarrier =
+          invocation.positionalArguments.single as SyncLocalWriteBarrier;
+    });
+    when(() => mockService.drainLocalWrites()).thenAnswer((_) async {
+      await boundBarrier?.drainLocalWrites();
+    });
     when(() => mockService.processQueue()).thenAnswer((_) async {});
     when(() => mockService.resetAllSyncRetries()).thenAnswer((_) async => 0);
     when(() => mockService.countPendingChanges()).thenAnswer((_) async => 0);
@@ -95,6 +101,64 @@ void main() {
 
       orchestrator.dispose();
     });
+
+    test(
+      'local AI commit drains before account replacement wipes data',
+      () async {
+        final orchestrator = makeOrchestrator();
+        await orchestrator.replaceSession(
+          'A',
+          prepareLocalData: () async => false,
+        );
+        final context = orchestrator.captureLocalWriteContext()!;
+        final entered = Completer<void>();
+        final release = Completer<void>();
+        final commit = orchestrator.commitLocalWrite(context, () async {
+          entered.complete();
+          await release.future;
+        });
+        await entered.future;
+        var preparedB = false;
+        final replace = orchestrator.replaceSession(
+          'B',
+          prepareLocalData: () async {
+            preparedB = true;
+            return false;
+          },
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(preparedB, isFalse);
+        release.complete();
+        await commit;
+        await replace;
+        expect(preparedB, isTrue);
+        orchestrator.dispose();
+      },
+    );
+
+    test(
+      'stale local context cannot start a write after owner replacement',
+      () async {
+        final orchestrator = makeOrchestrator();
+        await orchestrator.replaceSession(
+          'A',
+          prepareLocalData: () async => false,
+        );
+        final stale = orchestrator.captureLocalWriteContext()!;
+        await orchestrator.replaceSession(
+          'B',
+          prepareLocalData: () async => false,
+        );
+        expect(orchestrator.isLocalWriteContextCurrent(stale), isFalse);
+        var wrote = false;
+        await expectLater(
+          orchestrator.commitLocalWrite(stale, () async => wrote = true),
+          throwsA(isA<SyncSessionInvalid>()),
+        );
+        expect(wrote, isFalse);
+        orchestrator.dispose();
+      },
+    );
 
     test('mutex prevents concurrent sync', () async {
       final completer = Completer<void>();
