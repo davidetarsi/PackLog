@@ -6,7 +6,7 @@ part of 'trip_items_status_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$itemTripStatusHash() => r'1a8ccad5303c462acd22722443435fd5b150aaa1';
+String _$itemTripStatusHash() => r'9af92c0d609eb3ef993fafc42b8e458867fae3a7';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -166,7 +166,7 @@ class _ItemTripStatusProviderElement
 }
 
 String _$itemsOnTripFromHouseHash() =>
-    r'4c1c86146cf331d9a419400e4282cb0af566099a';
+    r'59a86646fd892450124bad81f8c83b29ed74a321';
 
 /// Provider che fornisce la lista degli item IDs attualmente in viaggio per una casa specifica.
 ///
@@ -329,7 +329,7 @@ class _ItemsOnTripFromHouseProviderElement
 }
 
 String _$itemQuantitiesOnTripFromHouseHash() =>
-    r'81a0e6d20257d7b4673682e0ca9eb78b301c0788';
+    r'b049fd2aacefef5d5c7fe480379fdd423961dea0';
 
 /// Provider che fornisce le quantità in viaggio per ogni item di una casa.
 /// Restituisce una mappa {itemId: quantitàInViaggio}.
@@ -506,7 +506,7 @@ class _ItemQuantitiesOnTripFromHouseProviderElement
 }
 
 String _$temporaryItemsInHouseHash() =>
-    r'691d98e496d50f484d30d847b245bc7077755752';
+    r'1d46e691df2307fa70dabdd3302a20f97432eee6';
 
 /// Provider che fornisce gli items temporaneamente presenti in una casa (da viaggi attivi)
 /// Un item è temporaneo in una casa solo se il viaggio PIÙ RECENTE che lo contiene

@@ -662,11 +662,11 @@ class _TripDetail extends ConsumerWidget {
   final slots = trip.aiResult?.slots ?? const <AiSlot>[];
   return (
     important: slots
-        .where((s) => s.isOpen && s.level == AiSlotLevel.important && !s.toBuy)
+        .where((s) => s.level == AiSlotLevel.important && s.isSuggested)
         .length,
     useful: slots
-        .where((s) => s.isOpen && s.level == AiSlotLevel.useful && !s.toBuy)
+        .where((s) => s.level == AiSlotLevel.useful && s.isSuggested)
         .length,
-    toBuy: slots.where((s) => s.isOpen && s.toBuy).length,
+    toBuy: slots.where((s) => s.isToBuy).length,
   );
 }

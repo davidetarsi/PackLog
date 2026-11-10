@@ -8,6 +8,9 @@ part 'trip_items_status_provider.g.dart';
 
 /// Informazioni sullo stato di un item in relazione ai viaggi
 class ItemTripStatus {
+  /// `false` finché non è disponibile almeno uno snapshot valido dei viaggi.
+  final bool isKnown;
+
   /// L'item è attualmente in viaggio (assente dalla casa di origine)
   final bool isOnTrip;
 
@@ -21,6 +24,7 @@ class ItemTripStatus {
   final String? destinationHouseId;
 
   const ItemTripStatus({
+    this.isKnown = true,
     this.isOnTrip = false,
     this.activeTripId,
     this.activeTripName,
@@ -28,6 +32,7 @@ class ItemTripStatus {
   });
 
   static const ItemTripStatus notOnTrip = ItemTripStatus();
+  static const ItemTripStatus unknown = ItemTripStatus(isKnown: false);
 }
 
 /// Trova il viaggio attivo più recente (per data di partenza) che contiene un item specifico
@@ -53,33 +58,35 @@ TripModel? _findMostRecentActiveTrip(List<TripModel> trips, String itemId) {
   return mostRecent;
 }
 
+/// Proietta uno snapshot dei viaggi. `null` significa che non è ancora
+/// disponibile un valore attendibile; una lista vuota è invece nota.
+ItemTripStatus itemTripStatusForTrips(List<TripModel>? trips, String itemId) {
+  if (trips == null) return ItemTripStatus.unknown;
+  final mostRecentTrip = _findMostRecentActiveTrip(trips, itemId);
+  if (mostRecentTrip == null) return ItemTripStatus.notOnTrip;
+  return ItemTripStatus(
+    isOnTrip: true,
+    activeTripId: mostRecentTrip.id,
+    activeTripName: mostRecentTrip.name,
+    destinationHouseId: mostRecentTrip.destinationHouseId,
+  );
+}
+
+/// During loading/error without a previous value the status is unknown;
+/// Riverpod's previous value remains usable during refresh/error transitions.
+ItemTripStatus itemTripStatusForAsyncTrips(
+  AsyncValue<List<TripModel>> trips,
+  String itemId,
+) => itemTripStatusForTrips(trips.valueOrNull, itemId);
+
 /// Provider che fornisce lo stato di un item specifico rispetto ai viaggi
 /// Considera il viaggio più recente come quello determinante per lo stato dell'item
 @riverpod
 ItemTripStatus itemTripStatus(Ref ref, String itemId) {
   final tripsAsync = ref.watch(tripNotifierProvider);
-
-  return tripsAsync.when(
-    data: (trips) {
-      // Trova il viaggio attivo più recente che contiene questo item
-      final mostRecentTrip = _findMostRecentActiveTrip(trips, itemId);
-      if (mostRecentTrip != null) {
-        return ItemTripStatus(
-          isOnTrip: true,
-          activeTripId: mostRecentTrip.id,
-          activeTripName: mostRecentTrip.name,
-          destinationHouseId: mostRecentTrip.destinationHouseId,
-        );
-      }
-      return ItemTripStatus.notOnTrip;
-    },
-    // Loading silenzioso: il badge "in viaggio" sull'item è assente mentre i trip
-    // caricano. Meno fastidioso visivamente di uno skeleton inline nella lista item.
-    loading: () => ItemTripStatus.notOnTrip,
-    // Error silenzioso: se i trip falliscono, l'item appare "non in viaggio".
-    // L'errore è visibile altrove (trip list), non serve duplicarlo sui badge.
-    error: (e, s) => ItemTripStatus.notOnTrip,
-  );
+  // valueOrNull conserva lo snapshot precedente durante refresh/error con dato
+  // precedente, evitando di azzerare temporaneamente i badge.
+  return itemTripStatusForAsyncTrips(tripsAsync, itemId);
 }
 
 /// Provider che fornisce la lista degli item IDs attualmente in viaggio per una casa specifica.
@@ -91,6 +98,7 @@ ItemTripStatus itemTripStatus(Ref ref, String itemId) {
 @riverpod
 Set<String> itemsOnTripFromHouse(Ref ref, String houseId) {
   final tripsAsync = ref.watch(tripNotifierProvider);
+  final trips = tripsAsync.valueOrNull;
   // Fallback retrocompatibilità: item con originHouseId vuoto vengono risolti
   // verificando a quale casa appartiene effettivamente l'ItemModel.
   final houseItemIdSet =
@@ -101,30 +109,24 @@ Set<String> itemsOnTripFromHouse(Ref ref, String houseId) {
           .toSet() ??
       {};
 
-  return tripsAsync.when(
-    data: (trips) {
-      final itemIds = <String>{};
-      for (final trip in trips) {
-        if (trip.isActive) {
-          for (final item in trip.items) {
-            final belongsToThisHouse =
-                item.originHouseId == houseId ||
-                (item.originHouseId.isEmpty &&
-                    houseItemIdSet.contains(item.id));
-            if (belongsToThisHouse) {
-              itemIds.add(item.id);
-            }
+  if (trips != null) {
+    final itemIds = <String>{};
+    for (final trip in trips) {
+      if (trip.isActive) {
+        for (final item in trip.items) {
+          final belongsToThisHouse =
+              item.originHouseId == houseId ||
+              (item.originHouseId.isEmpty && houseItemIdSet.contains(item.id));
+          if (belongsToThisHouse) {
+            itemIds.add(item.id);
           }
         }
       }
-      return itemIds;
-    },
-    // Loading silenzioso: zero item "in viaggio" mentre i trip caricano.
-    // I badge della house detail non mostrano skeleton — appaiono direttamente
-    // quando i dati sono pronti.
-    loading: () => <String>{},
-    error: (e, s) => <String>{},
-  );
+    }
+    return itemIds;
+  }
+  // Nessuno snapshot valido: mantiene il comportamento UI silenzioso.
+  return <String>{};
 }
 
 /// Provider che fornisce le quantità in viaggio per ogni item di una casa.
@@ -137,6 +139,7 @@ Set<String> itemsOnTripFromHouse(Ref ref, String houseId) {
 @riverpod
 Map<String, int> itemQuantitiesOnTripFromHouse(Ref ref, String houseId) {
   final tripsAsync = ref.watch(tripNotifierProvider);
+  final trips = tripsAsync.valueOrNull;
   final houseItemIdSet =
       ref
           .watch(itemNotifierProvider(houseId))
@@ -145,42 +148,34 @@ Map<String, int> itemQuantitiesOnTripFromHouse(Ref ref, String houseId) {
           .toSet() ??
       {};
 
-  return tripsAsync.when(
-    data: (trips) {
-      final quantities = <String, int>{};
-      // Raccogli tutti gli item unici in viaggi attivi dalla casa specificata
-      final itemIds = <String>{};
-      for (final trip in trips) {
-        if (trip.isActive) {
-          for (final item in trip.items) {
-            final belongsToThisHouse =
-                item.originHouseId == houseId ||
-                (item.originHouseId.isEmpty &&
-                    houseItemIdSet.contains(item.id));
-            if (belongsToThisHouse) {
-              itemIds.add(item.id);
-            }
+  if (trips != null) {
+    final quantities = <String, int>{};
+    // Raccogli tutti gli item unici in viaggi attivi dalla casa specificata
+    final itemIds = <String>{};
+    for (final trip in trips) {
+      if (trip.isActive) {
+        for (final item in trip.items) {
+          final belongsToThisHouse =
+              item.originHouseId == houseId ||
+              (item.originHouseId.isEmpty && houseItemIdSet.contains(item.id));
+          if (belongsToThisHouse) {
+            itemIds.add(item.id);
           }
         }
       }
+    }
 
-      // Per ogni item, trova il viaggio più recente e usa la sua quantità
-      for (final itemId in itemIds) {
-        final mostRecentTrip = _findMostRecentActiveTrip(trips, itemId);
-        if (mostRecentTrip != null) {
-          final tripItem = mostRecentTrip.items.firstWhere(
-            (i) => i.id == itemId,
-          );
-          quantities[itemId] = tripItem.quantity;
-        }
+    // Per ogni item, trova il viaggio più recente e usa la sua quantità
+    for (final itemId in itemIds) {
+      final mostRecentTrip = _findMostRecentActiveTrip(trips, itemId);
+      if (mostRecentTrip != null) {
+        final tripItem = mostRecentTrip.items.firstWhere((i) => i.id == itemId);
+        quantities[itemId] = tripItem.quantity;
       }
-      return quantities;
-    },
-    // Loading silenzioso: mappa vuota mentre i trip caricano.
-    // Stesso rationale di [itemsOnTripFromHouseProvider].
-    loading: () => <String, int>{},
-    error: (e, s) => <String, int>{},
-  );
+    }
+    return quantities;
+  }
+  return <String, int>{};
 }
 
 /// Provider che fornisce gli items temporaneamente presenti in una casa (da viaggi attivi)
@@ -191,30 +186,26 @@ Map<String, int> itemQuantitiesOnTripFromHouse(Ref ref, String houseId) {
 @riverpod
 List<TripItem> temporaryItemsInHouse(Ref ref, String houseId) {
   final tripsAsync = ref.watch(tripNotifierProvider);
+  final trips = tripsAsync.valueOrNull;
 
-  return tripsAsync.when(
-    data: (trips) {
-      final items = <TripItem>[];
+  if (trips != null) {
+    final items = <TripItem>[];
 
-      // Per ogni viaggio attivo con questa casa come destinazione
-      for (final trip in trips) {
-        if (trip.isActive && trip.destinationHouseId == houseId) {
-          // Per ogni item in questo viaggio
-          for (final item in trip.items) {
-            // Verifica se questo è il viaggio più recente per questo item
-            final mostRecentTrip = _findMostRecentActiveTrip(trips, item.id);
-            // Aggiungi l'item solo se questo viaggio è quello più recente per l'item
-            if (mostRecentTrip?.id == trip.id) {
-              items.add(item);
-            }
+    // Per ogni viaggio attivo con questa casa come destinazione
+    for (final trip in trips) {
+      if (trip.isActive && trip.destinationHouseId == houseId) {
+        // Per ogni item in questo viaggio
+        for (final item in trip.items) {
+          // Verifica se questo è il viaggio più recente per questo item
+          final mostRecentTrip = _findMostRecentActiveTrip(trips, item.id);
+          // Aggiungi l'item solo se questo viaggio è quello più recente per l'item
+          if (mostRecentTrip?.id == trip.id) {
+            items.add(item);
           }
         }
       }
-      return items;
-    },
-    // Loading silenzioso: sezione "item temporanei" assente mentre i trip caricano.
-    // Meno fastidioso di un placeholder vuoto che appare e scompare.
-    loading: () => [],
-    error: (e, s) => [],
-  );
+    }
+    return items;
+  }
+  return [];
 }
