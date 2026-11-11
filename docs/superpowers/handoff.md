@@ -6,6 +6,8 @@ Aggiornato: 7 novembre 2026. Si aggiorna a ogni lavoro chiuso.
 
 ## 0. Dal 7 novembre (ha la precedenza sul resto)
 
+**Marketing (11 nov):** decisioni, piano delle prove di dicembre e cose da fare in [marketing-prove-dicembre.md](marketing-prove-dicembre.md). Stato: tutto unito e rilasciato sul Play Store (main 1405bef del 10 nov).
+
 - **Profilo personale (8 nov):** design `specs/2026-11-08-profilo-personale-design.md` approvato. Parti 1 e 2 FATTE sul ramo app `feat/modifiche-valigia` (pushato, PR da aprire; testo in scratchpad `ds-piani/pr-modifiche-valigia.md`, ledger `ds-piani/ledger-modifiche-valigia.md`): frase rassicurante (pagina valigia + dettaglio viaggio), eventi delle modifiche alla proposta → coda Drift v14 → `public.valigia_modifiche`. Davide: migrazione `20261108090000_valigia_modifiche.sql` (DEV poi PROD, prima dell'app), deploy `pack-trip` e `hard-delete-account`, testi privacy/Play da approvare. Parte 3 (freddo/caldo, 3 voci, sposta tutte le soglie compresi gli importanti) definita, da approvare quando Davide decide.
 - **PR #108 e #109:** conflitti risolti l'8 nov (#109 = fix/allinea-banco, merge di develop con #107/#108, 888/888). `feat/perche-completo` va riallineato alla #108 (AiPackRows cambiata).
 - **Flusso di creazione del viaggio (8 nov):** artifact con gli screenshot: https://claude.ai/artifact/EH3YMTDSAsJVtX64JZQmKa. Quattro punti "a metà" (P1 strada AI sotto la pagina a mano, P2 due bottoni "prepara la valigia", P3 valigia in due pagine, P4 Rigenera rifà il giro). Decisi da Davide l'8 nov (memoria `flusso-creazione-viaggio.md`):
