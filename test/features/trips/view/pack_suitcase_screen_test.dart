@@ -765,6 +765,23 @@ void main() {
       expect(saved.aiResult?.generatedAt, DateTime(2026, 11, 2));
     });
 
+    testWidgets('done_logs_only_the_items_added', (tester) async {
+      arrange(
+        trip: _trip(items: [_tripItem(_maglietta)]),
+        items: {
+          'h1': [_maglietta, _spazzolino],
+        },
+      );
+      await pumpPack(tester);
+
+      await tapText(tester, 'Spazzolino');
+      await tapText(tester, 'Fatto · 2 oggetti');
+
+      verify(
+        () => analytics.trackItemsAddedToTrip(tripId: 'trip-1', count: 1),
+      ).called(1);
+    });
+
     testWidgets('done_without_changes_writes_nothing', (tester) async {
       arrange(
         trip: _trip(items: [_tripItem(_maglietta)]),
@@ -777,6 +794,12 @@ void main() {
       await tapText(tester, 'Fatto · 1 oggetto');
 
       verifyNever(() => tripRepo.updateTrip(any()));
+      verifyNever(
+        () => analytics.trackItemsAddedToTrip(
+          tripId: any(named: 'tripId'),
+          count: any(named: 'count'),
+        ),
+      );
       expect(find.byType(PackSuitcaseScreen), findsNothing);
     });
 

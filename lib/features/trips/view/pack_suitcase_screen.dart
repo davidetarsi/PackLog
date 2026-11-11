@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/analytics/core_analytics_service.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/helpers/design_system.dart';
@@ -270,6 +271,12 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     if (!saved) {
       setState(() => _saving = false);
       return;
+    }
+    // La valigia a mano passa da `updateTrip`, che non conta gli oggetti nuovi.
+    if (added.isNotEmpty) {
+      ref
+          .read(coreAnalyticsServiceProvider)
+          .trackItemsAddedToTrip(tripId: current.id, count: added.length);
     }
     _leave();
   }
