@@ -34,9 +34,11 @@ void main() {
   late StreamController<List<ConnectivityResult>> connectivityController;
   late SyncService syncService;
   late SyncOrchestrator orchestrator;
+  var network = ConnectivityResult.none;
 
-  setUp(() {
+  setUp(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
+    network = ConnectivityResult.none;
 
     database = createTestDatabase();
     mockRemote = MockSupabaseRepository();
@@ -50,6 +52,9 @@ void main() {
       () => mockConnectivity.onConnectivityChanged,
     ).thenAnswer((_) => connectivityController.stream);
     when(
+      () => mockConnectivity.checkConnectivity(),
+    ).thenAnswer((_) async => [network]);
+    when(
       () => mockMonitoring.logBreadcrumb(
         any(),
         category: any(named: 'category'),
@@ -60,6 +65,28 @@ void main() {
     when(
       () => mockTombstoneConfig.getRetentionDays(),
     ).thenAnswer((_) async => 15);
+
+    when(
+      () => mockRemote.fetchAllHousesByUserId(any()),
+    ).thenAnswer((_) async => []);
+    when(
+      () => mockRemote.fetchAllSpacesByUserId(any()),
+    ).thenAnswer((_) async => []);
+    when(
+      () => mockRemote.fetchAllLuggagesByUserId(any()),
+    ).thenAnswer((_) async => []);
+    when(
+      () => mockRemote.fetchAllItemsByUserId(any()),
+    ).thenAnswer((_) async => []);
+    when(
+      () => mockRemote.fetchAllTripsByUserId(any()),
+    ).thenAnswer((_) async => []);
+    when(
+      () => mockRemote.fetchAllKitsByUserId(any()),
+    ).thenAnswer((_) async => []);
+    when(
+      () => mockRemote.fetchAllKitItemsByUserId(any()),
+    ).thenAnswer((_) async => []);
 
     syncService = SyncService(
       housesDao: database.housesDao,
@@ -81,6 +108,10 @@ void main() {
       connectivity: mockConnectivity,
     );
     orchestrator.init();
+    await orchestrator.replaceSession(
+      'integration-user',
+      prepareLocalData: () async => false,
+    );
   });
 
   tearDown(() async {
@@ -150,6 +181,7 @@ void main() {
       ).thenAnswer((_) async => null);
 
       // 5. Simula Rete = Online → triggera l'orchestratore
+      network = ConnectivityResult.wifi;
       connectivityController.add([ConnectivityResult.wifi]);
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
@@ -205,6 +237,34 @@ void main() {
       // 3. Configura mock: il server ha una versione con T3 > T2
       //    (un altro dispositivo ha modificato lo stesso viaggio)
       final t3 = DateTime(2026, 5, 1, 14, 0);
+      when(() => mockRemote.fetchAllTripsByUserId(any())).thenAnswer(
+        (_) async => [
+          {
+            'id': 'trip-conflict-1',
+            'user_id': null,
+            'name': 'Weekend Firenze - Server Edit',
+            'description': 'Modificato da altro device',
+            'departure_date_time': null,
+            'return_date_time': null,
+            'destination_house_id': null,
+            'location_place_id': null,
+            'location_display_name': null,
+            'location_name': null,
+            'location_city': null,
+            'location_state': null,
+            'location_country': null,
+            'location_type': null,
+            'location_lat': null,
+            'location_lon': null,
+            'is_saved': false,
+            'created_at': t1.toIso8601String(),
+            'updated_at': t3.toIso8601String(),
+            'is_deleted': false,
+            'luggage_ids': <String>[],
+            'items': <Map<String, dynamic>>[],
+          },
+        ],
+      );
       when(
         () => mockRemote.fetchTripById(
           'trip-conflict-1',
@@ -250,6 +310,7 @@ void main() {
       ).thenAnswer((_) async => null);
 
       // 4. Simula Rete = Online → triggera l'orchestratore
+      network = ConnectivityResult.wifi;
       connectivityController.add([ConnectivityResult.wifi]);
       await Future<void>.delayed(const Duration(milliseconds: 50));
 

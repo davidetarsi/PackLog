@@ -6,6 +6,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/core/monitoring/monitoring_service.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_service.dart';
+import 'package:pack_log/core/sync/sync_session.dart';
 
 class MockSyncService extends Mock implements SyncService {}
 
@@ -13,11 +14,17 @@ class MockConnectivity extends Mock implements Connectivity {}
 
 class MockMonitoringService extends Mock implements AppMonitoringService {}
 
+class _BarrierFake extends Fake implements SyncLocalWriteBarrier {}
+
 void main() {
   late MockSyncService mockService;
   late MockConnectivity mockConnectivity;
   late MockMonitoringService mockMonitoring;
   late StreamController<List<ConnectivityResult>> connectivityController;
+
+  setUpAll(() {
+    registerFallbackValue(_BarrierFake());
+  });
 
   setUp(() {
     TestWidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +40,8 @@ void main() {
     when(
       () => mockConnectivity.checkConnectivity(),
     ).thenAnswer((_) async => [ConnectivityResult.wifi]);
+    when(() => mockService.bindSessionBarrier(any())).thenReturn(null);
+    when(() => mockService.drainLocalWrites()).thenAnswer((_) async {});
     when(() => mockService.processQueue()).thenAnswer((_) async {});
     when(() => mockService.resetAllSyncRetries()).thenAnswer((_) async => 0);
     when(() => mockService.countPendingChanges()).thenAnswer((_) async => 0);
@@ -60,11 +69,14 @@ void main() {
     test('triggers sync on connectivity change with network', () async {
       final orchestrator = makeOrchestrator();
       orchestrator.init();
-
+      await orchestrator.replaceSession(
+        'user-123',
+        prepareLocalData: () async => false,
+      );
       connectivityController.add([ConnectivityResult.wifi]);
       await Future<void>.delayed(Duration.zero);
 
-      verify(() => mockService.processQueue()).called(1);
+      verify(() => mockService.fullPull('user-123')).called(2);
 
       orchestrator.dispose();
     });
@@ -72,11 +84,14 @@ void main() {
     test('does not trigger sync when connectivity is none', () async {
       final orchestrator = makeOrchestrator();
       orchestrator.init();
-
+      await orchestrator.replaceSession(
+        'user-123',
+        prepareLocalData: () async => false,
+      );
       connectivityController.add([ConnectivityResult.none]);
       await Future<void>.delayed(Duration.zero);
 
-      verifyNever(() => mockService.processQueue());
+      verify(() => mockService.fullPull('user-123')).called(1);
 
       orchestrator.dispose();
     });
@@ -92,11 +107,14 @@ void main() {
 
       final orchestrator = makeOrchestrator();
       orchestrator.init();
-
-      connectivityController.add([ConnectivityResult.wifi]);
+      await orchestrator.replaceSession(
+        'user-123',
+        prepareLocalData: () async => false,
+      );
+      orchestrator.requestSync();
       await Future<void>.delayed(Duration.zero);
 
-      connectivityController.add([ConnectivityResult.mobile]);
+      orchestrator.requestSync();
       await Future<void>.delayed(Duration.zero);
 
       expect(callCount, equals(1));
@@ -110,11 +128,15 @@ void main() {
     test('mutex releases after processQueue completes', () async {
       final orchestrator = makeOrchestrator();
       orchestrator.init();
+      await orchestrator.replaceSession(
+        'user-123',
+        prepareLocalData: () async => false,
+      );
 
-      connectivityController.add([ConnectivityResult.wifi]);
+      orchestrator.requestSync();
       await Future<void>.delayed(Duration.zero);
 
-      connectivityController.add([ConnectivityResult.wifi]);
+      orchestrator.requestSync();
       await Future<void>.delayed(Duration.zero);
 
       verify(() => mockService.processQueue()).called(2);
@@ -131,11 +153,15 @@ void main() {
 
       final orchestrator = makeOrchestrator();
       orchestrator.init();
+      await orchestrator.replaceSession(
+        'user-123',
+        prepareLocalData: () async => false,
+      );
 
-      connectivityController.add([ConnectivityResult.wifi]);
+      orchestrator.requestSync();
       await Future<void>.delayed(Duration.zero);
 
-      connectivityController.add([ConnectivityResult.wifi]);
+      orchestrator.requestSync();
       await Future<void>.delayed(Duration.zero);
 
       verify(() => mockService.processQueue()).called(2);
@@ -146,17 +172,20 @@ void main() {
     test('logs breadcrumb with trigger on sync attempt', () async {
       final orchestrator = makeOrchestrator();
       orchestrator.init();
-
+      await orchestrator.replaceSession(
+        'user-123',
+        prepareLocalData: () async => false,
+      );
       connectivityController.add([ConnectivityResult.wifi]);
       await Future<void>.delayed(Duration.zero);
 
       verify(
         () => mockMonitoring.logBreadcrumb(
-          any(that: contains('connectivity_restored')),
+          any(that: contains('Avvio fullPull')),
           category: 'sync',
           data: any(named: 'data'),
         ),
-      ).called(1);
+      ).called(2);
 
       orchestrator.dispose();
     });
@@ -168,8 +197,12 @@ void main() {
         final orchestrator = makeOrchestrator()
           ..onProcessQueueComplete = () => callbackCalls++;
         orchestrator.init();
+        await orchestrator.replaceSession(
+          'user-123',
+          prepareLocalData: () async => false,
+        );
 
-        connectivityController.add([ConnectivityResult.wifi]);
+        orchestrator.requestSync();
         await Future<void>.delayed(Duration.zero);
 
         expect(callbackCalls, 1);
@@ -195,8 +228,12 @@ void main() {
       final orchestrator = makeOrchestrator()
         ..onProcessQueueComplete = () => callbackCalls++;
       orchestrator.init();
+      await orchestrator.replaceSession(
+        'user-123',
+        prepareLocalData: () async => false,
+      );
 
-      connectivityController.add([ConnectivityResult.wifi]);
+      orchestrator.requestSync();
       await Future<void>.delayed(Duration.zero);
 
       // Callback must fire so the UI counter refreshes and reflects pending
@@ -217,8 +254,12 @@ void main() {
       orchestrator.onSyncStarted = () => order.add('started');
       orchestrator.onProcessQueueComplete = () => order.add('complete');
       orchestrator.init();
+      await orchestrator.replaceSession(
+        'user-123',
+        prepareLocalData: () async => false,
+      );
 
-      connectivityController.add([ConnectivityResult.wifi]);
+      orchestrator.requestSync();
       await Future<void>.delayed(Duration.zero);
 
       expect(order, ['started', 'processing', 'complete']);
@@ -226,7 +267,7 @@ void main() {
       orchestrator.dispose();
     });
 
-    test('does NOT fire onSyncStarted when mutex skips the sync', () async {
+    test('fires onSyncStarted for the coalesced push followup', () async {
       final completer = Completer<void>();
       when(() => mockService.processQueue()).thenAnswer((_) async {
         await completer.future;
@@ -236,23 +277,25 @@ void main() {
       final orchestrator = makeOrchestrator();
       orchestrator.onSyncStarted = () => startedCalls++;
       orchestrator.init();
+      await orchestrator.replaceSession(
+        'user-123',
+        prepareLocalData: () async => false,
+      );
 
       // First sync: starts (mutex acquired).
-      connectivityController.add([ConnectivityResult.wifi]);
+      orchestrator.requestSync();
       await Future<void>.delayed(Duration.zero);
       expect(startedCalls, 1);
 
-      // Second event while still syncing: skipped by mutex.
-      connectivityController.add([ConnectivityResult.mobile]);
+      // Second event while still syncing: coalesced into one followup.
+      orchestrator.requestSync();
       await Future<void>.delayed(Duration.zero);
-      expect(
-        startedCalls,
-        1,
-        reason: 'skipped sync must not fire onSyncStarted',
-      );
+      expect(startedCalls, 1, reason: 'followup has not started yet');
 
       completer.complete();
       await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      expect(startedCalls, 2);
 
       orchestrator.dispose();
     });
@@ -269,8 +312,11 @@ void main() {
       final orchestrator = makeOrchestrator()
         ..onProcessQueueComplete = () => pushCompleteCalls++;
       orchestrator.init();
+      await orchestrator.replaceSession(
+        'user-123',
+        prepareLocalData: () async => false,
+      );
 
-      orchestrator.requestFullPull('user-123');
       await Future<void>.delayed(Duration.zero);
 
       verify(() => mockService.fullPull('user-123')).called(1);
@@ -301,8 +347,11 @@ void main() {
         final orchestrator = makeOrchestrator()
           ..onProcessQueueComplete = () => pushCompleteCalls++;
         orchestrator.init();
+        await orchestrator.replaceSession(
+          'user-123',
+          prepareLocalData: () async => false,
+        );
 
-        orchestrator.requestFullPull('user-123');
         await Future<void>.delayed(Duration.zero);
 
         verify(() => mockService.fullPull('user-123')).called(1);
@@ -340,8 +389,11 @@ void main() {
         final orchestrator = makeOrchestrator()
           ..onProcessQueueComplete = () => pushCompleteCalls++;
         orchestrator.init();
+        await orchestrator.replaceSession(
+          'user-123',
+          prepareLocalData: () async => false,
+        );
 
-        orchestrator.requestFullPull('user-123');
         await Future<void>.delayed(Duration.zero);
 
         expect(
@@ -361,7 +413,7 @@ void main() {
     );
 
     test(
-      'does not fire onProcessQueueComplete when sync is skipped by mutex',
+      'coalesces onProcessQueueComplete for sync requested during a push',
       () async {
         final completer = Completer<void>();
         when(() => mockService.processQueue()).thenAnswer((_) async {
@@ -372,13 +424,17 @@ void main() {
         final orchestrator = makeOrchestrator()
           ..onProcessQueueComplete = () => callbackCalls++;
         orchestrator.init();
+        await orchestrator.replaceSession(
+          'user-123',
+          prepareLocalData: () async => false,
+        );
 
         // First sync starts and stays in-flight.
-        connectivityController.add([ConnectivityResult.wifi]);
+        orchestrator.requestSync();
         await Future<void>.delayed(Duration.zero);
 
-        // Second event arrives while still syncing → mutex skips.
-        connectivityController.add([ConnectivityResult.mobile]);
+        // Second event arrives while still syncing → one followup is queued.
+        orchestrator.requestSync();
         await Future<void>.delayed(Duration.zero);
 
         // No callback yet (sync still in-flight).
@@ -388,8 +444,8 @@ void main() {
         completer.complete();
         await Future<void>.delayed(Duration.zero);
 
-        // Only the in-flight sync ran → exactly one callback.
-        expect(callbackCalls, 1);
+        // The explicit second request gets a followup attempt.
+        expect(callbackCalls, 2);
 
         orchestrator.dispose();
       },
