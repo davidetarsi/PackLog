@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
+import 'package:pack_log/features/trips/providers/trip_items_status_provider.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 
 /// Mock implementation of TripRepository for testing.
@@ -19,6 +20,24 @@ class TripItemsStatus {
   double get progressPercentage =>
       totalItems > 0 ? (checkedItems / totalItems) * 100 : 0.0;
 }
+
+TripModel _activeTrip(String id, DateTime departure) => TripModel(
+  id: id,
+  name: id,
+  items: [
+    TripItem(
+      id: 'item-1',
+      name: 'Maglia',
+      category: ItemCategory.vestiti,
+      quantity: 1,
+    ),
+  ],
+  departureDateTime: departure,
+  returnDateTime: departure.add(const Duration(days: 3)),
+  destinationHouseId: 'house-$id',
+  createdAt: departure,
+  updatedAt: departure,
+);
 
 /// Computed provider that calculates trip items status.
 /// This is a test implementation - in production, this would be in the provider file.
@@ -544,6 +563,51 @@ void main() {
         closeTo(57.14, 0.01),
         reason: '4/7 ≈ 57.14%',
       );
+    });
+  });
+
+  group('itemTripStatus provider projection', () {
+    test('unknown differs from a known empty trip list', () {
+      expect(itemTripStatusForTrips(null, 'item-1').isKnown, isFalse);
+      final absent = itemTripStatusForTrips(const [], 'item-1');
+      expect(absent.isKnown, isTrue);
+      expect(absent.isOnTrip, isFalse);
+    });
+
+    test(
+      'initial loading/error unknown; refresh retains previous snapshot',
+      () {
+        const loading = AsyncLoading<List<TripModel>>();
+        final error = AsyncError<List<TripModel>>(
+          StateError('offline'),
+          StackTrace.current,
+        );
+        expect(itemTripStatusForAsyncTrips(loading, 'item-1').isKnown, isFalse);
+        expect(itemTripStatusForAsyncTrips(error, 'item-1').isKnown, isFalse);
+
+        final now = DateTime.now();
+        final trips = [
+          _activeTrip('trip', now.subtract(const Duration(hours: 1))),
+        ];
+        final previousData = AsyncData<List<TripModel>>(trips);
+        final refreshing = loading.copyWithPrevious(previousData);
+        final failedRefresh = error.copyWithPrevious(previousData);
+        for (final state in [refreshing, failedRefresh]) {
+          final status = itemTripStatusForAsyncTrips(state, 'item-1');
+          expect(status.isKnown, isTrue);
+          expect(status.activeTripId, 'trip');
+        }
+      },
+    );
+
+    test('overlapping trips still select the most recent active one', () {
+      final now = DateTime.now();
+      final status = itemTripStatusForTrips([
+        _activeTrip('older', now.subtract(const Duration(days: 1))),
+        _activeTrip('recent', now.subtract(const Duration(hours: 1))),
+      ], 'item-1');
+      expect(status.activeTripId, 'recent');
+      expect(status.destinationHouseId, 'house-recent');
     });
   });
 }
