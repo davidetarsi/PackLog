@@ -287,7 +287,13 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
   void _toggleInventoryItem(TripItem item) {
     final notifier = ref.read(tripNotifierProvider.notifier);
     final id = tripId;
-    unawaited(runSuitcaseMutation(() => notifier.toggleItemCheck(id, item.id)));
+    unawaited(() async {
+      try {
+        await notifier.toggleItemCheck(id, item.id);
+      } catch (_) {
+        if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());
+      }
+    }());
   }
 
   /// Agisce sullo snapshot del viaggio; l'oggetto nell'inventario resta intatto.

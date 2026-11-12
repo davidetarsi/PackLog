@@ -162,8 +162,8 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
   );
 
   Future<void> toggleItemCheck(String tripId, String itemId) async {
-    try {
-      final List<TripModel>? trips = state.value;
+    return serializeEdit(tripId, () async {
+      final List<TripModel>? trips = state.valueOrNull;
       if (trips == null) return;
 
       final int tripIndex = trips.indexWhere((t) => t.id == tripId);
@@ -192,23 +192,62 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
       // Fast-path persistenza: una sola colonna toccata invece di
       // `replaceTripItems` (DELETE all + INSERT all) seguito da
       // `getAllTrips()`. Path caldo durante il packing.
-      await _repo.setTripItemChecked(tripId, itemId, newChecked);
+      try {
+        await _repo.setTripItemChecked(tripId, itemId, newChecked);
+      } catch (error, stackTrace) {
+        final List<TripModel>? currentTrips = state.valueOrNull;
+        if (currentTrips != null) {
+          state = AsyncData([
+            for (final currentTrip in currentTrips)
+              if (currentTrip.id != tripId)
+                currentTrip
+              else
+                currentTrip.copyWith(
+                  items: [
+                    for (final item in currentTrip.items)
+                      if (item.id != itemId)
+                        item
+                      else
+                        item.copyWith(isChecked: !newChecked),
+                  ],
+                ),
+          ]);
+        }
+        Error.throwWithStackTrace(error, stackTrace);
+      }
 
       // Funnel della preparazione valigia. Emesso **dopo** la persistenza:
       // se il salvataggio fallisce l'evento non deve partire, altrimenti si
       // misurerebbero intenzioni invece di fatti. Niente
       // `_emitSuitcaseEvents`: una spunta non cambia la valigia.
-      _emitPackingEvents(
-        tripId: tripId,
-        trip: trip,
-        updatedItems: updatedItems,
-      );
-
-      ref.read(syncOrchestratorProvider).requestSync();
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-      rethrow;
-    }
+      try {
+        _emitPackingEvents(
+          tripId: tripId,
+          trip: trip,
+          updatedItems: updatedItems,
+        );
+      } catch (error, stackTrace) {
+        ref
+            .read(monitoringServiceProvider)
+            .captureException(
+              error,
+              stackTrace: stackTrace,
+              tags: const {'operation': 'toggleItemCheck_analytics'},
+            );
+      } finally {
+        try {
+          ref.read(syncOrchestratorProvider).requestSync();
+        } catch (error, stackTrace) {
+          ref
+              .read(monitoringServiceProvider)
+              .captureException(
+                error,
+                stackTrace: stackTrace,
+                tags: const {'operation': 'toggleItemCheck_sync'},
+              );
+        }
+      }
+    });
   }
 
   /// Cambia il posto [slotId] della valigia AI del viaggio con [change]

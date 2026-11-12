@@ -312,6 +312,166 @@ void main() {
     await app.finish();
   });
 
+  for (final theme in ShotTheme.values) {
+    testWidgets('existing_kit_loading_has_feedback (${theme.name})', (
+      tester,
+    ) async {
+      final streams = <StreamController<List<KitModel>>>[];
+      final repo = _MockKitRepository();
+      when(() => repo.watchKits(any())).thenAnswer((_) {
+        final controller = StreamController<List<KitModel>>();
+        streams.add(controller);
+        return controller.stream;
+      });
+      final app = await ScreenshotApp.start(
+        tester,
+        theme: theme,
+        setup: AppSetup(
+          extraOverrides: [kitRepositoryProvider.overrideWithValue(repo)],
+        ),
+      );
+      await app.go('/');
+      await app.push('/houses/$kHomeId/kits/loading-kit/edit');
+      await tester.pump();
+      expect(find.byType(CircularProgressIndicator), findsWidgets);
+      if (const bool.fromEnvironment('UI_SCREENSHOTS')) {
+        await app.capture(
+          Shot(
+            flow: '15-kit-recovery',
+            flowTitle: 'Ripristino editor kit',
+            order: 1,
+            screen: 'kit-editor-loading',
+            state: 'loading',
+            source: 'test/features/kits/view/kit_editor_screen_test.dart',
+            description: 'Caricamento del kit esistente.',
+            theme: theme,
+            route: '/houses/$kHomeId/kits/loading-kit/edit',
+          ),
+        );
+      }
+      streams.first.add(const []);
+      await tester.pump();
+      await app.finish();
+      for (final stream in streams) {
+        unawaited(stream.close());
+      }
+    });
+  }
+
+  for (final theme in ShotTheme.values) {
+    testWidgets('existing_kit_error_offers_retry (${theme.name})', (
+      tester,
+    ) async {
+      final streams = <StreamController<List<KitModel>>>[];
+      final repo = _MockKitRepository();
+      when(() => repo.watchKits(any())).thenAnswer((_) {
+        final controller = StreamController<List<KitModel>>();
+        streams.add(controller);
+        if (streams.length > 1) controller.add([_kit('retry-kit')]);
+        return controller.stream;
+      });
+      final app = await ScreenshotApp.start(
+        tester,
+        theme: theme,
+        setup: AppSetup(
+          extraOverrides: [kitRepositoryProvider.overrideWithValue(repo)],
+        ),
+      );
+      await app.go('/');
+      await app.push('/houses/$kHomeId/kits/retry-kit/edit');
+      await tester.pump();
+      streams.first.addError(StateError('offline'));
+      await tester.pump();
+      expect(find.text('Riprova'), findsOneWidget);
+      if (const bool.fromEnvironment('UI_SCREENSHOTS')) {
+        await app.capture(
+          Shot(
+            flow: '15-kit-recovery',
+            flowTitle: 'Ripristino editor kit',
+            order: 2,
+            screen: 'kit-editor-error',
+            state: 'retry',
+            source: 'test/features/kits/view/kit_editor_screen_test.dart',
+            description: 'Errore di caricamento con azione Riprova.',
+            theme: theme,
+            route: '/houses/$kHomeId/kits/retry-kit/edit',
+          ),
+        );
+      }
+      await tester.tap(find.text('Riprova'));
+      await tester.pump();
+      await tester.pump();
+      expect(nameField(), findsOneWidget);
+      expect(
+        tester.widget<DsTextField>(nameField()).controller?.text,
+        'Kit di prova',
+      );
+      await app.finish();
+      for (final stream in streams) {
+        unawaited(stream.close());
+      }
+    });
+  }
+
+  testWidgets('retry_keeps_draft', (tester) async {
+    final streams = <StreamController<List<KitModel>>>[];
+    final repo = _MockKitRepository();
+    when(() => repo.watchKits(any())).thenAnswer((_) {
+      final controller = StreamController<List<KitModel>>();
+      streams.add(controller);
+      if (streams.length == 1) controller.add([_kit('draft-kit')]);
+      if (streams.length > 1) controller.add([_kit('draft-kit')]);
+      return controller.stream;
+    });
+    final app = await ScreenshotApp.start(
+      tester,
+      theme: ShotTheme.light,
+      setup: AppSetup(
+        extraOverrides: [kitRepositoryProvider.overrideWithValue(repo)],
+      ),
+    );
+    await app.go('/');
+    await app.push('/houses/$kHomeId/kits/draft-kit/edit');
+    await tester.pump();
+    await tester.pump();
+    await app.enterText(nameField(), 'Bozza modificata');
+    streams.first.addError(StateError('offline'));
+    await app.settle();
+    expect(
+      tester.widget<DsTextField>(nameField()).controller?.text,
+      'Bozza modificata',
+    );
+    await tester.tap(find.text('Riprova'));
+    await tester.pump();
+    await tester.pump();
+    expect(
+      tester.widget<DsTextField>(nameField()).controller?.text,
+      'Bozza modificata',
+    );
+    await app.finish();
+    for (final stream in streams) {
+      unawaited(stream.close());
+    }
+  });
+
+  testWidgets('missing_kit_not_found', (tester) async {
+    final repo = _MockKitRepository();
+    when(() => repo.watchKits(any())).thenAnswer((_) => Stream.value(const []));
+    final app = await ScreenshotApp.start(
+      tester,
+      theme: ShotTheme.light,
+      setup: AppSetup(
+        extraOverrides: [kitRepositoryProvider.overrideWithValue(repo)],
+      ),
+    );
+    await app.go('/');
+    await app.push('/houses/$kHomeId/kits/missing-kit/edit');
+    await app.settle();
+    expect(find.text('Kit non trovato'), findsOneWidget);
+    expect(nameField(), findsNothing);
+    await app.finish();
+  });
+
   testWidgets('scrivere "Sci" preseleziona ski e mostra la frase', (
     tester,
   ) async {
@@ -580,3 +740,11 @@ void main() {
 class _MockAnalytics extends Mock implements AppAnalyticsService {}
 
 class _MockKitRepository extends Mock implements KitRepository {}
+
+KitModel _kit(String id) => KitModel(
+  id: id,
+  houseId: kHomeId,
+  name: 'Kit di prova',
+  createdAt: DateTime(2026),
+  updatedAt: DateTime(2026),
+);
