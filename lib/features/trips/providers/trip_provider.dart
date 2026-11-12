@@ -65,6 +65,7 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
 
   @override
   Future<List<TripModel>> build() async {
+    ref.watch(syncTriggerProvider);
     final TripLifecycleService lifecycle = ref.read(
       tripLifecycleServiceProvider,
     );

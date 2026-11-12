@@ -8,7 +8,6 @@ import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/database/daos/items_dao.dart';
 import 'package:pack_log/core/database/database.dart';
 import 'package:pack_log/core/database/services/database_service.dart';
-import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/providers/item_metadata_service_provider.dart';
@@ -17,13 +16,12 @@ import 'package:pack_log/features/items/repositories/drift_item_repository.dart'
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/features/items/services/item_metadata_backfill.dart';
 import 'package:pack_log/features/items/services/item_metadata_service.dart';
+import '../../../helpers/prepared_sync_orchestrator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../helpers/test_database_setup.dart';
 
 class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
-
-class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 
 /// item-metadata finto che risponde [result] quando lo decide il test.
 class _FakeService extends ItemMetadataService {
@@ -129,8 +127,7 @@ void main() {
         totalItems: any(named: 'totalItems'),
       ),
     ).thenReturn(null);
-    final sync = MockSyncOrchestrator();
-    when(() => sync.requestSync()).thenReturn(null);
+    final sync = PreparedSyncOrchestrator();
     final container = ProviderContainer(
       overrides: [
         itemRepositoryProvider.overrideWithValue(repo),
@@ -161,16 +158,18 @@ void main() {
       'lettura e scrittura', () async {
     await repo.addItem(item());
 
+    final orchestrator = PreparedSyncOrchestrator();
     final backfill = ItemMetadataBackfill(
       repository: repo,
       service: _FakeService(_answer)..release(),
+      orchestrator: orchestrator,
       prefs: SharedPreferences.getInstance(),
       now: () => now,
     );
     // La prima lettura è quella dell'elenco da completare (getAllItems non
     // passa da getItemById): la scheda salva dopo la lettura della riga.
     dao.afterRead = sheetSave;
-    await backfill.run();
+    await backfill.run(orchestrator.captureLocalWriteContext()!);
 
     final row = (await dao.getItemById('item-1'))!;
     expect(row.description, 'nota');

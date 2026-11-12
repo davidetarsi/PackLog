@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -11,6 +13,7 @@ import '../database/database_provider.dart';
 import '../monitoring/monitoring_service.dart';
 import 'supabase_repository.dart';
 import 'sync_orchestrator.dart';
+import 'sync_run_state.dart';
 import 'sync_service.dart';
 import 'tombstone_config_service.dart';
 
@@ -20,25 +23,54 @@ part 'sync_provider.g.dart';
 /// Se al login successivo il userId è diverso → cambio account, wipe locale.
 @visibleForTesting
 const kLastKnownUserIdKey = 'sync.last_known_user_id';
+@visibleForTesting
+String pendingRestoreUserKey(String userId) => 'sync.pending_full_pull.$userId';
 
-/// Gestisce un evento di autenticazione: rileva un cambio di account
-/// (userId diverso dal precedente memorizzato in [SharedPreferences]) e
-/// in quel caso ripulisce il DB locale prima di scaricare i dati del nuovo
-/// utente. Idempotente: stesso userId → nessun wipe, solo fullPull.
+@visibleForTesting
+({bool changed, String? userId}) authSessionReplacement(
+  AuthState? previous,
+  AuthState next,
+) {
+  if (next case Authenticated(:final userId)) {
+    final previousUserId = switch (previous) {
+      Authenticated(:final userId) => userId,
+      _ => null,
+    };
+    return (changed: previousUserId != userId, userId: userId);
+  }
+  return (changed: previous is Authenticated, userId: null);
+}
+
+/// Prepara i dati locali all'interno del cambio sessione atomico. Il callback
+/// [replaceSession] invalida subito il proprietario precedente e attende i
+/// commit locali già avviati prima di eseguire questa preparazione.
 @visibleForTesting
 Future<void> handleAuthenticatedUser({
   required String userId,
   required SyncService syncService,
-  required void Function(String userId) requestFullPull,
-  required SharedPreferences prefs,
-}) async {
-  final last = prefs.getString(kLastKnownUserIdKey);
-  if (last != null && last != userId) {
-    debugPrint('[sync_provider] account switch detected: $last → $userId');
-    await syncService.wipeAllUserData();
-  }
-  await prefs.setString(kLastKnownUserIdKey, userId);
-  requestFullPull(userId);
+  required Future<void> Function(Future<bool> Function() prepareLocalData)
+  replaceSession,
+  required Future<SharedPreferences> Function() getPreferences,
+}) {
+  return replaceSession(() async {
+    final prefs = await getPreferences();
+    final last = prefs.getString(kLastKnownUserIdKey);
+    var wiped = false;
+    if (last == null || last != userId) {
+      if (!await prefs.setBool(pendingRestoreUserKey(userId), true)) {
+        throw StateError('Could not persist pending restore marker');
+      }
+      if (last != null) {
+        debugPrint('[sync_provider] account switch detected: $last → $userId');
+        await syncService.wipeAllUserData();
+        wiped = true;
+      }
+    }
+    if (!await prefs.setString(kLastKnownUserIdKey, userId)) {
+      throw StateError('Could not persist current sync owner');
+    }
+    return wiped || (prefs.getBool(pendingRestoreUserKey(userId)) ?? false);
+  });
 }
 
 /// Incrementato ogni volta che un fullPull completa con successo.
@@ -52,26 +84,34 @@ class SyncTrigger extends _$SyncTrigger {
   void increment() => state++;
 }
 
-/// True mentre un fullPull è in corso, false quando completa (o fallisce).
-/// Usato dalla houses screen per mostrare skeleton invece dell'empty state
-/// durante la finestra tra wipe del DB e completamento del pull remoto.
+/// Unica proiezione Riverpod dello stato runtime pubblicato dall'orchestrator.
 @Riverpod(keepAlive: true)
-class Syncing extends _$Syncing {
-  @override
-  bool build() => false;
+Stream<SyncRunState> syncRunState(Ref ref) =>
+    ref.watch(syncOrchestratorProvider).states;
 
-  void setSyncing(bool value) => state = value;
+/// Alias compatibile e read-only: la schermata case mostra loading durante pull.
+@Riverpod(keepAlive: true)
+bool syncing(Ref ref) {
+  final state =
+      ref.watch(syncRunStateProvider).valueOrNull ??
+      ref.read(syncOrchestratorProvider).state;
+  return (state is SyncRunning && state.operation == SyncOperationKind.pull) ||
+      state is SyncSwitchingSession;
 }
 
-/// True mentre un processQueue (push) è in corso, false a riposo.
-/// Usato dalla [SyncStatusTile] per mostrare uno spinner durante il push
-/// invece di lasciare il pulsante "Riprova" senza feedback visivo.
+/// Alias compatibile e read-only usato dalla tile di stato sync.
 @Riverpod(keepAlive: true)
-class SyncPushInProgress extends _$SyncPushInProgress {
-  @override
-  bool build() => false;
+bool syncNeedsRestore(Ref ref) {
+  ref.watch(syncRunStateProvider);
+  return ref.read(syncOrchestratorProvider).needsRestore;
+}
 
-  void setInProgress(bool value) => state = value;
+@Riverpod(keepAlive: true)
+bool syncPushInProgress(Ref ref) {
+  final state =
+      ref.watch(syncRunStateProvider).valueOrNull ??
+      ref.read(syncOrchestratorProvider).state;
+  return state is SyncRunning && state.operation == SyncOperationKind.push;
 }
 
 @Riverpod(keepAlive: true)
@@ -111,55 +151,69 @@ SyncOrchestrator syncOrchestrator(Ref ref) {
   );
   orchestrator.init();
 
-  // Segnala all'UI che un fullPull è in corso (usato per mostrare skeleton
-  // invece dell'empty state durante la finestra di pull dopo un account switch).
-  orchestrator.onFullPullStart = () {
-    ref.read(syncingProvider.notifier).setSyncing(true);
-  };
-
-  // Quando fullPull completa, riporta il flag a false e incrementa il trigger
-  // così i notifier si ricostruiscono con i dati freschi.
+  // Il trigger resta success-only: sincronizza i notifier solo dopo pull ok.
   orchestrator.onFullPullComplete = () {
-    ref.read(syncingProvider.notifier).setSyncing(false);
     ref.read(syncTriggerProvider.notifier).increment();
+    final userId = orchestrator.currentUserId;
+    final epoch = orchestrator.sessionEpoch;
+    final monitoring = ref.read(monitoringServiceProvider);
+    if (userId != null) {
+      unawaited(
+        SharedPreferences.getInstance()
+            .then((prefs) async {
+              if (orchestrator.currentUserId != userId ||
+                  orchestrator.sessionEpoch != epoch) {
+                return;
+              }
+              await prefs.remove(pendingRestoreUserKey(userId));
+            })
+            .catchError((Object error, StackTrace stackTrace) {
+              // Pull is already committed; cleanup failure keeps restore pending
+              // for the next launch and must not become an unhandled async error.
+              if (orchestrator.currentUserId == userId &&
+                  orchestrator.sessionEpoch == epoch) {
+                monitoring.captureException(
+                  error,
+                  stackTrace: stackTrace,
+                  tags: const {'operation': 'sync_restore_marker_cleanup'},
+                );
+              }
+            }),
+      );
+    }
   };
 
-  // Quando un push parte davvero (mutex acquisito): segnala il push in corso
-  // per lo spinner nel tile e invalida il counter pending.
+  // Quando un push parte davvero invalida il counter pending, evitando valori
+  // cacheati mentre la coda viene processata.
   orchestrator.onSyncStarted = () {
-    ref.read(syncPushInProgressProvider.notifier).setInProgress(true);
     ref.invalidate(pendingChangesCountProvider);
   };
 
-  // Quando processQueue termina (successo o errore): riporta il flag a false
-  // e invalida entrambi i counter così il tile mostra il dato fresco.
+  // Quando processQueue termina (successo o errore) invalida entrambi i
+  // counter così il tile mostra il dato fresco.
   orchestrator.onProcessQueueComplete = () {
-    ref.read(syncPushInProgressProvider.notifier).setInProgress(false);
     ref.invalidate(pendingChangesCountProvider);
     ref.invalidate(totalUnsyncedCountProvider);
   };
 
-  Future<void> dispatch(String userId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final last = prefs.getString(kLastKnownUserIdKey);
-    final isAccountSwitch = last != null && last != userId;
-
-    await handleAuthenticatedUser(
-      userId: userId,
-      syncService: ref.read(syncServiceProvider),
-      requestFullPull: orchestrator.requestFullPull,
-      prefs: prefs,
+  void dispatch(String userId) {
+    unawaited(
+      handleAuthenticatedUser(
+        userId: userId,
+        syncService: ref.read(syncServiceProvider),
+        replaceSession: (prepare) => orchestrator.replaceSession(
+          userId,
+          prepareLocalData: () async {
+            final needsRestore = await prepare();
+            if (needsRestore) {
+              ref.read(syncTriggerProvider.notifier).increment();
+            }
+            return needsRestore;
+          },
+        ),
+        getPreferences: SharedPreferences.getInstance,
+      ),
     );
-
-    // Dopo un cambio account il DB locale è stato svuotato da handleAuthenticatedUser.
-    // syncingProvider deve diventare true PRIMA di syncTriggerProvider++:
-    // quando i notifier ricaricano dal DB vuoto (houses = []), la houses screen
-    // vede isSyncing=true e mostra lo skeleton invece della CTA "crea la tua prima casa".
-    // onFullPullStart la setterà di nuovo (no-op), onFullPullComplete la resetterà.
-    if (isAccountSwitch) {
-      ref.read(syncingProvider.notifier).setSyncing(true);
-      ref.read(syncTriggerProvider.notifier).increment();
-    }
   }
 
   // Full pull all'avvio: copre sia la sessione persistita (read immediato)
@@ -170,8 +224,15 @@ SyncOrchestrator syncOrchestrator(Ref ref) {
   }
 
   ref.listen<AuthState>(authNotifierProvider, (prev, next) {
-    if (next is Authenticated && prev is! Authenticated) {
-      dispatch(next.userId);
+    final replacement = authSessionReplacement(prev, next);
+    if (!replacement.changed) return;
+    final userId = replacement.userId;
+    if (userId != null) {
+      dispatch(userId);
+    } else {
+      unawaited(
+        orchestrator.replaceSession(null, prepareLocalData: () async => false),
+      );
     }
   });
 

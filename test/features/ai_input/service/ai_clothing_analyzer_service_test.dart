@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -51,18 +52,48 @@ AiClothingAnalyzerService _makeService(
   CoreAnalyticsService? analytics,
   AppMonitoringService? monitoring,
   String Function()? language,
+  Future<Uint8List> Function(File)? readImageBytes,
 }) => AiClothingAnalyzerService(
   proxyUrl: 'https://fake.supabase.co/functions/v1/item-metadata',
   anonKey: 'fake-anon-key',
   client: mockClient,
   jwtProvider: () => 'fake-jwt-token',
   language: language,
+  readImageBytes: readImageBytes,
   analytics: analytics,
   monitoring: monitoring,
 );
 
 void main() {
   group('AiClothingAnalyzerService', () {
+    test('cancels after file read if operation ownership changed', () async {
+      final readStarted = Completer<void>();
+      final readBytes = Completer<Uint8List>();
+      var stillValid = true;
+      var requestCount = 0;
+      final service = _makeService(
+        MockClient((_) async {
+          requestCount++;
+          return http.Response(_itemMetadataResponse([_tShirt]), 200);
+        }),
+        readImageBytes: (_) {
+          readStarted.complete();
+          return readBytes.future;
+        },
+      );
+
+      final analysis = service.processClothingItem(
+        _fakeImageFile(),
+        isStillValid: () => stillValid,
+      );
+      await readStarted.future;
+      stillValid = false;
+      readBytes.complete(Uint8List.fromList([1, 2, 3]));
+
+      expect(await analysis, isEmpty);
+      expect(requestCount, 0);
+    });
+
     test('throws GptLimitExceededException on HTTP 429', () async {
       final service = _makeService(
         MockClient(

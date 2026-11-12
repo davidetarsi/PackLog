@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -8,6 +9,8 @@ import 'package:pack_log/core/database/tables/mixins/syncable_table.dart';
 import 'package:pack_log/core/monitoring/monitoring_service.dart';
 import 'package:pack_log/core/sync/supabase_repository.dart';
 import 'package:pack_log/core/sync/sync_service.dart';
+import 'package:pack_log/core/sync/sync_orchestrator.dart';
+import 'package:pack_log/core/sync/sync_session.dart';
 import 'package:pack_log/core/sync/tombstone_config_service.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/luggages/model/luggage_model.dart';
@@ -24,6 +27,7 @@ class MockTombstoneConfigService extends Mock
 class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late AppDatabase database;
   late MockSupabaseRepository mockRemote;
   late MockMonitoringService mockMonitoring;
@@ -118,6 +122,182 @@ void main() {
   }
 
   group('SyncService - processQueue', () {
+    test(
+      'tombstone recovery runs again for a replacement owner at same epoch',
+      () async {
+        final now = DateTime.utc(2026, 11, 10);
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: 'stale-tombstone',
+            name: 'Deleted',
+            userId: const Value('user-A'),
+            isDeleted: const Value(true),
+            syncStatus: const Value(SyncStatus.synced),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+        when(
+          () => mockRemote.fetchHouseById(
+            'stale-tombstone',
+            sentryTrace: any(named: 'sentryTrace'),
+          ),
+        ).thenAnswer((_) async => null);
+        var pushes = 0;
+        when(
+          () => mockRemote.upsertHouse(
+            any(),
+            sentryTrace: any(named: 'sentryTrace'),
+          ),
+        ).thenAnswer((_) async {
+          pushes++;
+          throw StateError('offline');
+        });
+
+        final firstOwner = SyncLocalWriteBarrier()..beginSwitch(1);
+        firstOwner.activate(firstOwner.createContext(1, 'user-A'));
+        syncService.bindSessionBarrier(firstOwner);
+        await syncService.processQueue();
+        expect(pushes, 1);
+
+        await database.housesDao.updateHouse(
+          const HousesCompanion(
+            id: Value('stale-tombstone'),
+            syncStatus: Value(SyncStatus.synced),
+            syncRetryCount: Value(0),
+            lastSyncError: Value(null),
+            nextSyncAttemptAt: Value(null),
+          ),
+        );
+        expect(
+          (await database.housesDao.findHouseById(
+            'stale-tombstone',
+          ))?.syncStatus,
+          SyncStatus.synced,
+        );
+        final replacementOwner = SyncLocalWriteBarrier()..beginSwitch(1);
+        replacementOwner.activate(replacementOwner.createContext(1, 'user-A'));
+        syncService.bindSessionBarrier(replacementOwner);
+        await syncService.processQueue();
+
+        expect(pushes, 2);
+      },
+    );
+
+    test('obsolete push keeps captured owner and skips its receipt', () async {
+      final serverReceipt = Completer<DateTime>();
+      final upsertStarted = Completer<Map<String, dynamic>>();
+      final now = DateTime.utc(2026, 11, 10);
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: 'owned-house',
+          name: 'House',
+          userId: const Value('user-A'),
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      when(
+        () => mockRemote.fetchHouseById(
+          'owned-house',
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockRemote.upsertHouse(
+          any(),
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenAnswer((invocation) {
+        upsertStarted.complete(
+          invocation.positionalArguments[0] as Map<String, dynamic>,
+        );
+        return serverReceipt.future;
+      });
+      final barrier = SyncLocalWriteBarrier()..beginSwitch(1);
+      barrier.activate(barrier.createContext(1, 'user-A'));
+      syncService.bindSessionBarrier(barrier);
+
+      final push = syncService.processQueue();
+      final payload = await upsertStarted.future;
+      barrier.beginSwitch(2);
+      serverReceipt.complete(DateTime.utc(2026, 11, 11));
+
+      await expectLater(push, throwsA(isA<SyncSessionInvalid>()));
+      expect(payload['user_id'], 'user-A');
+      expect(
+        (await database.housesDao.findHouseById('owned-house'))!.syncStatus,
+        SyncStatus.pendingCreate,
+      );
+    });
+
+    test(
+      'new orchestrator drains a held DAO commit before preparing its owner',
+      () async {
+        final serverReceipt = Completer<DateTime>();
+        final upsertStarted = Completer<void>();
+        final now = DateTime.utc(2026, 11, 10);
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: 'held-house',
+            name: 'House',
+            userId: const Value('user-A'),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+        when(
+          () => mockRemote.fetchHouseById(
+            'held-house',
+            sentryTrace: any(named: 'sentryTrace'),
+          ),
+        ).thenAnswer((_) async => null);
+        when(
+          () => mockRemote.upsertHouse(
+            any(),
+            sentryTrace: any(named: 'sentryTrace'),
+          ),
+        ).thenAnswer((_) {
+          upsertStarted.complete();
+          return serverReceipt.future;
+        });
+        final oldBarrier = SyncLocalWriteBarrier()..beginSwitch(1);
+        oldBarrier.activate(oldBarrier.createContext(1, 'user-A'));
+        syncService.bindSessionBarrier(oldBarrier);
+
+        final oldPush = syncService.processQueue();
+        await upsertStarted.future;
+        final transactionStarted = Completer<void>();
+        final finishTransaction = Completer<void>();
+        final heldTransaction = database.transaction(() async {
+          transactionStarted.complete();
+          await finishTransaction.future;
+        });
+        await transactionStarted.future;
+        serverReceipt.complete(DateTime.utc(2026, 11, 11));
+        await Future<void>.delayed(Duration.zero);
+        expect(oldBarrier.activeLocalWrites, 1);
+
+        final newOrchestrator = SyncOrchestrator(syncService, mockMonitoring);
+        var prepared = false;
+        final replace = newOrchestrator.replaceSession(
+          'user-B',
+          prepareLocalData: () async {
+            prepared = true;
+            return false;
+          },
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(prepared, isFalse);
+
+        finishTransaction.complete();
+        await heldTransaction;
+        await Future.wait([oldPush, replace]);
+        expect(prepared, isTrue);
+        newOrchestrator.dispose();
+      },
+    );
+
     test('pushes local record when remote does not exist', () async {
       await insertHouse('h1');
 
@@ -486,6 +666,112 @@ void main() {
         () => mockRemote.fetchAllTripsByUserId(any()),
       ).thenAnswer((_) async => trips);
     }
+
+    test('obsolete pull cannot apply late remote rows', () async {
+      final fetch = Completer<List<Map<String, dynamic>>>();
+      when(
+        () => mockRemote.fetchAllHousesByUserId('user-A'),
+      ).thenAnswer((_) => fetch.future);
+      when(
+        () => mockRemote.fetchAllSpacesByUserId(any()),
+      ).thenAnswer((_) async => []);
+      when(
+        () => mockRemote.fetchAllLuggagesByUserId(any()),
+      ).thenAnswer((_) async => []);
+      when(
+        () => mockRemote.fetchAllItemsByUserId(any()),
+      ).thenAnswer((_) async => []);
+      when(
+        () => mockRemote.fetchAllTripsByUserId(any()),
+      ).thenAnswer((_) async => []);
+      final barrier = SyncLocalWriteBarrier()..beginSwitch(1);
+      barrier.activate(barrier.createContext(1, 'user-A'));
+      syncService.bindSessionBarrier(barrier);
+
+      final pull = syncService.fullPull('user-A');
+      await Future<void>.delayed(Duration.zero);
+      barrier.beginSwitch(2);
+      fetch.complete([
+        houseJson('late-house', updatedAt: DateTime.utc(2026, 11, 10)),
+      ]);
+
+      await expectLater(pull, throwsA(isA<SyncSessionInvalid>()));
+      expect(await database.housesDao.findHouseById('late-house'), isNull);
+    });
+
+    test(
+      'late legacy call cannot bypass a subsequently bound barrier',
+      () async {
+        final fetch = Completer<List<Map<String, dynamic>>>();
+        when(
+          () => mockRemote.fetchAllHousesByUserId('user-A'),
+        ).thenAnswer((_) => fetch.future);
+        when(
+          () => mockRemote.fetchAllSpacesByUserId(any()),
+        ).thenAnswer((_) async => []);
+        when(
+          () => mockRemote.fetchAllLuggagesByUserId(any()),
+        ).thenAnswer((_) async => []);
+        when(
+          () => mockRemote.fetchAllItemsByUserId(any()),
+        ).thenAnswer((_) async => []);
+        when(
+          () => mockRemote.fetchAllTripsByUserId(any()),
+        ).thenAnswer((_) async => []);
+
+        final pull = syncService.fullPull('user-A');
+        await Future<void>.delayed(Duration.zero);
+        final barrier = SyncLocalWriteBarrier()..beginSwitch(1);
+        barrier.activate(barrier.createContext(1, 'user-A'));
+        syncService.bindSessionBarrier(barrier);
+        fetch.complete([
+          houseJson('late-legacy-house', updatedAt: DateTime.utc(2026, 11, 10)),
+        ]);
+
+        await expectLater(pull, throwsA(isA<SyncSessionInvalid>()));
+        expect(
+          await database.housesDao.findHouseById('late-legacy-house'),
+          isNull,
+        );
+      },
+    );
+
+    test('old barrier cannot write through a new same-user owner', () async {
+      final fetch = Completer<List<Map<String, dynamic>>>();
+      when(
+        () => mockRemote.fetchAllHousesByUserId('user-A'),
+      ).thenAnswer((_) => fetch.future);
+      when(
+        () => mockRemote.fetchAllSpacesByUserId(any()),
+      ).thenAnswer((_) async => []);
+      when(
+        () => mockRemote.fetchAllLuggagesByUserId(any()),
+      ).thenAnswer((_) async => []);
+      when(
+        () => mockRemote.fetchAllItemsByUserId(any()),
+      ).thenAnswer((_) async => []);
+      when(
+        () => mockRemote.fetchAllTripsByUserId(any()),
+      ).thenAnswer((_) async => []);
+      final oldBarrier = SyncLocalWriteBarrier()..beginSwitch(1);
+      oldBarrier.activate(oldBarrier.createContext(1, 'user-A'));
+      syncService.bindSessionBarrier(oldBarrier);
+
+      final pull = syncService.fullPull('user-A');
+      await Future<void>.delayed(Duration.zero);
+      final newBarrier = SyncLocalWriteBarrier()..beginSwitch(1);
+      newBarrier.activate(newBarrier.createContext(1, 'user-A'));
+      syncService.bindSessionBarrier(newBarrier);
+      fetch.complete([
+        houseJson('stale-owner-house', updatedAt: DateTime.utc(2026, 11, 10)),
+      ]);
+
+      await expectLater(pull, throwsA(isA<SyncSessionInvalid>()));
+      expect(
+        await database.housesDao.findHouseById('stale-owner-house'),
+        isNull,
+      );
+    });
 
     test('soft-deletes local house when remote returns a tombstone', () async {
       final t1 = DateTime(2026, 5, 1, 8, 0).toUtc();

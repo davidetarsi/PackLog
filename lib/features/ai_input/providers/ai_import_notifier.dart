@@ -9,7 +9,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/analytics/core_analytics_service.dart';
+import '../../../core/monitoring/monitoring_service.dart';
+import '../../../core/sync/sync_orchestrator.dart';
 import '../../../core/sync/sync_provider.dart';
+import '../../../core/sync/sync_session.dart';
 import '../../houses/model/house_model.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../houses/repositories/house_repository.dart';
@@ -31,13 +34,66 @@ part 'ai_import_notifier.g.dart';
 class AiImportNotifier extends _$AiImportNotifier {
   static const _maxPhotos = 5;
   final _uuid = const Uuid();
+  int _generation = 0;
+  (Object, String?, int, bool)? _owner;
 
   /// I capi come li ha letti l'analisi, per gruppo e posizione: a fine
   /// scansione si vede quali dettagli l'utente ha cambiato dalla scheda.
   final Map<(int, int), ClothingAnalysisResult> _analyzed = {};
 
   @override
-  AiImportState build() => const AiImportState();
+  AiImportState build() {
+    final orchestrator = ref.read(syncOrchestratorProvider);
+    _owner = (
+      orchestrator,
+      orchestrator.currentUserId,
+      orchestrator.sessionEpoch,
+      orchestrator.sessionReady,
+    );
+    ref.listen(syncRunStateProvider, (_, _) => _refreshOwner());
+    ref.onDispose(() => _generation++);
+    return const AiImportState();
+  }
+
+  bool _refreshOwner() {
+    final orchestrator = ref.read(syncOrchestratorProvider);
+    final next = (
+      orchestrator,
+      orchestrator.currentUserId,
+      orchestrator.sessionEpoch,
+      orchestrator.sessionReady,
+    );
+    final owner = _owner;
+    if (owner != null &&
+        identical(owner.$1, next.$1) &&
+        owner.$2 == next.$2 &&
+        owner.$3 == next.$3 &&
+        owner.$4 == next.$4) {
+      return true;
+    }
+    _owner = next;
+    _generation++;
+    _analyzed.clear();
+    _lastFiles = const [];
+    state = const AiImportState();
+    return false;
+  }
+
+  bool _isContextCurrent(
+    SyncOrchestrator orchestrator,
+    SyncSessionContext context,
+  ) {
+    final current = ref.read(syncOrchestratorProvider);
+    _refreshOwner();
+    return identical(current, orchestrator) &&
+        orchestrator.isLocalWriteContextCurrent(context);
+  }
+
+  bool _isCurrent(
+    int generation,
+    SyncOrchestrator orchestrator,
+    SyncSessionContext context,
+  ) => generation == _generation && _isContextCurrent(orchestrator, context);
 
   // ── Computed ──────────────────────────────────────────────────────────────
 
@@ -72,7 +128,12 @@ class AiImportNotifier extends _$AiImportNotifier {
   List<File> _lastFiles = const [];
 
   Future<void> processFiles(List<File> files) async {
+    _refreshOwner();
+    final orchestrator = ref.read(syncOrchestratorProvider);
+    final context = orchestrator.captureLocalWriteContext();
+    if (context == null) return;
     if (state.isLoading) return;
+    final generation = ++_generation;
     _lastFiles = List.unmodifiable(files);
 
     // Nessun await prima di qui: alzare isLoading dopo una sospensione
@@ -89,17 +150,22 @@ class AiImportNotifier extends _$AiImportNotifier {
     // La stima serve alla barra, non all'analisi: leggerla da disco prima di
     // iniziare ritarderebbe la prima chiamata a GPT per nulla. Parte in
     // parallelo e aggiorna lo stato quando arriva.
-    unawaited(_primeAvgPhotoMs());
+    unawaited(_primeAvgPhotoMs(generation, orchestrator, context));
 
     final durations = <int>[];
     try {
       final service = ref.read(aiClothingAnalyzerServiceProvider);
       for (var i = 0; i < files.length; i++) {
+        if (!_isCurrent(generation, orchestrator, context)) return;
         state = state.copyWith(processingIndex: i + 1);
         final file = files[i];
 
         final started = DateTime.now();
-        final result = await service.processClothingItem(file);
+        final result = await service.processClothingItem(
+          file,
+          isStillValid: () => _isCurrent(generation, orchestrator, context),
+        );
+        if (!_isCurrent(generation, orchestrator, context)) return;
         durations.add(DateTime.now().difference(started).inMilliseconds);
 
         final groupIndex = state.photoGroups.length;
@@ -114,12 +180,17 @@ class AiImportNotifier extends _$AiImportNotifier {
         );
       }
     } catch (e) {
+      if (!_isCurrent(generation, orchestrator, context)) return;
       // Un solo punto di uscita per gli errori: il messaggio tecnico resta
       // nell'eccezione (log/Sentry), a schermo va il motivo classificato.
       state = state.copyWith(failureReason: aiFailureReasonFrom(e));
     } finally {
-      state = state.copyWith(isLoading: false);
-      if (durations.isNotEmpty) await _recordDurations(durations);
+      if (_isCurrent(generation, orchestrator, context)) {
+        state = state.copyWith(isLoading: false);
+        if (durations.isNotEmpty) {
+          await _recordDurations(durations, generation, orchestrator, context);
+        }
+      }
     }
   }
 
@@ -145,27 +216,45 @@ class AiImportNotifier extends _$AiImportNotifier {
 
   /// Carica la stima e la applica allo stato, se nel frattempo l'analisi è
   /// ancora in corso. Non blocca nessuno.
-  Future<void> _primeAvgPhotoMs() async {
+  Future<void> _primeAvgPhotoMs(
+    int generation,
+    SyncOrchestrator orchestrator,
+    SyncSessionContext context,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
+    if (!_isCurrent(generation, orchestrator, context)) return;
     final stored = prefs.getInt(_avgPhotoMsKey);
     if (stored == null) return;
-    _cachedAvgMs = stored;
-    if (state.isLoading) state = state.copyWith(avgPhotoMs: stored);
+    if (_isCurrent(generation, orchestrator, context)) {
+      _cachedAvgMs = stored;
+    }
+    if (_isCurrent(generation, orchestrator, context) && state.isLoading) {
+      state = state.copyWith(avgPhotoMs: stored);
+    }
   }
 
   /// Media mobile esponenziale sui tempi reali: la stima si adatta al backend
   /// e alla rete dell'utente senza farsi trascinare da un singolo run lento.
-  Future<void> _recordDurations(List<int> durations) async {
+  Future<void> _recordDurations(
+    List<int> durations,
+    int generation,
+    SyncOrchestrator orchestrator,
+    SyncSessionContext context,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
+    if (!_isCurrent(generation, orchestrator, context)) return;
     var avg = prefs.getInt(_avgPhotoMsKey) ?? kDefaultPhotoAnalysisMs;
     for (final d in durations) {
       avg = (avg * 0.7 + d * 0.3).round();
     }
     // Limiti di sicurezza: una stima assurda renderebbe la barra inutile.
     avg = avg.clamp(3000, 60000);
-    _cachedAvgMs = avg;
+    if (!_isCurrent(generation, orchestrator, context)) return;
     await prefs.setInt(_avgPhotoMsKey, avg);
-    state = state.copyWith(avgPhotoMs: avg);
+    if (_isCurrent(generation, orchestrator, context)) {
+      _cachedAvgMs = avg;
+      state = state.copyWith(avgPhotoMs: avg);
+    }
   }
 
   // ── Item management ───────────────────────────────────────────────────────
@@ -210,12 +299,16 @@ class AiImportNotifier extends _$AiImportNotifier {
   }
 
   void setSelectedHouseId(String id) {
+    _refreshOwner();
     if (state.selectedHouseId == id) return;
     state = state.copyWith(selectedHouseId: id);
   }
 
   void reset() {
+    _refreshOwner();
+    _generation++;
     _analyzed.clear();
+    _lastFiles = const [];
     state = const AiImportState();
   }
 
@@ -270,20 +363,50 @@ class AiImportNotifier extends _$AiImportNotifier {
     }
   }
 
+  void _reportPostCommitFailure(
+    Object error,
+    StackTrace stack,
+    String operation,
+  ) {
+    try {
+      ref
+          .read(monitoringServiceProvider)
+          .captureException(
+            error,
+            stackTrace: stack,
+            tags: {'operation': operation},
+          );
+    } catch (reportingError) {
+      debugPrint('[AiImport] $operation failed: $error ($reportingError)');
+    }
+  }
+
+  void _requestSyncBestEffort(SyncOrchestrator orchestrator, String operation) {
+    try {
+      orchestrator.requestSync();
+    } catch (error, stack) {
+      _reportPostCommitFailure(error, stack, operation);
+    }
+  }
+
   // ── Save ──────────────────────────────────────────────────────────────────
 
   /// Saves items to the house specified by [state.selectedHouseId].
-  /// Throws if [state.selectedHouseId] is null.
-  Future<void> saveItems() async {
-    if (state.isLoading) return;
+  Future<bool> saveItems() async {
+    _refreshOwner();
+    final orchestrator = ref.read(syncOrchestratorProvider);
+    final context = orchestrator.captureLocalWriteContext();
+    if (context == null) return false;
+    if (state.isLoading) return false;
+    final generation = _generation;
     final houseId = state.selectedHouseId;
     if (houseId == null) {
       state = state.copyWith(errorMessage: 'ai_import.no_house_selected'.tr());
-      return;
+      return false;
     }
 
     final results = _newResults;
-    if (results.isEmpty) return;
+    if (results.isEmpty) return false;
 
     state = state.copyWith(isLoading: true);
     try {
@@ -303,28 +426,46 @@ class AiImportNotifier extends _$AiImportNotifier {
           )
           .toList();
 
-      await ref
-          .read(itemRepositoryProvider)
-          .saveAiItemsToHouse(houseId: houseId, newItems: items);
+      await orchestrator.commitLocalWrite(context, () {
+        if (!_isCurrent(generation, orchestrator, context)) {
+          throw const SyncSessionInvalid();
+        }
+        return ref
+            .read(itemRepositoryProvider)
+            .saveAiItemsToHouse(houseId: houseId, newItems: items);
+      });
+      if (!_isContextCurrent(orchestrator, context)) return false;
       ref.invalidate(itemNotifierProvider(houseId));
-      ref.read(syncOrchestratorProvider).requestSync();
-      _trackSave(count: items.length, isOnboarding: false);
-      _analyzed.clear();
-      state = const AiImportState();
+      _requestSyncBestEffort(orchestrator, 'ai_import_sync_after_save');
+      if (_isCurrent(generation, orchestrator, context)) {
+        _trackSave(count: items.length, isOnboarding: false);
+        _analyzed.clear();
+        state = const AiImportState();
+        return true;
+      }
+      return false;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: 'ai_import.save_error'.tr(args: [e.toString()]),
-      );
+      if (_isCurrent(generation, orchestrator, context)) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'ai_import.save_error'.tr(args: [e.toString()]),
+        );
+      }
+      return false;
     }
   }
 
   /// Creates a default house, saves all AI items to it, advances onboarding.
   /// Used only during first-time onboarding.
-  Future<void> saveItemsOnboarding() async {
-    if (state.isLoading) return;
+  Future<bool> saveItemsOnboarding() async {
+    _refreshOwner();
+    final orchestrator = ref.read(syncOrchestratorProvider);
+    final context = orchestrator.captureLocalWriteContext();
+    if (context == null) return false;
+    if (state.isLoading) return false;
+    final generation = _generation;
     final results = _newResults;
-    if (results.isEmpty) return;
+    if (results.isEmpty) return false;
 
     state = state.copyWith(isLoading: true);
     try {
@@ -351,21 +492,65 @@ class AiImportNotifier extends _$AiImportNotifier {
           )
           .toList();
 
-      await ref
-          .read(houseRepositoryProvider)
-          .createHouseWithItems(house, items);
+      await orchestrator.commitLocalWrite(context, () {
+        if (!_isCurrent(generation, orchestrator, context)) {
+          throw const SyncSessionInvalid();
+        }
+        return ref
+            .read(houseRepositoryProvider)
+            .createHouseWithItems(house, items);
+      });
+      if (!_isContextCurrent(orchestrator, context)) return false;
       ref.invalidate(houseNotifierProvider);
       ref.invalidate(itemNotifierProvider(houseId));
-      ref.read(syncOrchestratorProvider).requestSync();
+      _requestSyncBestEffort(
+        orchestrator,
+        'ai_import_sync_after_onboarding_save',
+      );
+      if (!_isCurrent(generation, orchestrator, context)) return false;
       _trackSave(count: items.length, isOnboarding: true);
       _analyzed.clear();
-      await ref.read(postLoginOnboardingProvider.notifier).completeAi(houseId);
-      state = const AiImportState();
+      try {
+        await orchestrator.commitLocalWrite(context, () async {
+          if (!_isCurrent(generation, orchestrator, context)) {
+            throw const SyncSessionInvalid();
+          }
+          await ref
+              .read(postLoginOnboardingProvider.notifier)
+              .completeAi(houseId);
+          if (!orchestrator.isLocalWriteContextCurrent(context)) {
+            throw const SyncSessionInvalid();
+          }
+        });
+      } catch (error, stack) {
+        final isCurrent = _isCurrent(generation, orchestrator, context);
+        if (error is! SyncSessionInvalid && isCurrent) {
+          _reportPostCommitFailure(
+            error,
+            stack,
+            'ai_import_onboarding_complete_after_save',
+          );
+          state = const AiImportState().copyWith(
+            errorMessage: 'ai_import.save_error'.tr(args: [error.toString()]),
+          );
+        } else if (isCurrent) {
+          state = const AiImportState();
+        }
+        return false;
+      }
+      if (_isCurrent(generation, orchestrator, context)) {
+        state = const AiImportState();
+        return true;
+      }
+      return false;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: 'ai_import.save_error'.tr(args: [e.toString()]),
-      );
+      if (_isCurrent(generation, orchestrator, context)) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'ai_import.save_error'.tr(args: [e.toString()]),
+        );
+      }
+      return false;
     }
   }
 }

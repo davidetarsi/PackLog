@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/core/auth/auth_provider.dart';
 import 'package:pack_log/core/auth/auth_state.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
+import 'package:pack_log/core/sync/sync_run_state.dart';
 import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/houses/providers/house_provider.dart';
 import 'package:pack_log/features/houses/providers/house_stats_provider.dart';
@@ -48,8 +49,9 @@ void main() {
   /// Monta [HousesScreen] con una sola casa e statistiche finte (7 oggetti).
   Future<void> pumpHouses(
     WidgetTester tester, {
-    required HouseModel house,
+    HouseModel? house,
     double textScale = 1.0,
+    bool needsRestore = false,
   }) async {
     await tester.pumpWidget(
       EasyLocalization(
@@ -62,17 +64,32 @@ void main() {
         child: ProviderScope(
           overrides: [
             authNotifierProvider.overrideWith(_SignedOutAuth.new),
-            totalUnsyncedCountProvider.overrideWith((ref) async => 0),
-            houseNotifierProvider.overrideWith(
-              () => _FakeHouseNotifier([house]),
-            ),
-            houseStatsProvider(_houseId).overrideWith(
-              (ref) async => const HouseStats(
-                totalItems: 7,
-                hasItemsInTrip: false,
-                hasTemporaryItems: false,
+            syncRunStateProvider.overrideWith(
+              (ref) => Stream.value(
+                needsRestore ? const SyncOffline() : const SyncIdle(),
               ),
             ),
+            syncNeedsRestoreProvider.overrideWith((ref) => needsRestore),
+            syncingProvider.overrideWith((ref) => false),
+            totalUnsyncedCountProvider.overrideWith((ref) async => 0),
+            houseNotifierProvider.overrideWith(
+              () => _FakeHouseNotifier(house == null ? [] : [house]),
+            ),
+            if (house != null)
+              houseStatsProvider(_houseId).overrideWith(
+                (ref) async => const HouseStats(
+                  totalItems: 7,
+                  hasItemsInTrip: false,
+                  hasTemporaryItems: false,
+                ),
+              ),
+            if (needsRestore) ...[
+              syncRunStateProvider.overrideWith(
+                (ref) => Stream.value(const SyncOffline()),
+              ),
+              syncingProvider.overrideWith((ref) => false),
+              syncNeedsRestoreProvider.overrideWith((ref) => true),
+            ],
           ],
           child: Builder(
             builder: (context) => MaterialApp(
@@ -94,6 +111,16 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets('offline dopo wipe non conferma casa vuota e lascia creare', (
+    tester,
+  ) async {
+    await pumpHouses(tester, needsRestore: true);
+
+    expect(find.text('errors.load_houses'.tr()), findsOneWidget);
+    expect(find.text('houses.no_houses_title'.tr()), findsNothing);
+    expect(find.text('houses.no_houses_subtitle'.tr()), findsOneWidget);
+  });
 
   testWidgets('card della casa: nome 18, luogo 16, conteggio 14', (
     tester,

@@ -5,6 +5,7 @@ import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/monitoring/monitoring_service.dart';
 import '../../../shared/config/app_config.dart';
 import '../../../shared/providers/language_locale.dart';
+import '../../../core/sync/sync_provider.dart';
 import '../repositories/item_repository.dart';
 import '../services/item_metadata_backfill.dart';
 import '../services/item_metadata_service.dart';
@@ -25,4 +26,5 @@ ItemMetadataBackfill itemMetadataBackfill(Ref ref) => ItemMetadataBackfill(
   repository: ref.watch(itemRepositoryProvider),
   service: ref.watch(itemMetadataServiceProvider),
   monitoring: ref.read(monitoringServiceProvider),
+  orchestrator: ref.watch(syncOrchestratorProvider),
 );

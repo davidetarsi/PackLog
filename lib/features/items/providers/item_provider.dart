@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/sync/sync_provider.dart';
+import '../../../core/sync/sync_session.dart';
 import '../../../shared/notifier/synced_crud_notifier.dart';
 import '../model/item_metadata_merge.dart';
 import '../model/item_model.dart';
@@ -49,6 +50,8 @@ class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
   /// [_schedaDalNome]. [categoryChosen] dice se la categoria l'ha scelta
   /// l'utente: in quel caso il server non la cambia.
   Future<void> addItem(ItemModel model, {bool categoryChosen = false}) async {
+    final orchestrator = ref.read(syncOrchestratorProvider);
+    final operationContext = orchestrator.captureLocalWriteContext();
     await mutate(
       operation: () => _repo.addItem(model),
       reload: () => _repo.getItemsByHouseId(houseId),
@@ -61,8 +64,18 @@ class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
       ),
     );
     ref.invalidate(userColorsProvider);
-    if (needsAiMetadata(model.aiMetadata) && model.name.trim().isNotEmpty) {
-      unawaited(_schedaDalNome(model, categoryChosen: categoryChosen));
+    if (operationContext != null &&
+        identical(ref.read(syncOrchestratorProvider), orchestrator) &&
+        orchestrator.isLocalWriteContextCurrent(operationContext) &&
+        needsAiMetadata(model.aiMetadata) &&
+        model.name.trim().isNotEmpty) {
+      unawaited(
+        _schedaDalNome(
+          model,
+          categoryChosen: categoryChosen,
+          context: operationContext,
+        ),
+      );
     }
   }
 
@@ -77,6 +90,7 @@ class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
   Future<void> _schedaDalNome(
     ItemModel model, {
     required bool categoryChosen,
+    required SyncSessionContext context,
   }) async {
     final id = model.id;
     final richiesta = (_schedaRichieste[id] ?? 0) + 1;
@@ -84,7 +98,12 @@ class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
     bool laPiuRecente() => _schedaRichieste[id] == richiesta;
 
     final attesa = ref.read(itemEnrichmentProvider.notifier);
-    attesa.start(id);
+    final orchestrator = ref.read(syncOrchestratorProvider);
+    bool isCurrent() =>
+        identical(ref.read(syncOrchestratorProvider), orchestrator) &&
+        orchestrator.isLocalWriteContextCurrent(context);
+    if (!isCurrent()) return;
+    attesa.start(id, context);
     try {
       final scheda = await ref
           .read(itemMetadataServiceProvider)
@@ -92,41 +111,49 @@ class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
       if (scheda == null || !laPiuRecente()) return;
       // Le guardie girano sulla riga riletta dentro la transazione: un
       // salvataggio della scheda concorrente non viene annullato.
-      await mutate(
-        operation: () async {
-          await _repo.updateAiMetadata(id, (current) {
-            if (!laPiuRecente() ||
-                current.name != model.name ||
-                !needsAiMetadata(current.aiMetadata)) {
-              return null;
-            }
-            return (
-              aiMetadata: mergeAiMetadata(
-                current: current.aiMetadata,
-                ai: scheda.metadata,
-              ),
-              category:
-                  !categoryChosen &&
-                      !userFieldsOf(
-                        current.aiMetadata,
-                      ).contains(kUserCategoryField) &&
-                      current.category == model.category &&
-                      scheda.category != null
-                  ? scheda.category
-                  : null,
-            );
-          });
-        },
-        reload: () => _repo.getItemsByHouseId(houseId),
-        // Scrittura in background: se fallisce la lista resta com'è (il catch
-        // qui sotto la registra), non diventa AsyncError.
-        rethrowOnly: true,
-        onSuccess: (_) => ref.invalidate(userColorsProvider),
-      );
+      final written = await orchestrator.commitLocalWrite(context, () async {
+        if (!isCurrent() || !laPiuRecente()) {
+          return false;
+        }
+        final updated = await _repo.updateAiMetadata(id, (current) {
+          if (!isCurrent() ||
+              !laPiuRecente() ||
+              current.name != model.name ||
+              !needsAiMetadata(current.aiMetadata)) {
+            return null;
+          }
+          return (
+            aiMetadata: mergeAiMetadata(
+              current: current.aiMetadata,
+              ai: scheda.metadata,
+            ),
+            category:
+                !categoryChosen &&
+                    !userFieldsOf(
+                      current.aiMetadata,
+                    ).contains(kUserCategoryField) &&
+                    current.category == model.category &&
+                    scheda.category != null
+                ? scheda.category
+                : null,
+          );
+        });
+        return updated != null;
+      });
+      if (!written || !isCurrent() || !laPiuRecente()) {
+        return;
+      }
+      final items = await _repo.getItemsByHouseId(houseId);
+      if (!isCurrent() || !laPiuRecente()) {
+        return;
+      }
+      state = AsyncData(items);
+      ref.invalidate(userColorsProvider);
+      orchestrator.requestSync();
     } catch (e) {
       debugPrint('[ItemNotifier] scheda dal nome non salvata: $e');
     } finally {
-      if (laPiuRecente()) attesa.finish(id);
+      attesa.finish(id, context);
     }
   }
 
@@ -135,6 +162,8 @@ class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
   /// nome vecchio, se arriva, si scarta. La categoria non cambia: l'utente l'ha
   /// già vista.
   Future<void> updateItem(ItemModel model) async {
+    final orchestrator = ref.read(syncOrchestratorProvider);
+    final operationContext = orchestrator.captureLocalWriteContext();
     final previous = state.value?.where((i) => i.id == model.id).firstOrNull;
     await mutate(
       operation: () => _repo.updateItem(model),
@@ -149,7 +178,17 @@ class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
         previous.name != model.name &&
         model.name.trim().isNotEmpty &&
         needsAiMetadata(model.aiMetadata)) {
-      unawaited(_schedaDalNome(model, categoryChosen: true));
+      if (operationContext != null &&
+          identical(ref.read(syncOrchestratorProvider), orchestrator) &&
+          orchestrator.isLocalWriteContextCurrent(operationContext)) {
+        unawaited(
+          _schedaDalNome(
+            model,
+            categoryChosen: true,
+            context: operationContext,
+          ),
+        );
+      }
     }
   }
 
