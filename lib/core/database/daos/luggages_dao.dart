@@ -86,6 +86,7 @@ class LuggagesDao extends DatabaseAccessor<AppDatabase>
     return (update(luggages)..where((l) => l.id.equals(id))).write(
       LuggagesCompanion(
         isDeleted: const Value(true),
+        syncStatus: const Value(SyncStatus.pendingUpdate),
         updatedAt: Value(DateTime.now()),
       ),
     );

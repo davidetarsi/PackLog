@@ -352,6 +352,11 @@ class SyncService {
         final now = DateTime.now();
         int inserted = 0, updated = 0, skipped = 0;
 
+        // Case e spazi che il server dà per cancellati: un figlio che li
+        // punta è un caso previsto (cancellati altrove), non un errore.
+        final deletedHouseIds = _deletedIds(remoteHouses);
+        final deletedSpaceIds = _deletedIds(remoteSpaces);
+
         for (final r in remoteHouses) {
           final id = r['id'] as String;
           try {
@@ -405,6 +410,10 @@ class SyncService {
                 skipped++;
                 continue;
               }
+              if (await _houseGone(r['house_id'], deletedHouseIds)) {
+                skipped++;
+                continue;
+              }
               await _spacesDao.insertSpace(
                 SyncSerializers.buildSpaceCompanion(r, syncedAt: now),
               );
@@ -437,20 +446,23 @@ class SyncService {
             final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
             final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
             final local = await _luggagesDao.findLuggageById(id);
+            final row = await _houseGone(r['house_id'], deletedHouseIds)
+                ? {...r, 'house_id': null}
+                : r;
             if (local == null) {
               if (remoteIsDeleted) {
                 skipped++;
                 continue;
               }
               await _luggagesDao.insertLuggage(
-                SyncSerializers.buildLuggageCompanion(r, syncedAt: now),
+                SyncSerializers.buildLuggageCompanion(row, syncedAt: now),
               );
               inserted++;
             } else if (local.isDeleted && !remoteIsDeleted) {
               skipped++; // delete-wins: vedi loop houses
             } else if (_remoteIsNewer(remoteTs, local.updatedAt)) {
               await _luggagesDao.updateLuggage(
-                SyncSerializers.buildLuggageCompanion(r, syncedAt: now),
+                SyncSerializers.buildLuggageCompanion(row, syncedAt: now),
               );
               updated++;
             } else {
@@ -474,13 +486,21 @@ class SyncService {
             final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
             final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
             final local = await _itemsDao.findItemById(id);
+            if (!remoteIsDeleted &&
+                await _houseGone(r['house_id'], deletedHouseIds)) {
+              skipped++;
+              continue;
+            }
+            final row = await _spaceGone(r['space_id'], deletedSpaceIds)
+                ? {...r, 'space_id': null}
+                : r;
             if (local == null) {
               if (remoteIsDeleted) {
                 skipped++;
                 continue;
               }
               await _persistItemWithFkFallback(
-                r,
+                row,
                 syncedAt: now,
                 isInsert: true,
               );
@@ -489,7 +509,7 @@ class SyncService {
               skipped++; // delete-wins: vedi loop houses
             } else if (_remoteIsNewer(remoteTs, local.updatedAt)) {
               await _persistItemWithFkFallback(
-                r,
+                row,
                 syncedAt: now,
                 isInsert: false,
               );
@@ -520,6 +540,10 @@ class SyncService {
             final local = await _kitsDao.findKitById(id);
             if (local == null) {
               if (remoteIsDeleted) {
+                skipped++;
+                continue;
+              }
+              if (await _houseGone(r['house_id'], deletedHouseIds)) {
                 skipped++;
                 continue;
               }
@@ -665,6 +689,8 @@ class SyncService {
             );
           }
         }
+
+        await _applyReceivedDeletions(deletedHouseIds, deletedSpaceIds);
 
         _monitoring.logBreadcrumb(
           'fullPull: $inserted inseriti, $updated aggiornati, $skipped invariati',
@@ -1255,6 +1281,43 @@ class SyncService {
     final remoteSeconds = remoteTs.millisecondsSinceEpoch ~/ 1000;
     final localSeconds = localUpdatedAt.millisecondsSinceEpoch ~/ 1000;
     return remoteSeconds > localSeconds;
+  }
+
+  Set<String> _deletedIds(List<Map<String, dynamic>> rows) => {
+    for (final r in rows)
+      if (r['is_deleted'] == true) r['id'] as String,
+  };
+
+  /// Vero se [id] è una casa che il server dà per cancellata e che qui non
+  /// c'è più (purgata): la riga che la punta non ha dove stare.
+  Future<bool> _houseGone(Object? id, Set<String> deletedHouseIds) async =>
+      id is String &&
+      deletedHouseIds.contains(id) &&
+      await _housesDao.findHouseById(id) == null;
+
+  /// Come [_houseGone], per uno spazio.
+  Future<bool> _spaceGone(Object? id, Set<String> deletedSpaceIds) async =>
+      id is String &&
+      deletedSpaceIds.contains(id) &&
+      await _spacesDao.findSpaceById(id) == null;
+
+  /// Una cancellazione ricevuta vale come una fatta qui: quello che questo
+  /// telefono aveva ancora dentro la casa o lo spazio segue la stessa sorte,
+  /// e torna al server col prossimo invio.
+  Future<void> _applyReceivedDeletions(
+    Set<String> deletedHouseIds,
+    Set<String> deletedSpaceIds,
+  ) async {
+    for (final id in deletedSpaceIds) {
+      final local = await _spacesDao.findSpaceById(id);
+      if (local == null || !local.isDeleted) continue;
+      await _spacesDao.releaseItemsOfSpace(id);
+    }
+    for (final id in deletedHouseIds) {
+      final local = await _housesDao.findHouseById(id);
+      if (local == null || !local.isDeleted) continue;
+      await _housesDao.softDeleteChildrenOfHouse(id);
+    }
   }
 
   /// La casa di arrivo può mancare in locale: cancellata e purgata qui, mentre

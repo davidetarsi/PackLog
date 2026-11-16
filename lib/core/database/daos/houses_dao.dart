@@ -103,6 +103,24 @@ class HousesDao extends DatabaseAccessor<AppDatabase>
   /// propagazione al cloud prima della purga definitiva.
   Future<int> deleteHouse(String id) async {
     return transaction(() async {
+      await softDeleteChildrenOfHouse(id);
+
+      // Soft-delete della casa stessa
+      return (update(houses)..where((h) => h.id.equals(id))).write(
+        HousesCompanion(
+          isDeleted: const Value(true),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    });
+  }
+
+  /// La cascata di una casa cancellata, senza toccare la casa: oggetti,
+  /// spazi e kit ancora vivi vanno via con lei, bagagli e viaggi si staccano.
+  /// Serve anche quando la cancellazione arriva da un altro dispositivo.
+  Future<void> softDeleteChildrenOfHouse(String id) {
+    return transaction(() async {
       final now = DateTime.now();
 
       // Cascade soft-delete: items della casa (con syncStatus per propagare al cloud)
@@ -154,15 +172,6 @@ class HousesDao extends DatabaseAccessor<AppDatabase>
               syncStatus: const Value(SyncStatus.pendingUpdate),
             ),
           );
-
-      // Soft-delete della casa stessa
-      return (update(houses)..where((h) => h.id.equals(id))).write(
-        HousesCompanion(
-          isDeleted: const Value(true),
-          syncStatus: const Value(SyncStatus.pendingUpdate),
-          updatedAt: Value(now),
-        ),
-      );
     });
   }
 

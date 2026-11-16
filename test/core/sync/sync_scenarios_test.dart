@@ -37,53 +37,38 @@ void main() {
     expect(trip['destination_house_id'], isNull);
   });
 
-  test(
-    'A cancella la casa mentre B ci aggiunge un oggetto',
-    () async {
-      await seed();
-      await sim.a.deleteHouse('h1');
-      await sim.b.addItem('i3', 'h1');
-      await sim.settleAndCheck();
-    },
-    skip:
-        'bug noto (16 nov): figlio vivo in una casa cancellata dall altro telefono',
-  );
+  test('A cancella la casa mentre B ci aggiunge un oggetto', () async {
+    await seed();
+    await sim.a.deleteHouse('h1');
+    await sim.b.addItem('i3', 'h1');
+    await sim.settleAndCheck();
+    // Vince la cancellazione: l'oggetto va via con la casa.
+    expect((await sim.b.liveRows())['items'], isEmpty);
+  });
 
-  test(
-    'A cancella lo spazio mentre B ci sposta un oggetto',
-    () async {
-      await seed();
-      await sim.a.deleteSpace('s1');
-      await sim.b.moveItemToSpace('i2', 's1');
-      await sim.settleAndCheck();
-    },
-    skip:
-        'bug noto (16 nov): la cancellazione non entra in coda fino al riavvio',
-  );
+  test('A cancella lo spazio mentre B ci sposta un oggetto', () async {
+    await seed();
+    await sim.a.deleteSpace('s1');
+    await sim.b.moveItemToSpace('i2', 's1');
+    await sim.settleAndCheck();
+    // L'oggetto resta, nel mucchio generale della casa.
+    final items = (await sim.a.liveRows())['items']!;
+    expect(items.map((r) => r['space_id']), [null, null]);
+  });
 
-  test(
-    'A cancella la casa mentre B crea un viaggio che ci arriva',
-    () async {
-      await seed();
-      await sim.a.deleteHouse('h1');
-      await sim.b.addTrip('t2', destinationHouseId: 'h1');
-      await sim.settleAndCheck();
-    },
-    skip:
-        'bug noto (16 nov): sul server il viaggio resta puntato alla casa cancellata',
-  );
+  test('A cancella la casa mentre B crea un viaggio che ci arriva', () async {
+    await seed();
+    await sim.a.deleteHouse('h1');
+    await sim.b.addTrip('t2', destinationHouseId: 'h1');
+    await sim.settleAndCheck();
+  });
 
-  test(
-    'A cancella la casa mentre B ci aggiunge uno spazio',
-    () async {
-      await seed();
-      await sim.a.deleteHouse('h1');
-      await sim.b.addSpace('s2', 'h1');
-      await sim.settleAndCheck();
-    },
-    skip:
-        'bug noto (16 nov): figlio vivo in una casa cancellata dall altro telefono',
-  );
+  test('A cancella la casa mentre B ci aggiunge uno spazio', () async {
+    await seed();
+    await sim.a.deleteHouse('h1');
+    await sim.b.addSpace('s2', 'h1');
+    await sim.settleAndCheck();
+  });
 
   test(
     'stesso oggetto rinominato da tutti e due: i telefoni concordano',
@@ -144,16 +129,11 @@ void main() {
     expect((await sim.a.liveRows())['trips'], isEmpty);
   });
 
-  test(
-    'bagaglio cancellato mentre l altro rinomina la casa',
-    () async {
-      await seed();
-      await sim.a.deleteLuggage('l1');
-      await sim.b.renameHouse('h1', 'Casa nuova');
-      await sim.settleAndCheck();
-      expect((await sim.b.liveRows())['luggages'], isEmpty);
-    },
-    skip:
-        'bug noto (16 nov): la cancellazione non entra in coda fino al riavvio',
-  );
+  test('bagaglio cancellato mentre l altro rinomina la casa', () async {
+    await seed();
+    await sim.a.deleteLuggage('l1');
+    await sim.b.renameHouse('h1', 'Casa nuova');
+    await sim.settleAndCheck();
+    expect((await sim.b.liveRows())['luggages'], isEmpty);
+  });
 }
