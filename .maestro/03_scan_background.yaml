@@ -1,0 +1,33 @@
+# Lo scan dei vestiti arriva anche se durante l'analisi l'app va in background.
+# Consuma un credito AI a ogni giro.
+#
+# Prima volta: trascina una foto di vestiti sulla finestra dell'emulatore
+# (finisce nei Download ed è visibile nella galleria).
+# Uso: maestro test .maestro/03_scan_background.yaml
+appId: com.davidetarsi.packlog.dev
+name: Scan - i risultati arrivano anche dopo il background
+---
+- launchApp
+- tapOn: "Crea|Create"
+- tapOn: "[\\s\\S]*(Vestiti|Clothes)[\\s\\S]*"
+# Galleria, non fotocamera.
+- tapOn: "[\\s\\S]*Max [0-9]+ (foto|photos)[\\s\\S]*"
+# Selettore di Android: la prima foto della griglia.
+- tapOn:
+    point: "17%,30%"
+- runFlow:
+    when:
+      visible: "Aggiungi|Add|Fatto|Done"
+    commands:
+      - tapOn: "Aggiungi|Add|Fatto|Done"
+- extendedWaitUntil:
+    visible: "[\\s\\S]*(Analisi AI in corso|AI analysis in progress)[\\s\\S]*"
+    timeout: 15000
+- pressKey: Home
+- waitForAnimationToEnd:
+    timeout: 20000
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible: "[\\s\\S]*(identificat|identified)[\\s\\S]*"
+    timeout: 120000

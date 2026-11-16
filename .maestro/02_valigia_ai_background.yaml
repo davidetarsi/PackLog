@@ -1,0 +1,43 @@
+# La valigia AI arriva anche se durante l'attesa l'app va in background.
+# Consuma un credito AI a ogni giro.
+#
+# Uso: maestro test -e TRIP="Nome del viaggio" .maestro/02_valigia_ai_background.yaml
+# Il viaggio deve avere una sola tappa, date future e una casa con vestiti.
+appId: com.davidetarsi.packlog.dev
+name: Valigia AI - arriva anche dopo il background
+env:
+  TRIP: ${TRIP || "Viaggio"}
+---
+- launchApp
+- tapOn: "Viaggi|Trips"
+- tapOn: "[\\s\\S]*${TRIP}[\\s\\S]*"
+# Menu ⋮ in alto a destra.
+- tapOn: "Mostra menu|Show menu|Altre opzioni|More options"
+- tapOn: "Rigenera|Regenerate"
+# Se la valigia ha già oggetti l'app chiede di sostituirli.
+- runFlow:
+    when:
+      visible: "Sostituisci|Replace"
+    commands:
+      - tapOn: "Sostituisci|Replace"
+- assertVisible: "Valigia con AI|AI packing list"
+- tapOn: "Prepara la valigia|Pack the suitcase"
+# Senza attività o alloggio compare l'avviso: si sceglie una pillola per tipo.
+- runFlow:
+    when:
+      visible: "Compila la tappa|Fill in the stop"
+    commands:
+      - tapOn: "[\\s\\S]*(musei|museums)[\\s\\S]*"
+      - tapOn: "[\\s\\S]*(Hotel|hotel)[\\s\\S]*"
+      - tapOn: "Prepara la valigia|Pack the suitcase"
+- assertVisible: "Preparo la valigia|Packing your suitcase"
+- pressKey: Home
+# Venti secondi fuori dall'app: Android può sospendere la richiesta.
+- waitForAnimationToEnd:
+    timeout: 20000
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    notVisible: "Preparo la valigia|Packing your suitcase"
+    timeout: 150000
+- assertNotVisible: "[\\s\\S]*(Riprova|Retry|errore|error)[\\s\\S]*"
