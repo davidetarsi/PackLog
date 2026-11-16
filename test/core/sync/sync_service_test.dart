@@ -1182,17 +1182,22 @@ void main() {
       },
     );
 
-    test('viaggio nuovo con casa di arrivo assente: entra senza casa', () async {
-      final remote = tripJson('t-nuovo', updatedAt: DateTime.utc(2026, 10, 28))
-        ..['destination_house_id'] = 'h-purgata';
-      stubFetchAll(trips: [remote]);
+    test(
+      'viaggio nuovo con casa di arrivo assente: entra senza casa',
+      () async {
+        final remote = tripJson(
+          't-nuovo',
+          updatedAt: DateTime.utc(2026, 10, 28),
+        )..['destination_house_id'] = 'h-purgata';
+        stubFetchAll(trips: [remote]);
 
-      await syncService.fullPull('user-1');
+        await syncService.fullPull('user-1');
 
-      final local = await database.tripsDao.findTripById('t-nuovo');
-      expect(local, isNotNull);
-      expect(local!.destinationHouseId, isNull);
-    });
+        final local = await database.tripsDao.findTripById('t-nuovo');
+        expect(local, isNotNull);
+        expect(local!.destinationHouseId, isNull);
+      },
+    );
 
     test('un secondo pull senza novità non riscrive niente', () async {
       // Il server salva i microsecondi, il telefono i secondi.

@@ -265,6 +265,9 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
         }
       },
       child: housesAsync.when(
+        // Dopo un pull le liste si ricaricano: la pagina resta com'è, con
+        // il testo e il focus di chi sta scrivendo.
+        skipLoadingOnReload: true,
         data: (houses) {
           final matchingHouses = houses.where((h) => h.id == widget.houseId);
           if (matchingHouses.isEmpty) {
@@ -339,6 +342,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                     children: [
                       // ── Riga 1: filtro spazi (solo se esistono spazi) ──────
                       spacesAsync.when(
+                        skipLoadingOnReload: true,
                         data: (spaces) {
                           // Spazio selezionato eliminato: reset al "tutti"
                           if (_spaceFilter != null &&
