@@ -1155,6 +1155,69 @@ void main() {
         ),
       ).called(greaterThanOrEqualTo(1));
     });
+
+    test(
+      'viaggio con casa di arrivo assente in locale: si aggiorna senza casa',
+      () async {
+        final t0 = DateTime.utc(2026, 10, 28, 19);
+        await insertTrip('t-leuca', updatedAt: t0);
+        final remote = tripJson(
+          't-leuca',
+          updatedAt: t0.add(const Duration(minutes: 5)),
+        )..['destination_house_id'] = 'h-purgata';
+        stubFetchAll(trips: [remote]);
+
+        await syncService.fullPull('user-1');
+
+        final local = await database.tripsDao.findTripById('t-leuca');
+        expect(local!.name, 'Trip');
+        expect(local.destinationHouseId, isNull);
+        verifyNever(
+          () => mockMonitoring.captureException(
+            any(),
+            stackTrace: any(named: 'stackTrace'),
+            tags: any(named: 'tags'),
+          ),
+        );
+      },
+    );
+
+    test('viaggio nuovo con casa di arrivo assente: entra senza casa', () async {
+      final remote = tripJson('t-nuovo', updatedAt: DateTime.utc(2026, 10, 28))
+        ..['destination_house_id'] = 'h-purgata';
+      stubFetchAll(trips: [remote]);
+
+      await syncService.fullPull('user-1');
+
+      final local = await database.tripsDao.findTripById('t-nuovo');
+      expect(local, isNotNull);
+      expect(local!.destinationHouseId, isNull);
+    });
+
+    test('un secondo pull senza novità non riscrive niente', () async {
+      // Il server salva i microsecondi, il telefono i secondi.
+      final ts = DateTime.utc(2026, 11, 16, 13, 53, 34, 176, 507);
+      stubFetchAll(
+        houses: [houseJson('h-1', updatedAt: ts)],
+        items: [itemJson('i-1', 'h-1', updatedAt: ts)],
+        trips: [tripJson('t-1', updatedAt: ts)],
+      );
+
+      await syncService.fullPull('user-1');
+      clearInteractions(mockMonitoring);
+      await syncService.fullPull('user-1');
+
+      final message =
+          verify(
+                () => mockMonitoring.logBreadcrumb(
+                  captureAny(that: startsWith('fullPull:')),
+                  category: any(named: 'category'),
+                  data: any(named: 'data'),
+                ),
+              ).captured.single
+              as String;
+      expect(message, 'fullPull: 0 inseriti, 0 aggiornati, 3 invariati');
+    });
   });
 
   group('SyncService - trip items checklist sync', () {

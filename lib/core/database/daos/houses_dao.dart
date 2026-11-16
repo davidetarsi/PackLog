@@ -5,12 +5,13 @@ import '../tables/houses_table.dart';
 import '../tables/items_table.dart';
 import '../tables/spaces_table.dart';
 import '../tables/luggages_table.dart';
+import '../tables/trips_table.dart';
 import 'sync_dao_mixin.dart';
 
 part 'houses_dao.g.dart';
 
 /// DAO per le operazioni CRUD sulle case.
-@DriftAccessor(tables: [Houses, Items, Spaces, Luggages])
+@DriftAccessor(tables: [Houses, Items, Spaces, Luggages, Trips])
 class HousesDao extends DatabaseAccessor<AppDatabase>
     with _$HousesDaoMixin, SyncDaoMixin<$HousesTable, House> {
   HousesDao(super.db);
@@ -140,6 +141,19 @@ class HousesDao extends DatabaseAccessor<AppDatabase>
           syncStatus: const Value(SyncStatus.pendingUpdate),
         ),
       );
+
+      // I viaggi che arrivano in questa casa restano, senza casa di arrivo:
+      // dopo la purga locale il server la punterebbe ancora.
+      await (update(trips)..where(
+            (t) => t.destinationHouseId.equals(id) & t.isDeleted.equals(false),
+          ))
+          .write(
+            TripsCompanion(
+              destinationHouseId: const Value(null),
+              updatedAt: Value(now),
+              syncStatus: const Value(SyncStatus.pendingUpdate),
+            ),
+          );
 
       // Soft-delete della casa stessa
       return (update(houses)..where((h) => h.id.equals(id))).write(

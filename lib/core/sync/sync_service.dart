@@ -373,7 +373,7 @@ class SyncService {
               // non viene mai sovrascritto da un remoto vivo, anche se più
               // recente. processQueue pusherà la cancellazione al prossimo giro.
               skipped++;
-            } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+            } else if (_remoteIsNewer(remoteTs, local.updatedAt)) {
               await _housesDao.updateHouse(
                 SyncSerializers.buildHouseCompanion(r, syncedAt: now),
               );
@@ -411,7 +411,7 @@ class SyncService {
               inserted++;
             } else if (local.isDeleted && !remoteIsDeleted) {
               skipped++; // delete-wins: vedi loop houses
-            } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+            } else if (_remoteIsNewer(remoteTs, local.updatedAt)) {
               await _spacesDao.updateSpace(
                 SyncSerializers.buildSpaceCompanion(r, syncedAt: now),
               );
@@ -448,7 +448,7 @@ class SyncService {
               inserted++;
             } else if (local.isDeleted && !remoteIsDeleted) {
               skipped++; // delete-wins: vedi loop houses
-            } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+            } else if (_remoteIsNewer(remoteTs, local.updatedAt)) {
               await _luggagesDao.updateLuggage(
                 SyncSerializers.buildLuggageCompanion(r, syncedAt: now),
               );
@@ -487,7 +487,7 @@ class SyncService {
               inserted++;
             } else if (local.isDeleted && !remoteIsDeleted) {
               skipped++; // delete-wins: vedi loop houses
-            } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+            } else if (_remoteIsNewer(remoteTs, local.updatedAt)) {
               await _persistItemWithFkFallback(
                 r,
                 syncedAt: now,
@@ -529,7 +529,7 @@ class SyncService {
               inserted++;
             } else if (local.isDeleted && !remoteIsDeleted) {
               skipped++; // delete-wins: vedi loop houses
-            } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+            } else if (_remoteIsNewer(remoteTs, local.updatedAt)) {
               await _kitsDao.updateKit(
                 SyncSerializers.buildKitCompanion(r, syncedAt: now),
               );
@@ -594,7 +594,7 @@ class SyncService {
               inserted++;
             } else if (local.isDeleted && !remoteIsDeleted) {
               skipped++; // delete-wins: vedi loop houses
-            } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+            } else if (_remoteIsNewer(remoteTs, local.updatedAt)) {
               await _kitItemsDao.updateKitItem(
                 SyncSerializers.buildKitItemCompanion(r, syncedAt: now),
               );
@@ -621,22 +621,23 @@ class SyncService {
             final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
             final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
             final local = await _tripsDao.findTripById(id);
+            final row = await _withoutMissingHouse(r);
             if (local == null) {
               if (remoteIsDeleted) {
                 skipped++;
                 continue;
               }
               await _tripsDao.insertTrip(
-                SyncSerializers.buildTripCompanion(r, syncedAt: now),
+                SyncSerializers.buildTripCompanion(row, syncedAt: now),
               );
               await _replaceTripItemsFromJson(id, r['items']);
               await _replaceTripLuggagesFromJson(id, r['luggage_ids']);
               inserted++;
             } else if (local.isDeleted && !remoteIsDeleted) {
               skipped++; // delete-wins: vedi loop houses
-            } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+            } else if (_remoteIsNewer(remoteTs, local.updatedAt)) {
               await _tripsDao.updateTrip(
-                SyncSerializers.buildTripCompanion(r, syncedAt: now),
+                SyncSerializers.buildTripCompanion(row, syncedAt: now),
               );
               await _replaceTripItemsFromJson(id, r['items']);
               await _replaceTripLuggagesFromJson(id, r['luggage_ids']);
@@ -1245,6 +1246,28 @@ class SyncService {
     );
     await _replaceTripItemsFromJson(id, remote['items']);
     await _replaceTripLuggagesFromJson(id, remote['luggage_ids']);
+  }
+
+  /// Il server salva `updated_at` al microsecondo, il database locale al
+  /// secondo (troncato): senza troncare anche il remoto, una riga appena
+  /// sincronizzata sembrerebbe sempre più vecchia e ogni pull la riscriverebbe.
+  bool _remoteIsNewer(DateTime remoteTs, DateTime localUpdatedAt) {
+    final remoteSeconds = remoteTs.millisecondsSinceEpoch ~/ 1000;
+    final localSeconds = localUpdatedAt.millisecondsSinceEpoch ~/ 1000;
+    return remoteSeconds > localSeconds;
+  }
+
+  /// La casa di arrivo può mancare in locale: cancellata e purgata qui, mentre
+  /// sul server resta come tombstone e il viaggio la punta ancora. Il viaggio
+  /// entra senza casa di arrivo invece di violare la chiave esterna.
+  Future<Map<String, dynamic>> _withoutMissingHouse(
+    Map<String, dynamic> trip,
+  ) async {
+    final houseId = trip['destination_house_id'] as String?;
+    if (houseId == null || await _housesDao.findHouseById(houseId) != null) {
+      return trip;
+    }
+    return {...trip, 'destination_house_id': null};
   }
 
   /// Colonne AI del viaggio che il locale non ha e il remoto sì. Non sovrascrive
