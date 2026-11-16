@@ -372,6 +372,8 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     AsyncValue<List<HouseModel>> housesAsync,
   ) {
     return housesAsync.when(
+      // Dopo un pull la lista si ricarica: il contenuto resta al suo posto.
+      skipLoadingOnReload: true,
       data: (houses) {
         final house = _houseFor(houses);
         if (house == null) {
@@ -442,6 +444,8 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
           ],
         ),
         itemsAsync.when(
+          // Dopo un pull la lista si ricarica: il contenuto resta al suo posto.
+          skipLoadingOnReload: true,
           data: (items) => _itemGroups(context, house, items),
           loading: () => Padding(
             padding: EdgeInsets.symmetric(vertical: context.spacingLg),

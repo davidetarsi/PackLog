@@ -135,6 +135,8 @@ class _AddEditSpaceSheetState extends ConsumerState<AddEditSpaceSheet> {
   Widget build(BuildContext context) => ref
       .watch(spaceNotifierProvider(widget.houseId))
       .when(
+        // Dopo un pull la lista si ricarica: il contenuto resta al suo posto.
+        skipLoadingOnReload: true,
         loading: () => _sheet(const Center(child: CircularProgressIndicator())),
         error: (error, _) => _sheet(
           DsErrorState(
