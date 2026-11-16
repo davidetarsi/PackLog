@@ -777,8 +777,7 @@ class SyncService {
         markSynced: (ts, localAt) =>
             _housesDao.markAsSynced(house.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _housesDao.incrementSyncRetry(house.id, e),
-        onPurge: () =>
-            pendingPurges.add(() => _housesDao.purgeRecord(house.id)),
+        onPurge: () => pendingPurges.add(() => _housesDao.purgeHouse(house.id)),
         syncStatus: house.syncStatus,
         lastSyncedAt: house.lastSyncedAt,
         createdAt: house.createdAt,
@@ -832,9 +831,13 @@ class SyncService {
             _remote.upsertLuggage(data, sentryTrace: trace),
         pullLocal: (remote) => _commit(
           session,
-          () => _luggagesDao.updateLuggage(
+          () async => _luggagesDao.updateLuggage(
             SyncSerializers.buildLuggageCompanion(
-              remote,
+              await _withoutMissingHouse(
+                remote,
+                key: 'house_id',
+                fetchMissing: true,
+              ),
               includeSyncFields: false,
             ),
           ),
@@ -864,9 +867,9 @@ class SyncService {
         upsert: (data, trace) => _remote.upsertItem(data, sentryTrace: trace),
         pullLocal: (remote) => _commit(
           session,
-          () => _itemsDao.updateItem(
+          () async => _itemsDao.updateItem(
             SyncSerializers.buildItemCompanion(
-              remote,
+              await _withoutMissingSpace(remote),
               includeSyncFields: false,
             ),
           ),
@@ -1268,10 +1271,17 @@ class SyncService {
 
   Future<void> _pullTrip(String id, Map<String, dynamic> remote) async {
     await _tripsDao.updateTrip(
-      SyncSerializers.buildTripCompanion(remote, includeSyncFields: false),
+      SyncSerializers.buildTripCompanion(
+        await _withoutMissingHouse(remote, fetchMissing: true),
+        includeSyncFields: false,
+      ),
     );
     await _replaceTripItemsFromJson(id, remote['items']);
-    await _replaceTripLuggagesFromJson(id, remote['luggage_ids']);
+    await _replaceTripLuggagesFromJson(
+      id,
+      remote['luggage_ids'],
+      fetchMissing: true,
+    );
   }
 
   /// Il server salva `updated_at` al microsecondo, il database locale al
@@ -1320,17 +1330,53 @@ class SyncService {
     }
   }
 
-  /// La casa di arrivo può mancare in locale: cancellata e purgata qui, mentre
-  /// sul server resta come tombstone e il viaggio la punta ancora. Il viaggio
-  /// entra senza casa di arrivo invece di violare la chiave esterna.
+  /// La casa puntata da [key] può mancare in locale: cancellata e purgata
+  /// qui, mentre sul server resta come tombstone e la riga la punta ancora.
+  /// La riga entra senza quella casa invece di violare la chiave esterna.
+  ///
+  /// Con [fetchMissing] (durante l'invio, quando il pull non è ancora
+  /// passato) la casa può anche essere nuova, creata su un altro dispositivo:
+  /// allora la si prende subito dal server e il riferimento resta.
   Future<Map<String, dynamic>> _withoutMissingHouse(
-    Map<String, dynamic> trip,
-  ) async {
-    final houseId = trip['destination_house_id'] as String?;
+    Map<String, dynamic> row, {
+    String key = 'destination_house_id',
+    bool fetchMissing = false,
+  }) async {
+    final houseId = row[key] as String?;
     if (houseId == null || await _housesDao.findHouseById(houseId) != null) {
-      return trip;
+      return row;
     }
-    return {...trip, 'destination_house_id': null};
+    if (fetchMissing) {
+      final remote = await _remote.fetchHouseById(houseId);
+      if (remote != null && remote['is_deleted'] != true) {
+        await _housesDao.insertHouse(
+          SyncSerializers.buildHouseCompanion(remote, syncedAt: DateTime.now()),
+        );
+        return row;
+      }
+    }
+    return {...row, key: null};
+  }
+
+  /// Come [_withoutMissingHouse] con `fetchMissing`, per lo spazio di un
+  /// oggetto durante l'invio.
+  Future<Map<String, dynamic>> _withoutMissingSpace(
+    Map<String, dynamic> item,
+  ) async {
+    final spaceId = item['space_id'] as String?;
+    if (spaceId == null || await _spacesDao.findSpaceById(spaceId) != null) {
+      return item;
+    }
+    final remote = await _remote.fetchSpaceById(spaceId);
+    if (remote != null &&
+        remote['is_deleted'] != true &&
+        await _housesDao.findHouseById(remote['house_id'] as String) != null) {
+      await _spacesDao.insertSpace(
+        SyncSerializers.buildSpaceCompanion(remote, syncedAt: DateTime.now()),
+      );
+      return item;
+    }
+    return {...item, 'space_id': null};
   }
 
   /// Colonne AI del viaggio che il locale non ha e il remoto sì. Non sovrascrive
@@ -1361,11 +1407,35 @@ class SyncService {
   /// è atomico: DELETE + INSERT in transazione.
   Future<void> _replaceTripLuggagesFromJson(
     String tripId,
-    dynamic luggageIdsJson,
-  ) async {
+    dynamic luggageIdsJson, {
+    bool fetchMissing = false,
+  }) async {
     if (luggageIdsJson == null) return;
-    final ids = (luggageIdsJson as List).cast<String>();
+    // Un bagaglio cancellato altrove e già purgato qui può restare nella
+    // lista del server: si collegano solo quelli che esistono.
+    final ids = <String>[];
+    for (final id in (luggageIdsJson as List).cast<String>()) {
+      if (await _luggagesDao.findLuggageById(id) != null ||
+          (fetchMissing && await _fetchMissingLuggage(id))) {
+        ids.add(id);
+      }
+    }
     await _luggagesDao.replaceTripLuggages(tripId, ids);
+  }
+
+  /// Durante l'invio un viaggio del server può citare un bagaglio creato su
+  /// un altro dispositivo e non ancora scaricato qui: lo si prende subito,
+  /// altrimenti il collegamento andrebbe perso. Falso se non c'è più.
+  Future<bool> _fetchMissingLuggage(String id) async {
+    final remote = await _remote.fetchLuggageById(id);
+    if (remote == null || remote['is_deleted'] == true) return false;
+    await _luggagesDao.insertLuggage(
+      SyncSerializers.buildLuggageCompanion(
+        await _withoutMissingHouse(remote, key: 'house_id', fetchMissing: true),
+        syncedAt: DateTime.now(),
+      ),
+    );
+    return true;
   }
 
   /// Sostituisce la checklist locale di [tripId] con [itemsJson], se presente.

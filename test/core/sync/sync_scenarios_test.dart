@@ -136,4 +136,63 @@ void main() {
     await sim.settleAndCheck();
     expect((await sim.b.liveRows())['luggages'], isEmpty);
   });
+
+  // --- trovati dalle sequenze casuali (sync_random_test.dart) ---
+
+  test(
+    'bagaglio di un viaggio cancellato e purgato dall altro telefono',
+    () async {
+      await seed();
+      await sim.a.linkLuggage('t1', 'l1');
+      await sim.settle();
+      await sim.b.deleteLuggage('l1');
+      await sim.b.sync();
+      // Il server tiene ancora l1 nella lista del viaggio.
+      await sim.a.renameTrip('t1', 'Rinominato');
+      await sim.a.sync();
+      await sim.settleAndCheck();
+      expect((await sim.b.liveRows())['trips']!.single['luggage_ids'], isEmpty);
+    },
+  );
+
+  test(
+    'cancellare una casa dopo aver ricevuto la cancellazione di un suo oggetto',
+    () async {
+      await seed();
+      await sim.a.deleteItem('i1');
+      await sim.a.sync();
+      await sim.b.sync();
+      await sim.b.deleteHouse('h1');
+      await sim.settleAndCheck();
+      expect((await sim.a.liveRows())['houses'], isEmpty);
+    },
+  );
+
+  test('viaggio con un bagaglio e una casa nuovi dell altro telefono, '
+      'ricevuto durante l invio', () async {
+    await seed();
+    await sim.b.renameTrip('t1', 'Da B');
+    await sim.a.addHouse('h2');
+    await sim.a.addLuggage('l2', houseId: 'h2');
+    await sim.a.linkLuggage('t1', 'l2');
+    await sim.a.sync();
+    await sim.settleAndCheck();
+    final b = await sim.b.liveRows();
+    expect(b['trips']!.single['luggage_ids'], ['l2']);
+    expect(b['luggages']!.firstWhere((r) => r['id'] == 'l2')['house_id'], 'h2');
+  });
+
+  // Decisione aperta: oggi una modifica fatta dopo una cancellazione, da un
+  // telefono che non l'ha ancora ricevuta, fa tornare la riga (è lo stesso
+  // meccanismo di "Annulla"). La casa torna, ma senza quello che conteneva.
+  test('A rinomina una casa che B ha cancellato: la casa torna', () async {
+    await seed();
+    await sim.b.deleteHouse('h1');
+    await sim.b.sync();
+    await sim.a.renameHouse('h1', 'Ancora mia');
+    await sim.settle();
+    expect(sim.a.monitoring.errors + sim.b.monitoring.errors, isEmpty);
+    expect((await sim.b.liveRows())['houses']!.single['name'], 'Ancora mia');
+    expect((await sim.b.liveRows())['items'], isEmpty);
+  });
 }

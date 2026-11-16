@@ -222,6 +222,62 @@ class SimDevice {
       act((db) => db.luggagesDao.deleteLuggage(id));
   Future<void> deleteTrip(String id) => act((db) => db.tripsDao.deleteTrip(id));
 
+  Future<void> addKit(String id, String houseId) => act(
+    (db) => db.kitsDao.upsertKit(
+      KitsCompanion.insert(
+        id: id,
+        houseId: houseId,
+        name: 'Kit $id',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    ),
+  );
+
+  /// L'id della riga è del telefono che la crea: sulla stessa coppia due
+  /// telefoni partono con id diversi, come nell'app.
+  Future<void> putInKit(String kitId, String itemId) => act(
+    (db) => db.kitsDao.upsertKitItem(
+      KitItemsCompanion.insert(
+        id: '$name-$kitId-$itemId',
+        kitId: kitId,
+        itemId: itemId,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    ),
+  );
+
+  Future<void> removeFromKit(String kitId, String itemId) =>
+      act((db) => db.kitsDao.softDeleteKitItem(kitId, itemId));
+
+  Future<void> deleteKit(String id) =>
+      act((db) => db.kitsDao.softDeleteKit(id));
+
+  Future<void> addTripItem(String tripId, String id) => act((db) async {
+    await db.tripsDao.insertTripItemsIgnoringDuplicates([
+      TripItemEntriesCompanion.insert(
+        id: id,
+        tripId: tripId,
+        name: 'In valigia $id',
+        category: ItemCategory.varie,
+      ),
+    ]);
+    await db.tripsDao.updateTrip(
+      TripsCompanion(id: Value(tripId), updatedAt: Value(DateTime.now())),
+    );
+  });
+
+  Future<void> checkTripItem(String tripId, String id, bool checked) =>
+      act((db) => db.tripsDao.setTripItemChecked(id, tripId, checked));
+
+  Future<void> linkLuggage(String tripId, String luggageId) => act((db) async {
+    await db.luggagesDao.linkLuggageToTrip(tripId, luggageId);
+    await db.tripsDao.updateTrip(
+      TripsCompanion(id: Value(tripId), updatedAt: Value(DateTime.now())),
+    );
+  });
+
   // --- lettura dello stato ---
 
   /// Le righe vive del telefono nel formato del server, per tabella.
@@ -255,6 +311,18 @@ class SimDevice {
       'items': [
         for (final r in await db.itemsDao.getAllItems())
           SyncSerializers.itemToJson(r),
+      ],
+      'kits': [
+        for (final r in await (db.select(
+          db.kits,
+        )..where((k) => k.isDeleted.equals(false))).get())
+          SyncSerializers.kitToJson(r),
+      ],
+      'kit_items': [
+        for (final r in await (db.select(
+          db.kitItems,
+        )..where((k) => k.isDeleted.equals(false))).get())
+          SyncSerializers.kitItemToJson(r),
       ],
       'trips': trips,
     };
@@ -302,13 +370,15 @@ class SyncSim {
   /// 4. un altro pull non scrive niente.
   Future<void> settleAndCheck() async {
     await settle();
-    final expected = _canonical({
-      for (final table in _comparedTables)
-        table: [
-          for (final r in server.rows(table))
-            if (r['is_deleted'] != true) r,
-        ],
-    });
+    final expected = _canonical(
+      _withoutDeadReferences({
+        for (final table in _comparedTables)
+          table: [
+            for (final r in server.rows(table))
+              if (r['is_deleted'] != true) r,
+          ],
+      }),
+    );
     for (final device in devices) {
       expect(
         device.monitoring.errors,
@@ -321,7 +391,7 @@ class SyncSim {
         reason: 'telefono ${device.name}: riferimenti rotti',
       );
       expect(
-        _canonical(await device.liveRows()),
+        _canonical(_withoutDeadReferences(await device.liveRows())),
         expected,
         reason: 'telefono ${device.name}: stato diverso dal server',
       );
@@ -340,8 +410,39 @@ class SyncSim {
     'spaces',
     'luggages',
     'items',
+    'kits',
+    'kit_items',
     'trips',
   ];
+
+  /// L'app nasconde in lettura i riferimenti a righe cancellate, senza
+  /// riscriverli: la riga di kit di un oggetto cancellato (torna con
+  /// "Annulla") e il bagaglio cancellato nella lista di un viaggio.
+  static Map<String, List<Map<String, dynamic>>> _withoutDeadReferences(
+    Map<String, List<Map<String, dynamic>>> tables,
+  ) {
+    Set<Object?> ids(String table) => {for (final r in tables[table]!) r['id']};
+    final items = ids('items');
+    final kits = ids('kits');
+    final luggages = ids('luggages');
+    return {
+      ...tables,
+      'kit_items': [
+        for (final r in tables['kit_items']!)
+          if (items.contains(r['item_id']) && kits.contains(r['kit_id'])) r,
+      ],
+      'trips': [
+        for (final r in tables['trips']!)
+          {
+            ...r,
+            'luggage_ids': [
+              for (final id in r['luggage_ids'] as List)
+                if (luggages.contains(id)) id,
+            ],
+          },
+      ],
+    };
+  }
 
   /// Riga → testo confrontabile: senza utente, date al secondo, liste in
   /// ordine.

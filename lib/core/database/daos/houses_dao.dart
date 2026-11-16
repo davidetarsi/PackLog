@@ -116,6 +116,36 @@ class HousesDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  /// Purga una casa già cancellata sul server. Prima vanno via le righe
+  /// figlie cancellate e già sincronizzate (per esempio tombstone ricevuti da
+  /// un altro dispositivo). Se resta qualcosa ancora da inviare la casa torna
+  /// in coda: si purga al giro dopo, quando i figli sono partiti.
+  Future<void> purgeHouse(String id) {
+    return transaction(() async {
+      final synced = SyncStatus.synced.index;
+      for (final table in const ['items', 'spaces', 'kits']) {
+        await customStatement(
+          'DELETE FROM $table '
+          'WHERE house_id = ? AND is_deleted = 1 AND sync_status = ?',
+          [id, synced],
+        );
+      }
+      final left = await customSelect(
+        'SELECT (SELECT COUNT(*) FROM items WHERE house_id = ?1) + '
+        '(SELECT COUNT(*) FROM spaces WHERE house_id = ?1) + '
+        '(SELECT COUNT(*) FROM kits WHERE house_id = ?1) AS n',
+        variables: [Variable<String>(id)],
+      ).getSingle();
+      if (left.read<int>('n') > 0) {
+        await (update(houses)..where((h) => h.id.equals(id))).write(
+          const HousesCompanion(syncStatus: Value(SyncStatus.pendingUpdate)),
+        );
+        return;
+      }
+      await purgeRecord(id);
+    });
+  }
+
   /// La cascata di una casa cancellata, senza toccare la casa: oggetti,
   /// spazi e kit ancora vivi vanno via con lei, bagagli e viaggi si staccano.
   /// Serve anche quando la cancellazione arriva da un altro dispositivo.
