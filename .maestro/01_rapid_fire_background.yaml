@@ -9,11 +9,12 @@ env:
 ---
 - launchApp
 - tapOn: "Case|Houses"
-- tapOn: ${HOUSE}
+# La scheda della casa espone nome e conteggi come un testo solo.
+- tapOn: "[\\s\\S]*${HOUSE}[\\s\\S]*"
 - tapOn: "Es\\. 2 t-shirt nere|E\\.g\\. 2 black t-shirts"
 - inputText: "Calzini maestro"
-- assertVisible: "Calzini maestro"
+- assertVisible: "[\\s\\S]*Calzini maestro[\\s\\S]*"
 - pressKey: Home
 - launchApp:
     stopApp: false
-- assertVisible: "Calzini maestro"
+- assertVisible: "[\\s\\S]*Calzini maestro[\\s\\S]*"
