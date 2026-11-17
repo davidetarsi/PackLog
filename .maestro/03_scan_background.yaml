@@ -17,11 +17,12 @@ name: Scan - i risultati arrivano anche dopo il background
     text: "(Photo taken on|Foto scattata).*"
     index: 0
 # Con la scelta multipla il pulsante porta il conteggio: "Add (1)".
-- tapOn: "(Aggiungi|Add|Fatto|Done)( \\([0-9]+\\))?"
-# Maestro non legge il testo dell'attesa (la barra animata non lascia mai lo
-# schermo fermo): si aspettano due secondi, l'analisi dura di più.
-- waitForAnimationToEnd:
-    timeout: 2000
+# Dopo un tocco Maestro aspetta che lo schermo stia fermo, e durante l'analisi
+# la barra si muove fino alla fine: si limita l'attesa a due secondi, così il
+# background arriva mentre l'analisi è in corso.
+- tapOn:
+    text: "(Aggiungi|Add|Fatto|Done)( \\([0-9]+\\))?"
+    waitToSettleTimeoutMs: 2000
 - pressKey: Home
 - waitForAnimationToEnd:
     timeout: 20000
