@@ -22,7 +22,11 @@ env:
     commands:
       - tapOn: "Sostituisci|Replace"
 - assertVisible: "Valigia con AI|AI packing list"
-- tapOn: "Prepara la valigia|Pack the suitcase"
+# Dopo un tocco Maestro aspetta lo schermo fermo, e l'attesa della valigia si
+# muove fino alla fine: l'attesa si limita a due secondi (come nello scan).
+- tapOn:
+    text: "Prepara la valigia|Pack the suitcase"
+    waitToSettleTimeoutMs: 2000
 # Senza attività o alloggio compare l'avviso: si sceglie una pillola per tipo.
 - runFlow:
     when:
@@ -30,7 +34,9 @@ env:
     commands:
       - tapOn: "[\\s\\S]*(musei|museums)[\\s\\S]*"
       - tapOn: "[\\s\\S]*(Hotel|hotel)[\\s\\S]*"
-      - tapOn: "Prepara la valigia|Pack the suitcase"
+      - tapOn:
+          text: "Prepara la valigia|Pack the suitcase"
+          waitToSettleTimeoutMs: 2000
 - assertVisible: "Preparo la valigia|Packing your suitcase"
 - pressKey: Home
 # Venti secondi fuori dall'app: Android può sospendere la richiesta.
