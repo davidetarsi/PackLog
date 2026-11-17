@@ -20,9 +20,8 @@ name: Scan - i risultati arrivano anche dopo il background
 - tapOn: "(Aggiungi|Add|Fatto|Done)( \\([0-9]+\\))?"
 # Maestro non legge il testo dell'attesa (la barra animata non lascia mai lo
 # schermo fermo): si aspettano due secondi, l'analisi dura di più.
-- swipe:
-    direction: DOWN
-    duration: 2000
+- waitForAnimationToEnd:
+    timeout: 2000
 - pressKey: Home
 - waitForAnimationToEnd:
     timeout: 20000
