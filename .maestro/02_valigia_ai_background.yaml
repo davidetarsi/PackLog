@@ -2,7 +2,8 @@
 # Consuma un credito AI a ogni giro.
 #
 # Uso: maestro test -e TRIP="Nome del viaggio" .maestro/02_valigia_ai_background.yaml
-# Il viaggio deve avere una sola tappa, date future e una casa con vestiti.
+# Il viaggio deve avere già una valigia fatta con AI (solo allora il menu ha
+# "Rigenera"), una sola tappa, date future e una casa con vestiti.
 appId: com.davidetarsi.packlog.dev
 name: Valigia AI - arriva anche dopo il background
 env:
