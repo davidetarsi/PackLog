@@ -16,11 +16,8 @@ name: Scan - i risultati arrivano anche dopo il background
 - tapOn:
     text: "(Photo taken on|Foto scattata).*"
     index: 0
-- runFlow:
-    when:
-      visible: "Aggiungi|Add|Fatto|Done"
-    commands:
-      - tapOn: "Aggiungi|Add|Fatto|Done"
+# Con la scelta multipla il pulsante porta il conteggio: "Add (1)".
+- tapOn: "(Aggiungi|Add|Fatto|Done)( \\([0-9]+\\))?"
 - extendedWaitUntil:
     visible: "[\\s\\S]*(Analisi AI in corso|AI analysis in progress)[\\s\\S]*"
     timeout: 15000
