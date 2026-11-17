@@ -12,9 +12,10 @@ name: Scan - i risultati arrivano anche dopo il background
 - tapOn: "[\\s\\S]*(Vestiti|Clothes)[\\s\\S]*"
 # Galleria, non fotocamera.
 - tapOn: "[\\s\\S]*Max [0-9]+ (foto|photos)[\\s\\S]*"
-# Selettore di Android: la prima foto della griglia.
+# Selettore di Android: la prima foto della griglia (la più recente).
 - tapOn:
-    point: "17%,30%"
+    text: "(Photo taken on|Foto scattata).*"
+    index: 0
 - runFlow:
     when:
       visible: "Aggiungi|Add|Fatto|Done"
@@ -29,5 +30,7 @@ name: Scan - i risultati arrivano anche dopo il background
 - launchApp:
     stopApp: false
 - extendedWaitUntil:
-    visible: "[\\s\\S]*(identificat|identified)[\\s\\S]*"
+    # Capi trovati, oppure il messaggio della foto senza vestiti: in entrambi i
+    # casi l'analisi è arrivata in fondo.
+    visible: "[\\s\\S]*(identificat|identified|non è stato possibile riconoscere|could be recognised)[\\s\\S]*"
     timeout: 120000
