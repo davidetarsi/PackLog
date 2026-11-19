@@ -1,0 +1,20 @@
+# Il testo scritto nel Rapid Fire della casa resta dopo che l'app va in
+# background e torna in primo piano (alla ripresa parte un pull completo).
+#
+# Uso: maestro test -e HOUSE="Nome della casa" .maestro/01_rapid_fire_background.yaml
+appId: com.davidetarsi.packlog.dev
+name: Rapid Fire - il testo resta dopo il background
+env:
+  HOUSE: ${HOUSE || "Casa"}
+---
+- launchApp
+- tapOn: "Case|Houses"
+# La scheda della casa espone nome e conteggi come un testo solo.
+- tapOn: "[\\s\\S]*${HOUSE}[\\s\\S]*"
+- tapOn: "Es\\. 2 t-shirt nere|E\\.g\\. 2 black t-shirts"
+- inputText: "Calzini maestro"
+- assertVisible: "[\\s\\S]*Calzini maestro[\\s\\S]*"
+- pressKey: Home
+- launchApp:
+    stopApp: false
+- assertVisible: "[\\s\\S]*Calzini maestro[\\s\\S]*"

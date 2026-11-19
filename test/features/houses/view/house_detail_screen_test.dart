@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
+import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/items/view/bulk_move_sheet.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/features/items/view/item_card.dart';
@@ -512,6 +513,24 @@ void main() {
     expect(find.text('Vestiti · 7'), findsNothing);
     expect(find.byKey(const Key('house_search')), findsNothing);
     expect(find.byIcon(Icons.more_vert), findsNothing);
+    await app.finish();
+  });
+
+  testWidgets('un pull finito mentre si scrive non chiude il campo', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    await app.tap(rapidFire());
+    await app.enterText(rapidFire(), 'calz');
+
+    // Al ritorno nell'app il pull finisce e fa ricaricare le liste.
+    app.container.read(syncTriggerProvider.notifier).increment();
+    await tester.pump();
+    expect(find.byType(RapidFireInput), findsOneWidget);
+    await app.settle();
+
+    expect(tester.widget<TextField>(rapidFire()).controller!.text, 'Calz');
+    expect(find.text('Già in casa · 1'), findsOneWidget);
     await app.finish();
   });
 
