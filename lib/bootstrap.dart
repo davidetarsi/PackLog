@@ -65,13 +65,14 @@ import 'core/monitoring/monitoring_service.dart';
 import 'core/routing/app_router.dart';
 import 'features/trips/view/widgets/wait/ai_packing_run_listener.dart';
 import 'core/sync/sync_provider.dart';
+import 'shared/widgets/ds_error_state.dart';
+import 'shared/widgets/sync_session_protection.dart';
 import 'features/onboarding/providers/onboarding_status_provider.dart';
 import 'shared/config/app_config.dart';
 import 'shared/theme/app_spacing.dart';
 import 'shared/providers/language_locale.dart';
 import 'shared/providers/theme_provider.dart';
 import 'shared/theme/app_theme.dart';
-import 'shared/widgets/ds_error_state.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // DEFERRED BOOTSTRAP PROVIDER
@@ -550,6 +551,8 @@ class MyApp extends ConsumerWidget {
     );
     if (routerConfig != null) {
       return MaterialApp.router(
+        // Discard messenger queues and other private UI when its router changes.
+        key: ObjectKey(routerConfig),
         title: 'Pack Log',
         debugShowCheckedModeBanner: environment == Environment.dev,
         theme: AppTheme.light,
@@ -557,8 +560,9 @@ class MyApp extends ConsumerWidget {
         themeMode: themeMode,
         routerConfig: routerConfig,
         // L'avviso della valigia AI vive sopra tutte le pagine.
-        builder: (context, child) =>
-            AiPackingRunListener(child: child ?? const SizedBox.shrink()),
+        builder: (context, child) => SyncSessionProtection(
+          child: AiPackingRunListener(child: child ?? const SizedBox.shrink()),
+        ),
         localizationsDelegates: context.localizationDelegates,
         supportedLocales: context.supportedLocales,
         locale: context.locale,

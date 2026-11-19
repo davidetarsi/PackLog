@@ -7,6 +7,8 @@ import '../model/item_metadata_merge.dart';
 import '../model/item_model.dart';
 import '../repositories/item_repository.dart';
 import 'item_metadata_service.dart';
+import '../../../core/sync/sync_session.dart';
+import '../../../core/sync/sync_orchestrator.dart';
 
 /// Quanti oggetti al giorno, al massimo, il recupero completa. Resta sotto
 /// il limite giornaliero dei nomi lato server (`item_name_daily_cap`), così le
@@ -29,11 +31,13 @@ class ItemMetadataBackfill {
   ItemMetadataBackfill({
     required ItemRepository repository,
     required ItemMetadataService service,
+    required SyncOrchestrator orchestrator,
     Future<SharedPreferences>? prefs,
     DateTime Function()? now,
     AppMonitoringService? monitoring,
   }) : _repo = repository,
        _monitoring = monitoring,
+       _orchestrator = orchestrator,
        _service = service,
        _prefs = prefs,
        _now = now ?? DateTime.now;
@@ -47,33 +51,49 @@ class ItemMetadataBackfill {
   final Future<SharedPreferences>? _prefs;
   final DateTime Function() _now;
   final AppMonitoringService? _monitoring;
-  bool _running = false;
+  final SyncOrchestrator _orchestrator;
+  SyncSessionContext? _runningContext;
 
   /// Un giro di recupero. Restituisce le case con oggetti aggiornati, da
   /// ricaricare; vuoto se non c'era niente da fare o non era il momento.
-  Future<Set<String>> run() async {
-    if (_running) return const {};
-    _running = true;
+  Future<Set<String>> run(SyncSessionContext context) async {
+    if (!_isCurrent(context)) return const {};
+    final active = _runningContext;
+    if (active != null &&
+        identical(active.ownerToken, context.ownerToken) &&
+        active.epoch == context.epoch) {
+      return const {};
+    }
+    _runningContext = context;
     try {
-      return await _run();
+      return await _run(context);
     } catch (e, st) {
+      if (e is SyncSessionInvalid) return const {};
       debugPrint('[Backfill] giro interrotto: $e');
       _report(e, st);
       return const {};
     } finally {
-      _running = false;
+      if (identical(_runningContext, context)) _runningContext = null;
     }
   }
 
-  Future<Set<String>> _run() async {
+  bool _isCurrent(SyncSessionContext context) =>
+      _orchestrator.isLocalWriteContextCurrent(context);
+
+  Future<Set<String>> _run(SyncSessionContext context) async {
     final prefs = await (_prefs ?? SharedPreferences.getInstance());
+    if (!_isCurrent(context)) return const {};
     final now = _now();
     final lastRun = DateTime.tryParse(prefs.getString(_lastRunKey) ?? '');
     if (lastRun != null &&
         now.difference(lastRun) < kItemMetadataBackfillInterval) {
       return const {};
     }
-    await prefs.setString(_lastRunKey, now.toIso8601String());
+    await _orchestrator.commitLocalWrite(
+      context,
+      () => prefs.setString(_lastRunKey, now.toIso8601String()),
+    );
+    if (!_isCurrent(context)) return const {};
 
     final today = now.toIso8601String().substring(0, 10);
     var done = prefs.getString(_dayKey) == today
@@ -88,19 +108,26 @@ class ItemMetadataBackfill {
             )
             .toList()
           ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    if (!_isCurrent(context)) return const {};
 
     final houses = <String>{};
     for (final item in pending) {
+      if (!_isCurrent(context)) break;
       if (done >= kItemMetadataBackfillDailyLimit) break;
       final scheda = await _service.fromName(
         item.name,
         source: ItemMetadataService.sourceBackfill,
       );
+      if (!_isCurrent(context)) break;
       if (scheda == null) break;
       done++;
-      await prefs.setString(_dayKey, today);
-      await prefs.setInt(_countKey, done);
-      if (await _save(item, scheda)) houses.add(item.houseId);
+      if (!_isCurrent(context)) break;
+      await _orchestrator.commitLocalWrite(context, () async {
+        await prefs.setString(_dayKey, today);
+        await prefs.setInt(_countKey, done);
+      });
+      if (!_isCurrent(context)) break;
+      if (await _save(item, scheda, context)) houses.add(item.houseId);
     }
     return houses;
   }
@@ -108,11 +135,16 @@ class ItemMetadataBackfill {
   /// Scrive la scheda solo se l'oggetto c'è ancora, con lo stesso nome e
   /// ancora da completare. I campi scelti dall'utente restano suoi (vedi
   /// [mergeAiMetadata]).
-  Future<bool> _save(ItemModel item, ItemMetadataResult scheda) async {
+  Future<bool> _save(
+    ItemModel item,
+    ItemMetadataResult scheda,
+    SyncSessionContext context,
+  ) async {
     try {
       // Le guardie girano sulla riga riletta dentro la transazione: un
       // salvataggio della scheda concorrente non viene annullato.
-      final written = await _repo.updateAiMetadata(item.id, (current) {
+      Future<ItemModel?> write() => _repo.updateAiMetadata(item.id, (current) {
+        if (!_isCurrent(context)) return null;
         if (current.name != item.name || !needsAiMetadata(current.aiMetadata)) {
           return null;
         }
@@ -124,8 +156,10 @@ class ItemMetadataBackfill {
           category: null,
         );
       }, updatedAt: _now());
+      final written = await _orchestrator.commitLocalWrite(context, write);
       return written != null;
     } catch (e, st) {
+      if (e is SyncSessionInvalid) return false;
       debugPrint('[Backfill] ${item.id} non aggiornato: $e');
       _report(e, st);
       return false;

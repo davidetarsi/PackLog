@@ -9,6 +9,7 @@ import 'package:pack_log/features/items/providers/item_enrichment_provider.dart'
 import 'package:pack_log/features/items/providers/item_metadata_service_provider.dart';
 import 'package:pack_log/features/items/services/item_metadata_service.dart';
 import 'package:pack_log/features/items/providers/item_provider.dart';
+import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/features/items/view/item_sheet.dart';
@@ -868,7 +869,10 @@ void main() {
         expect(find.text(pending), findsNothing);
 
         final id = itemNamed(app, 'Maglione di lana').id;
-        app.container.read(itemEnrichmentProvider.notifier).start(id);
+        final context = app.container
+            .read(syncOrchestratorProvider)
+            .captureLocalWriteContext()!;
+        app.container.read(itemEnrichmentProvider.notifier).start(id, context);
         await app.settle();
         expect(find.text(pending), findsOneWidget);
         expect(
@@ -878,7 +882,7 @@ void main() {
           ),
         );
 
-        app.container.read(itemEnrichmentProvider.notifier).finish(id);
+        app.container.read(itemEnrichmentProvider.notifier).finish(id, context);
         await app.settle();
         expect(find.text(pending), findsNothing);
         await app.finish();

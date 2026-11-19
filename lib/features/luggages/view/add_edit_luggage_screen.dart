@@ -148,6 +148,8 @@ class _AddEditLuggageSheetState extends ConsumerState<AddEditLuggageSheet> {
   Widget build(BuildContext context) => ref
       .watch(luggageNotifierProvider)
       .when(
+        // Dopo un pull la lista si ricarica: il contenuto resta al suo posto.
+        skipLoadingOnReload: true,
         loading: () => _sheet(const Center(child: CircularProgressIndicator())),
         error: (error, _) => _sheet(
           DsErrorState(

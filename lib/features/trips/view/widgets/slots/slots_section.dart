@@ -77,12 +77,12 @@ class SlotsSection extends StatelessWidget {
     required bool sorting,
     required Widget gap,
   }) {
-    final toBuy = slots.where((s) => s.toBuy);
+    final toBuy = slots.where((s) => s.isToBuy);
     final important = slots.where(
-      (s) => s.level == AiSlotLevel.important && !s.toBuy,
+      (s) => s.level == AiSlotLevel.important && s.isSuggested,
     );
     final useful = slots
-        .where((s) => s.level == AiSlotLevel.useful && !s.toBuy)
+        .where((s) => s.level == AiSlotLevel.useful && s.isSuggested)
         .toList();
     final purchases = toBuy.toList();
     final blocks = <Widget>[

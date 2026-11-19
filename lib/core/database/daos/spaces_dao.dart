@@ -86,25 +86,30 @@ class SpacesDao extends DatabaseAccessor<AppDatabase>
   /// 2. Imposta [isDeleted = true] sullo spazio.
   Future<int> deleteSpace(String id) async {
     return transaction(() async {
-      // Ripristino pool: gli item dello spazio tornano nel pool generale della casa.
-      // Agisce solo sugli item non già eliminati per evitare write inutili.
-      await (update(
-        items,
-      )..where((i) => i.spaceId.equals(id) & i.isDeleted.equals(false))).write(
-        ItemsCompanion(
-          spaceId: const Value(null),
-          syncStatus: const Value(SyncStatus.pendingUpdate),
-          updatedAt: Value(DateTime.now()),
-        ),
-      );
+      await releaseItemsOfSpace(id);
 
       return (update(spaces)..where((s) => s.id.equals(id))).write(
         SpacesCompanion(
           isDeleted: const Value(true),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
           updatedAt: Value(DateTime.now()),
         ),
       );
     });
+  }
+
+  /// Riporta nel pool generale gli oggetti vivi di uno spazio. Serve anche
+  /// quando la cancellazione dello spazio arriva da un altro dispositivo.
+  Future<int> releaseItemsOfSpace(String id) {
+    return (update(
+      items,
+    )..where((i) => i.spaceId.equals(id) & i.isDeleted.equals(false))).write(
+      ItemsCompanion(
+        spaceId: const Value(null),
+        syncStatus: const Value(SyncStatus.pendingUpdate),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 
   /// Conta il numero di spazi non eliminati in una casa

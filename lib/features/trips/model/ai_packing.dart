@@ -115,6 +115,9 @@ enum AiSlotLevel {
   };
 }
 
+/// Stato derivato di una richiesta della valigia. Non viene serializzato.
+enum AiSlotResolution { removed, fulfilled, toBuy, unresolved }
+
 /// Posto della valigia: un oggetto che serve al viaggio e che l'utente può
 /// riempire con uno dei suoi. Vive solo dentro [AiPackingResult], mai
 /// nell'inventario.
@@ -151,7 +154,23 @@ class AiSlot with _$AiSlot {
     @Default(false) bool removed,
   }) = _AiSlot;
 
-  bool get isOpen => remaining > 0 && !removed;
+  AiSlotResolution get resolution => removed
+      ? AiSlotResolution.removed
+      : remaining <= 0
+      ? AiSlotResolution.fulfilled
+      : toBuy
+      ? AiSlotResolution.toBuy
+      : AiSlotResolution.unresolved;
+
+  bool get isOpen =>
+      resolution == AiSlotResolution.toBuy ||
+      resolution == AiSlotResolution.unresolved;
+
+  /// Richiesta visibile come proposta, indipendentemente dal livello.
+  bool get isSuggested => resolution == AiSlotResolution.unresolved;
+
+  /// Acquisto ancora aperto; conserva il flag grezzo per intenzione storica.
+  bool get isToBuy => resolution == AiSlotResolution.toBuy;
 
   /// Posto aperto che sta in valigia: una proposta da comprare no.
   bool get inSuitcase => isOpen && !(level == AiSlotLevel.useful && toBuy);

@@ -139,6 +139,8 @@ class _AddEditHouseSheetState extends ConsumerState<AddEditHouseSheet> {
     if (!_isNew && !_isSaving) {
       final houses = ref.watch(houseNotifierProvider);
       final fallback = houses.when<Widget?>(
+        // Dopo un pull la lista si ricarica: il contenuto resta al suo posto.
+        skipLoadingOnReload: true,
         loading: () =>
             _unavailable(const Center(child: CircularProgressIndicator())),
         error: (error, _) => _unavailable(

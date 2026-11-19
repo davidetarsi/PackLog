@@ -7,11 +7,37 @@ import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/core/auth/auth_provider.dart';
 import 'package:pack_log/core/auth/auth_repository.dart';
 import 'package:pack_log/core/auth/auth_state.dart';
+import 'package:pack_log/core/sync/sync_provider.dart';
+import 'package:pack_log/core/sync/sync_session.dart';
+import 'package:pack_log/features/items/providers/item_metadata_service_provider.dart';
+import 'package:pack_log/features/items/repositories/item_repository.dart';
+import 'package:pack_log/features/items/services/item_metadata_backfill.dart';
+import 'package:pack_log/features/items/services/item_metadata_service.dart';
 
 import '../../helpers/mock_analytics.dart';
 import '../../helpers/mock_monitoring.dart';
+import '../../helpers/prepared_sync_orchestrator.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository {}
+
+class MockItemRepository extends Mock implements ItemRepository {}
+
+class _RecordingBackfill extends ItemMetadataBackfill {
+  _RecordingBackfill(PreparedSyncOrchestrator orchestrator)
+    : super(
+        repository: MockItemRepository(),
+        service: ItemMetadataService(url: '', anonKey: ''),
+        orchestrator: orchestrator,
+      );
+
+  final contexts = <Object>[];
+
+  @override
+  Future<Set<String>> run(SyncSessionContext context) async {
+    contexts.add(context);
+    return const {};
+  }
+}
 
 void main() {
   late MockAuthRepository mockRepo;
@@ -101,6 +127,51 @@ void main() {
 
       expect(container.read(authNotifierProvider), equals(authenticated));
     });
+
+    test(
+      'avvia il backfill solo dopo un trigger con sessione preparata',
+      () async {
+        final controller = StreamController<AuthState>.broadcast();
+        when(
+          () => mockRepo.currentAuthState,
+        ).thenReturn(const AuthState.unauthenticated());
+        when(
+          () => mockRepo.authStateChanges,
+        ).thenAnswer((_) => controller.stream);
+        final sync = PreparedSyncOrchestrator(userId: null, ready: false);
+        final backfill = _RecordingBackfill(sync);
+        final container = ProviderContainer(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(mockRepo),
+            syncOrchestratorProvider.overrideWithValue(sync),
+            itemMetadataBackfillProvider.overrideWithValue(backfill),
+            ...mockAnalyticsOverrides(),
+            ...mockMonitoringOverrides(),
+          ],
+        );
+        addTearDown(() {
+          container.dispose();
+          controller.close();
+        });
+
+        container.read(authNotifierProvider);
+        controller.add(
+          const AuthState.authenticated(userId: 'user-1', email: 'x'),
+        );
+        await Future<void>.delayed(Duration.zero);
+        container.read(syncTriggerProvider.notifier).increment();
+        await Future<void>.delayed(Duration.zero);
+        expect(backfill.contexts, isEmpty);
+
+        await sync.replaceSession(
+          'user-1',
+          prepareLocalData: () async => false,
+        );
+        container.read(syncTriggerProvider.notifier).increment();
+        await Future<void>.delayed(Duration.zero);
+        expect(backfill.contexts, hasLength(1));
+      },
+    );
 
     // Regressione: `login_completed` veniva emesso sia qui sia in LoginScreen,
     // raddoppiando il conteggio del funnel. Questa transizione scatta anche al

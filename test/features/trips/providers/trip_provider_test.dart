@@ -43,6 +43,7 @@ class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 void main() {
   late MockTripRepository mockRepository;
   late MockCoreAnalyticsService mockAnalytics;
+  late MockSyncOrchestrator mockSync;
   late ProviderContainer container;
 
   setUp(() {
@@ -75,7 +76,7 @@ void main() {
       ),
     ).thenAnswer((_) async {});
 
-    final mockSync = MockSyncOrchestrator();
+    mockSync = MockSyncOrchestrator();
     when(() => mockSync.requestSync()).thenReturn(null);
 
     final mockItemRepo = MockItemRepository();
@@ -394,6 +395,198 @@ void main() {
       // getAllTrips chiamato solo una volta nel build iniziale, non dopo
       // il toggle (no reload completo).
       verify(() => mockRepository.getAllTrips()).called(1);
+    });
+
+    test('checkbox_write_failure_keeps_trip_list_visible', () async {
+      final trip = TripModel(
+        id: 'toggle-failure',
+        name: 'Trip',
+        items: [
+          TripItem(
+            id: 'item',
+            name: 'Item',
+            category: ItemCategory.varie,
+            quantity: 1,
+          ),
+        ],
+        luggages: [],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      when(() => mockRepository.getAllTrips()).thenAnswer((_) async => [trip]);
+      await container.read(tripNotifierProvider.future);
+      when(
+        () => mockRepository.setTripItemChecked(any(), any(), any()),
+      ).thenThrow(Exception('write failed'));
+
+      await expectLater(
+        container
+            .read(tripNotifierProvider.notifier)
+            .toggleItemCheck('toggle-failure', 'item'),
+        throwsA(isA<Exception>()),
+      );
+      final state = container.read(tripNotifierProvider);
+      expect(state, isA<AsyncData<List<TripModel>>>());
+      expect(state.value!.single.items.single.isChecked, isFalse);
+    });
+
+    test('rollback_preserves_other_edits', () async {
+      final trip = TripModel(
+        id: 'rollback-edits',
+        name: 'Trip',
+        items: [
+          TripItem(
+            id: 'item',
+            name: 'Item',
+            category: ItemCategory.varie,
+            quantity: 1,
+          ),
+        ],
+        luggages: [],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      var storedTrip = trip;
+      when(
+        () => mockRepository.getAllTrips(),
+      ).thenAnswer((_) async => [storedTrip]);
+      when(() => mockRepository.updateTrip(any())).thenAnswer((inv) async {
+        storedTrip = inv.positionalArguments.first as TripModel;
+      });
+      await container.read(tripNotifierProvider.future);
+      final write = Completer<void>();
+      final writeStarted = Completer<void>();
+      when(
+        () => mockRepository.setTripItemChecked(any(), any(), any()),
+      ).thenAnswer((_) {
+        if (!writeStarted.isCompleted) writeStarted.complete();
+        return write.future;
+      });
+
+      final notifier = container.read(tripNotifierProvider.notifier);
+      final toggle = notifier.toggleItemCheck('rollback-edits', 'item');
+      await writeStarted.future;
+      await notifier.updateTrip(
+        trip.copyWith(
+          name: 'Renamed',
+          items: [trip.items.single.copyWith(quantity: 3)],
+        ),
+      );
+      write.completeError(Exception('write failed'));
+      await expectLater(toggle, throwsA(isA<Exception>()));
+
+      final rolledBackState = container.read(tripNotifierProvider);
+      expect(rolledBackState, isA<AsyncData<List<TripModel>>>());
+      final updated = rolledBackState.value!.single;
+      expect(updated.name, 'Renamed');
+      expect(updated.items.single.quantity, 3);
+      expect(updated.items.single.isChecked, isFalse);
+    });
+
+    test('two_fast_toggles_deterministic_order', () async {
+      final trip = TripModel(
+        id: 'two-toggles',
+        name: 'Trip',
+        items: [
+          TripItem(
+            id: 'item',
+            name: 'Item',
+            category: ItemCategory.varie,
+            quantity: 1,
+          ),
+        ],
+        luggages: [],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      when(() => mockRepository.getAllTrips()).thenAnswer((_) async => [trip]);
+      await container.read(tripNotifierProvider.future);
+      final firstWrite = Completer<void>();
+      final firstWriteStarted = Completer<void>();
+      final writes = <bool>[];
+      when(
+        () => mockRepository.setTripItemChecked(any(), any(), any()),
+      ).thenAnswer((inv) async {
+        writes.add(inv.positionalArguments[2] as bool);
+        if (writes.length == 1) {
+          firstWriteStarted.complete();
+          await firstWrite.future;
+        }
+      });
+
+      final notifier = container.read(tripNotifierProvider.notifier);
+      final first = notifier.toggleItemCheck('two-toggles', 'item');
+      await firstWriteStarted.future;
+      final second = notifier.toggleItemCheck('two-toggles', 'item');
+      try {
+        await Future<void>.delayed(Duration.zero);
+        expect(writes, [true]);
+      } finally {
+        if (!firstWrite.isCompleted) firstWrite.complete();
+      }
+      await Future.wait([first, second]);
+
+      expect(writes, [true, false]);
+      expect(
+        container
+            .read(tripNotifierProvider)
+            .value!
+            .single
+            .items
+            .single
+            .isChecked,
+        isFalse,
+      );
+    });
+
+    test('committed_write_followup_failure_not_replayed', () async {
+      final trip = TripModel(
+        id: 'committed-toggle',
+        name: 'Trip',
+        items: [
+          TripItem(
+            id: 'item',
+            name: 'Item',
+            category: ItemCategory.varie,
+            quantity: 1,
+          ),
+        ],
+        luggages: [],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      when(() => mockRepository.getAllTrips()).thenAnswer((_) async => [trip]);
+      await container.read(tripNotifierProvider.future);
+      when(
+        () => mockRepository.setTripItemChecked(any(), any(), any()),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockAnalytics.trackPackingStarted(
+          tripId: any(named: 'tripId'),
+          totalItems: any(named: 'totalItems'),
+          daysToDeparture: any(named: 'daysToDeparture'),
+        ),
+      ).thenThrow(StateError('analytics failed'));
+
+      await container
+          .read(tripNotifierProvider.notifier)
+          .toggleItemCheck('committed-toggle', 'item');
+
+      verify(
+        () =>
+            mockRepository.setTripItemChecked('committed-toggle', 'item', true),
+      ).called(1);
+      verify(() => mockSync.requestSync()).called(1);
+      expect(
+        container
+            .read(tripNotifierProvider)
+            .value!
+            .single
+            .items
+            .single
+            .isChecked,
+        isTrue,
+      );
     });
 
     group('funnel della preparazione valigia', () {

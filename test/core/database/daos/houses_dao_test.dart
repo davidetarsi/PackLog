@@ -267,6 +267,37 @@ void main() {
       expect(retained.every((l) => l.houseId == null && !l.isDeleted), isTrue);
     });
 
+    test('deleteHouse stacca i viaggi che la usano come arrivo', () async {
+      const houseId = 'house-arrivo';
+      final old = DateTime(2026, 10, 28);
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: houseId,
+          name: 'Leuca',
+          createdAt: old,
+          updatedAt: old,
+        ),
+      );
+      await database.tripsDao.insertTrip(
+        TripsCompanion.insert(
+          id: 'trip-arrivo',
+          name: 'Santa Maria di Leuca',
+          destinationHouseId: const Value(houseId),
+          syncStatus: const Value(SyncStatus.synced),
+          createdAt: old,
+          updatedAt: old,
+        ),
+      );
+
+      await database.housesDao.deleteHouse(houseId);
+
+      final trip = await database.tripsDao.findTripById('trip-arrivo');
+      expect(trip!.destinationHouseId, isNull);
+      expect(trip.isDeleted, isFalse);
+      expect(trip.syncStatus, SyncStatus.pendingUpdate);
+      expect(trip.updatedAt.isAfter(old), isTrue);
+    });
+
     test(
       'should soft-delete house, items and spaces and detach luggage atomically',
       () async {

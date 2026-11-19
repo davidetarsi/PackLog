@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
+import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/items/view/bulk_move_sheet.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/features/items/view/item_card.dart';
@@ -515,6 +516,24 @@ void main() {
     await app.finish();
   });
 
+  testWidgets('un pull finito mentre si scrive non chiude il campo', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    await app.tap(rapidFire());
+    await app.enterText(rapidFire(), 'calz');
+
+    // Al ritorno nell'app il pull finisce e fa ricaricare le liste.
+    app.container.read(syncTriggerProvider.notifier).increment();
+    await tester.pump();
+    expect(find.byType(RapidFireInput), findsOneWidget);
+    await app.settle();
+
+    expect(tester.widget<TextField>(rapidFire()).controller!.text, 'Calz');
+    expect(find.text('Già in casa · 1'), findsOneWidget);
+    await app.finish();
+  });
+
   testWidgets('scrivendo compare Già in casa', (tester) async {
     final app = await openHome(tester);
     await app.tap(rapidFire());
@@ -836,12 +855,13 @@ void main() {
     await app.finish();
   });
 
-  testWidgets('casa vuota: scansione dei vestiti e scrivili a mano', (
+  testWidgets('casa vuota: scansione e rapid fire senza link duplicato', (
     tester,
   ) async {
     final app = await openHouse(tester, kEmptyHouseId);
     expect(find.text('Scansiona i vestiti'), findsOneWidget);
-    await app.tap(find.byKey(const Key('items_empty_manual')));
+    expect(find.byKey(const Key('items_empty_manual')), findsNothing);
+    await app.tap(rapidFire());
     final field = tester.widget<TextField>(rapidFire());
     expect(field.focusNode?.hasFocus, isTrue);
     await app.finish();

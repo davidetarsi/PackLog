@@ -12,7 +12,7 @@ import 'ai_reason_slot_item.dart';
 /// spenta, ma si spiegano nella vista "Da comprare"). L'ordine è quello ricevuto.
 List<AiSlot> reasonSlots(List<AiSlot> slots, AiSlotLevel level) => [
   for (final slot in slots)
-    if (slot.level == level && slot.isOpen && !slot.toBuy) slot,
+    if (slot.level == level && slot.isSuggested) slot,
 ];
 
 /// Il sottotitolo della riga "Perché queste scelte": "2 importanti · 3

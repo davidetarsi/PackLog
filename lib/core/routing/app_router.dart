@@ -42,10 +42,6 @@ import '../../shared/widgets/ds_form_sheet.dart';
 
 part 'app_router.g.dart';
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
-final _housesNavigatorKey = GlobalKey<NavigatorState>();
-final _tripsNavigatorKey = GlobalKey<NavigatorState>();
-
 /// Dove portare un account al primo avvio: "Dove vai?" (`/new-trip?first=1`),
 /// da ogni rotta tranne quelle in cui sta già
 /// facendo il suo percorso (nuovo viaggio, i viaggi e la loro valigia, il
@@ -63,9 +59,6 @@ String? firstTripRedirect({
 
 class _AuthChangeNotifier extends ChangeNotifier {
   _AuthChangeNotifier(Ref ref) {
-    ref.listen<AuthState>(authNotifierProvider, (_, _) {
-      notifyListeners();
-    });
     ref.listen<AsyncValue<bool>>(onboardingStatusProvider, (_, _) {
       notifyListeners();
     });
@@ -80,12 +73,23 @@ class _AuthChangeNotifier extends ChangeNotifier {
 
 @Riverpod(keepAlive: true)
 GoRouter appRouter(Ref ref) {
+  ref.watch(
+    authNotifierProvider.select(
+      (auth) => switch (auth) {
+        Authenticated(:final userId) => userId,
+        Unauthenticated() => null,
+      },
+    ),
+  );
   final authChangeNotifier = _AuthChangeNotifier(ref);
+  final rootNavigatorKey = GlobalKey<NavigatorState>();
+  final housesNavigatorKey = GlobalKey<NavigatorState>();
+  final tripsNavigatorKey = GlobalKey<NavigatorState>();
 
   final analytics = ref.read(coreAnalyticsServiceProvider);
 
-  return GoRouter(
-    navigatorKey: _rootNavigatorKey,
+  final router = GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/',
     observers: [
       AnalyticsNavigatorObserver(analytics),
@@ -182,7 +186,7 @@ GoRouter appRouter(Ref ref) {
             TourListener(child: MainShell(navigationShell: navigationShell)),
         branches: [
           StatefulShellBranch(
-            navigatorKey: _housesNavigatorKey,
+            navigatorKey: housesNavigatorKey,
             routes: [
               GoRoute(
                 path: '/',
@@ -192,7 +196,7 @@ GoRouter appRouter(Ref ref) {
             ],
           ),
           StatefulShellBranch(
-            navigatorKey: _tripsNavigatorKey,
+            navigatorKey: tripsNavigatorKey,
             routes: [
               GoRoute(
                 path: '/trips',
@@ -206,13 +210,13 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/profile',
         name: 'profile',
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const ProfileScreen(),
       ),
       GoRoute(
         path: '/houses/:id',
         name: 'house-detail',
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) {
           final id = state.pathParameters['id'];
           if (id == null || id.isEmpty) {
@@ -244,7 +248,7 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/houses/:id/kits/new',
         name: 'kit-new',
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         pageBuilder: (context, state) {
           final id = state.pathParameters['id'];
           if (id == null || id.isEmpty) {
@@ -267,7 +271,7 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/houses/:id/kits/:kitId',
         name: 'kit-detail',
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) {
           final id = state.pathParameters['id'];
           final kitId = state.pathParameters['kitId'];
@@ -280,7 +284,7 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/houses/:id/kits/:kitId/edit',
         name: 'kit-edit',
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         pageBuilder: (context, state) {
           final id = state.pathParameters['id'];
           final kitId = state.pathParameters['kitId'];
@@ -305,7 +309,7 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/houses/:id/ai-import/results',
         name: 'ai-import-results',
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) {
           final id = state.pathParameters['id'];
           if (id == null || id.isEmpty) {
@@ -318,13 +322,13 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/trips/to-buy',
         name: 'trips-to-buy',
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const ToBuyScreen(),
       ),
       GoRoute(
         path: '/trips/:id/needs',
         name: 'trip-needs',
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) {
           final id = state.pathParameters['id'];
           if (id == null || id.isEmpty) {
@@ -340,7 +344,7 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/trips/:id',
         name: 'trip-detail',
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) {
           final id = state.pathParameters['id'];
           if (id == null || id.isEmpty) {
@@ -357,7 +361,7 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/new-trip',
         name: 'trip-new',
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => TourTriggerWrapper(
           triggerStep: OnboardingStep.tripCreationTooltip,
           title: 'tour.trip_creation_tooltip.title'.tr(),
@@ -372,7 +376,7 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/trips/:id/edit-info',
         name: 'trip-edit-info',
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) {
           final id = state.pathParameters['id'];
           if (id == null || id.isEmpty) {
@@ -385,7 +389,7 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/trips/:id/edit-items',
         name: 'trip-edit-items',
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) {
           final id = state.pathParameters['id'];
           if (id == null || id.isEmpty) {
@@ -400,7 +404,7 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/trips/:id/weather',
         name: 'trip-weather',
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) {
           final id = state.pathParameters['id'];
           if (id == null || id.isEmpty) {
@@ -416,13 +420,13 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/ai-packing',
         name: 'trip-ai-packing',
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const AiPackingWaitScreen(),
       ),
       GoRoute(
         path: '/dev/ds-showcase',
         name: 'ds-showcase',
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) {
           if (!kDebugMode) {
             return _ErrorScreen(message: 'errors.feature_disabled'.tr());
@@ -436,6 +440,11 @@ GoRouter appRouter(Ref ref) {
       message: 'common.page_not_found_hint'.tr(),
     ),
   );
+  ref.onDispose(() {
+    router.dispose();
+    authChangeNotifier.dispose();
+  });
+  return router;
 }
 
 /// Pagina di errore "full screen" usata dal router quando un path matcha ma

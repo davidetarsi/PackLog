@@ -202,9 +202,62 @@ void main() {
       );
     });
 
+    test('le proiezioni mantengono la formula storica su tutti i flag', () {
+      // Caratterizza le formule preesistenti: important/useful, residuo
+      // negativo/zero/positivo e combinazioni dei flag indipendenti.
+      for (final level in AiSlotLevel.values) {
+        for (final remaining in [-1, 0, 1]) {
+          for (final removed in [false, true]) {
+            for (final toBuy in [false, true]) {
+              for (final checked in [false, true]) {
+                final value = slot(
+                  'x',
+                  'Test',
+                  level: level,
+                  remaining: remaining,
+                  removed: removed,
+                  toBuy: toBuy,
+                  checked: checked,
+                );
+                final oldIsOpen = remaining > 0 && !removed;
+                final oldInSuitcase =
+                    oldIsOpen && !(level == AiSlotLevel.useful && toBuy);
+                expect(value.isOpen, oldIsOpen);
+                expect(value.inSuitcase, oldInSuitcase);
+                expect(value.isSuggested, oldIsOpen && !toBuy);
+                expect(value.isToBuy, oldIsOpen && toBuy);
+                expect(value.checked, checked);
+                expect(value.toBuy, toBuy);
+                expect(value.removed, removed);
+                expect(
+                  value.resolution,
+                  removed
+                      ? AiSlotResolution.removed
+                      : remaining <= 0
+                      ? AiSlotResolution.fulfilled
+                      : toBuy
+                      ? AiSlotResolution.toBuy
+                      : AiSlotResolution.unresolved,
+                );
+              }
+            }
+          }
+        }
+      }
+    });
+
     test('vecchi posti senza collegamenti restano leggibili', () {
       final json = slot('a', 'Pantaloni').toJson()..remove('addedItems');
       expect(AiSlot.fromJson(json).addedItems, isEmpty);
+      expect(json.containsKey('resolution'), isFalse);
+      expect(AiSlot.fromJson(json).toJson().containsKey('resolution'), isFalse);
+    });
+
+    test('vecchio risultato senza slots resta senza slots', () {
+      final json = _resultJson()..remove('slots');
+      final decoded = AiPackingResult.fromJson(json);
+      expect(decoded.slots, isNull);
+      expect(decoded.toJson().containsKey('resolution'), isFalse);
     });
 
     test('senza posti: slots null, hasSlots falso, notes vuote', () {

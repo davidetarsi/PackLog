@@ -287,7 +287,13 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
   void _toggleInventoryItem(TripItem item) {
     final notifier = ref.read(tripNotifierProvider.notifier);
     final id = tripId;
-    unawaited(runSuitcaseMutation(() => notifier.toggleItemCheck(id, item.id)));
+    unawaited(() async {
+      try {
+        await notifier.toggleItemCheck(id, item.id);
+      } catch (_) {
+        if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());
+      }
+    }());
   }
 
   /// Agisce sullo snapshot del viaggio; l'oggetto nell'inventario resta intatto.
@@ -662,11 +668,11 @@ class _TripDetail extends ConsumerWidget {
   final slots = trip.aiResult?.slots ?? const <AiSlot>[];
   return (
     important: slots
-        .where((s) => s.isOpen && s.level == AiSlotLevel.important && !s.toBuy)
+        .where((s) => s.level == AiSlotLevel.important && s.isSuggested)
         .length,
     useful: slots
-        .where((s) => s.isOpen && s.level == AiSlotLevel.useful && !s.toBuy)
+        .where((s) => s.level == AiSlotLevel.useful && s.isSuggested)
         .length,
-    toBuy: slots.where((s) => s.isOpen && s.toBuy).length,
+    toBuy: slots.where((s) => s.isToBuy).length,
   );
 }

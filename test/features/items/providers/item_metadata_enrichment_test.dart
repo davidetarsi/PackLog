@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
-import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/items/model/clothing_details.dart';
 import 'package:pack_log/features/items/model/item_metadata_merge.dart';
@@ -15,14 +14,13 @@ import 'package:pack_log/features/items/providers/item_metadata_service_provider
 import 'package:pack_log/features/items/providers/item_provider.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/features/items/services/item_metadata_service.dart';
+import '../../../helpers/prepared_sync_orchestrator.dart';
 
 import '../support/fake_ai_metadata_write.dart';
 
 class MockItemRepository extends Mock implements ItemRepository {}
 
 class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
-
-class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 
 /// item-metadata finto: registra i nomi chiesti e risponde [result]. Un nome
 /// tenuto con [hold] risponde solo quando lo decide il test con [answer] o
@@ -70,6 +68,7 @@ void main() {
   late FakeItemMetadataService service;
   late ProviderContainer container;
   late Map<String, ItemModel> db;
+  late PreparedSyncOrchestrator sync;
 
   void build(ItemMetadataResult? result) {
     service = FakeItemMetadataService(result);
@@ -82,8 +81,7 @@ void main() {
         totalItems: any(named: 'totalItems'),
       ),
     ).thenReturn(null);
-    final sync = MockSyncOrchestrator();
-    when(() => sync.requestSync()).thenReturn(null);
+    sync = PreparedSyncOrchestrator();
     container = ProviderContainer(
       overrides: [
         itemRepositoryProvider.overrideWithValue(repo),
@@ -449,6 +447,27 @@ void main() {
       verifyNever(() => repo.updateItem(any()));
       expect(container.read(itemEnrichmentProvider), isEmpty);
     });
+
+    test(
+      'cambio account durante HTTP scarta risposta e pending del vecchio owner',
+      () async {
+        build(scheda);
+        service.hold('pile blu');
+        await add(_item());
+        expect(container.read(itemEnrichmentProvider), {'item-1'});
+
+        await sync.replaceSession(
+          'user-b',
+          prepareLocalData: () async => false,
+        );
+        service.answer('pile blu', scheda);
+        await pumpEventQueue();
+
+        expect(db['item-1']!.aiMetadata, isNull);
+        expect(container.read(itemEnrichmentProvider), isEmpty);
+        verifyNever(() => repo.updateItem(any()));
+      },
+    );
   });
 
   group('ItemMetadataService.parse', () {

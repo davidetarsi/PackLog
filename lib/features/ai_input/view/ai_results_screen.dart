@@ -340,7 +340,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     final aiState = ref.watch(aiImportNotifierProvider);
     final notifier = ref.read(aiImportNotifierProvider.notifier);
 
-    ref.listen<AiImportState>(aiImportNotifierProvider, (prev, next) {
+    ref.listen<AiImportState>(aiImportNotifierProvider, (_, next) {
       _syncControllers(next);
 
       if (widget.isFirstTimeOnboarding &&
@@ -349,26 +349,6 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _showAiSaveTooltip();
         });
-      }
-
-      // Il repository può saltare un aggiornamento concorrente, quindi il
-      // messaggio di esito resta generico.
-      if (_saveRequested &&
-          prev != null &&
-          prev.isLoading &&
-          prev.photoGroups.isNotEmpty &&
-          !next.isLoading &&
-          next.photoGroups.isEmpty &&
-          next.failureReason == null &&
-          next.errorMessage == null) {
-        AppSnackBar.showSuccess(context, 'ai_import.save_success_generic'.tr());
-        if (!widget.isFirstTimeOnboarding && widget.houseId != null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _exitToHouse();
-          });
-        }
-        // In onboarding mode the router redirect handles navigation when
-        // the onboarding step advances inside saveItemsOnboarding().
       }
     });
 
@@ -480,10 +460,16 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     if (_saveRequested) return;
     _saveRequested = true;
     try {
-      if (widget.isFirstTimeOnboarding) {
-        await notifier.saveItemsOnboarding();
-      } else {
-        await notifier.saveItems();
+      final saved = widget.isFirstTimeOnboarding
+          ? await notifier.saveItemsOnboarding()
+          : await notifier.saveItems();
+      if (!saved || !mounted) return;
+
+      AppSnackBar.showSuccess(context, 'ai_import.save_success_generic'.tr());
+      if (!widget.isFirstTimeOnboarding && widget.houseId != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _exitToHouse();
+        });
       }
     } finally {
       _saveRequested = false;
@@ -649,20 +635,24 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     AiImportNotifier notifier,
   ) {
     final reason = state.failureReason;
-    if (reason == null) return const SizedBox.shrink();
+    final errorMessage = state.errorMessage;
+    if (reason == null && errorMessage == null) {
+      return const SizedBox.shrink();
+    }
+    final retryable = reason?.isRetryable ?? false;
 
     return SizedBox(
       height: context.screenHeight * 0.6,
       child: DsErrorState(
-        error: reason,
+        error: reason ?? errorMessage!,
         title: 'ai_import.error_title'.tr(),
-        message: reason.messageKey.tr(),
+        message: reason?.messageKey.tr() ?? errorMessage,
         retryLabel: 'ai_import.retry'.tr(),
         // Su quota esaurita e sessione scaduta riprovare non può funzionare:
         // DsErrorState richiede una callback, quindi in quei casi la rendiamo
         // un no-op e il pulsante non viene mostrato.
-        onRetry: reason.isRetryable ? notifier.retryFailed : () {},
-        showRetry: reason.isRetryable,
+        onRetry: retryable ? notifier.retryFailed : () {},
+        showRetry: retryable,
       ),
     );
   }

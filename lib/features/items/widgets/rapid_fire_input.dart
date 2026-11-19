@@ -19,11 +19,8 @@ import 'rapid_fire_submit_button.dart';
 /// Gruppo dei tocchi "dentro" il rapid fire. Chi mostra contenuti legati al
 /// campo (la pagina "aggiungi" della casa) li avvolge in un [TapRegion] con
 /// questo gruppo: toccarli non chiude il campo.
-const Object rapidFireTapRegionGroup = _RapidFireTapRegionGroup();
-
-class _RapidFireTapRegionGroup {
-  const _RapidFireTapRegionGroup();
-}
+// Le maniglie della selezione Flutter usano il gruppo standard EditableText.
+const Object rapidFireTapRegionGroup = EditableText;
 
 /// Chiave di SharedPreferences: la riga che spiega le copie si mostra una
 /// volta sola.

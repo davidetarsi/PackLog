@@ -6,8 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
+import 'package:pack_log/core/monitoring/monitoring_service.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
+import 'package:pack_log/core/sync/sync_session.dart';
 import 'package:pack_log/features/ai_input/model/ai_import_state.dart';
 import 'package:pack_log/features/ai_input/model/clothing_analysis_exception.dart';
 import 'package:pack_log/features/ai_input/model/clothing_analysis_result.dart';
@@ -24,6 +26,7 @@ import 'package:pack_log/features/tour/repositories/i_onboarding_repository.dart
 import 'package:pack_log/features/tour/repositories/shared_prefs_onboarding_repository.dart';
 import 'package:pack_log/features/ai_input/model/ai_failure_reason.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../helpers/prepared_sync_orchestrator.dart';
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
@@ -34,11 +37,15 @@ class MockItemRepository extends Mock implements ItemRepository {}
 
 class MockHouseRepository extends Mock implements HouseRepository {}
 
-class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
+class MockSyncOrchestrator extends PreparedSyncOrchestrator {}
+
+class _SyncSessionContextFake extends Fake implements SyncSessionContext {}
 
 class MockOnboardingRepository extends Mock implements IOnboardingRepository {}
 
 class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
+
+class MockAppMonitoringService extends Mock implements AppMonitoringService {}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -66,7 +73,10 @@ void _stubServiceSuccess(
   List<ClothingAnalysisResult> results,
 ) {
   when(
-    () => service.processClothingItem(any()),
+    () => service.processClothingItem(
+      any(),
+      isStillValid: any(named: 'isStillValid'),
+    ),
   ).thenAnswer((_) async => results);
 }
 
@@ -74,9 +84,10 @@ ProviderContainer _makeContainer({
   MockAiClothingAnalyzerService? service,
   MockItemRepository? itemRepo,
   MockHouseRepository? houseRepo,
-  MockSyncOrchestrator? syncOrchestrator,
+  SyncOrchestrator? syncOrchestrator,
   MockOnboardingRepository? onboardingRepo,
   MockCoreAnalyticsService? analytics,
+  MockAppMonitoringService? monitoring,
 }) {
   return ProviderContainer(
     overrides: [
@@ -85,12 +96,15 @@ ProviderContainer _makeContainer({
       if (itemRepo != null) itemRepositoryProvider.overrideWithValue(itemRepo),
       if (houseRepo != null)
         houseRepositoryProvider.overrideWithValue(houseRepo),
-      if (syncOrchestrator != null)
-        syncOrchestratorProvider.overrideWith((_) => syncOrchestrator),
+      syncOrchestratorProvider.overrideWith((_) {
+        return syncOrchestrator ?? MockSyncOrchestrator();
+      }),
       if (onboardingRepo != null)
         onboardingRepositoryProvider.overrideWithValue(onboardingRepo),
       if (analytics != null)
         coreAnalyticsServiceProvider.overrideWithValue(analytics),
+      if (monitoring != null)
+        monitoringServiceProvider.overrideWithValue(monitoring),
     ],
   );
 }
@@ -136,6 +150,10 @@ void main() {
   setUpAll(() {
     registerFallbackValue(OnboardingStep.aiIntro);
     registerFallbackValue(File(''));
+    registerFallbackValue(_SyncSessionContextFake());
+    registerFallbackValue(StackTrace.current);
+    registerFallbackValue(() => true);
+    registerFallbackValue(<String, String>{});
     registerFallbackValue(<ItemModel>[]);
     registerFallbackValue(
       HouseModel(
@@ -208,7 +226,10 @@ void main() {
         addTearDown(container.dispose);
 
         when(
-          () => service.processClothingItem(any()),
+          () => service.processClothingItem(
+            any(),
+            isStillValid: any(named: 'isStillValid'),
+          ),
         ).thenThrow(const GptLimitExceededException('Monthly limit reached'));
 
         await container.read(aiImportNotifierProvider.notifier).processFiles([
@@ -232,7 +253,10 @@ void main() {
         addTearDown(container.dispose);
 
         when(
-          () => service.processClothingItem(any()),
+          () => service.processClothingItem(
+            any(),
+            isStillValid: any(named: 'isStillValid'),
+          ),
         ).thenThrow(const VisionAnalysisException('Vision failed'));
 
         await container.read(aiImportNotifierProvider.notifier).processFiles([
@@ -256,7 +280,12 @@ void main() {
         addTearDown(container.dispose);
 
         var callCount = 0;
-        when(() => service.processClothingItem(any())).thenAnswer((_) async {
+        when(
+          () => service.processClothingItem(
+            any(),
+            isStillValid: any(named: 'isStillValid'),
+          ),
+        ).thenAnswer((_) async {
           callCount++;
           if (callCount == 1) return [_fakeResult()];
           throw const VisionAnalysisException('Second image failed');
@@ -283,7 +312,10 @@ void main() {
         addTearDown(container.dispose);
 
         when(
-          () => service.processClothingItem(any()),
+          () => service.processClothingItem(
+            any(),
+            isStillValid: any(named: 'isStillValid'),
+          ),
         ).thenThrow(Exception('Unexpected DB error'));
 
         await container.read(aiImportNotifierProvider.notifier).processFiles([
@@ -307,7 +339,10 @@ void main() {
         // Slow completer that won't resolve until we tell it to
         final completer = Completer<List<ClothingAnalysisResult>>();
         when(
-          () => service.processClothingItem(any()),
+          () => service.processClothingItem(
+            any(),
+            isStillValid: any(named: 'isStillValid'),
+          ),
         ).thenAnswer((_) => completer.future);
 
         // Start first call (don't await — it hangs)
@@ -324,13 +359,210 @@ void main() {
         ]);
 
         // Only 1 service call was ever made
-        verify(() => service.processClothingItem(any())).called(1);
+        verify(
+          () => service.processClothingItem(
+            any(),
+            isStillValid: any(named: 'isStillValid'),
+          ),
+        ).called(1);
 
         // Resolve the hanging first call so the container can dispose cleanly
         completer.complete([_fakeResult()]);
         await firstCall;
       },
     );
+
+    test('reset_invalidates_pending_analysis', () async {
+      final service = MockAiClothingAnalyzerService();
+      final container = _makeContainer(service: service);
+      addTearDown(container.dispose);
+      final pending = Completer<List<ClothingAnalysisResult>>();
+      when(
+        () => service.processClothingItem(
+          any(),
+          isStillValid: any(named: 'isStillValid'),
+        ),
+      ).thenAnswer((_) => pending.future);
+      final notifier = container.read(aiImportNotifierProvider.notifier);
+      final work = notifier.processFiles([_fakeFile()]);
+      notifier.reset();
+      pending.complete([_fakeResult()]);
+      await work;
+      expect(container.read(aiImportNotifierProvider), const AiImportState());
+    });
+
+    test('reset then new request is not cleared by the old finally', () async {
+      final service = MockAiClothingAnalyzerService();
+      final container = _makeContainer(service: service);
+      addTearDown(container.dispose);
+      final pending = Completer<List<ClothingAnalysisResult>>();
+      var calls = 0;
+      when(
+        () => service.processClothingItem(
+          any(),
+          isStillValid: any(named: 'isStillValid'),
+        ),
+      ).thenAnswer((_) {
+        calls++;
+        return calls == 1
+            ? pending.future
+            : Future.value([_fakeResult(name: 'B')]);
+      });
+      final notifier = container.read(aiImportNotifierProvider.notifier);
+      final oldWork = notifier.processFiles([_fakeFile()]);
+      notifier.reset();
+      await notifier.processFiles([_fakeFile()]);
+      expect(container.read(aiImportNotifierProvider).isLoading, isFalse);
+      expect(
+        container
+            .read(aiImportNotifierProvider)
+            .photoGroups
+            .single
+            .results
+            .single
+            .name,
+        'B',
+      );
+      pending.complete([_fakeResult(name: 'A')]);
+      await oldWork;
+      expect(
+        container
+            .read(aiImportNotifierProvider)
+            .photoGroups
+            .single
+            .results
+            .single
+            .name,
+        'B',
+      );
+    });
+
+    test('same owner id on a new orchestrator clears idle results', () async {
+      final service = MockAiClothingAnalyzerService();
+      final oldSync = MockSyncOrchestrator();
+      final container = ProviderContainer(
+        overrides: [
+          aiClothingAnalyzerServiceProvider.overrideWithValue(service),
+          syncOrchestratorProvider.overrideWithValue(oldSync),
+        ],
+      );
+      addTearDown(container.dispose);
+      final notifier = container.read(aiImportNotifierProvider.notifier);
+      _stubServiceSuccess(service, [_fakeResult(name: 'A')]);
+      await notifier.processFiles([_fakeFile()]);
+      container.updateOverrides([
+        aiClothingAnalyzerServiceProvider.overrideWithValue(service),
+        syncOrchestratorProvider.overrideWithValue(MockSyncOrchestrator()),
+      ]);
+      _stubServiceSuccess(service, [_fakeResult(name: 'B')]);
+      await notifier.processFiles([_fakeFile()]);
+      expect(
+        container
+            .read(aiImportNotifierProvider)
+            .photoGroups
+            .single
+            .results
+            .single
+            .name,
+        'B',
+      );
+    });
+
+    test(
+      'entrypoint reset-house-scan keeps the new owner house selection',
+      () async {
+        final service = MockAiClothingAnalyzerService();
+        final oldSync = MockSyncOrchestrator();
+        final container = ProviderContainer(
+          overrides: [
+            aiClothingAnalyzerServiceProvider.overrideWithValue(service),
+            syncOrchestratorProvider.overrideWithValue(oldSync),
+          ],
+        );
+        addTearDown(container.dispose);
+        final notifier = container.read(aiImportNotifierProvider.notifier);
+        container.updateOverrides([
+          aiClothingAnalyzerServiceProvider.overrideWithValue(service),
+          syncOrchestratorProvider.overrideWithValue(MockSyncOrchestrator()),
+        ]);
+
+        notifier
+          ..reset()
+          ..setSelectedHouseId('house-B');
+        _stubServiceSuccess(service, [_fakeResult(name: 'B')]);
+        await notifier.processFiles([_fakeFile()]);
+
+        final state = container.read(aiImportNotifierProvider);
+        expect(state.selectedHouseId, 'house-B');
+        expect(state.photoGroups.single.results.single.name, 'B');
+      },
+    );
+
+    test('new orchestrator accepts B before old analysis completes', () async {
+      final service = MockAiClothingAnalyzerService();
+      final oldSync = MockSyncOrchestrator();
+      final container = ProviderContainer(
+        overrides: [
+          aiClothingAnalyzerServiceProvider.overrideWithValue(service),
+          syncOrchestratorProvider.overrideWithValue(oldSync),
+        ],
+      );
+      addTearDown(container.dispose);
+      final oldResult = Completer<List<ClothingAnalysisResult>>();
+      var calls = 0;
+      when(
+        () => service.processClothingItem(
+          any(),
+          isStillValid: any(named: 'isStillValid'),
+        ),
+      ).thenAnswer((_) {
+        calls++;
+        return calls == 1
+            ? oldResult.future
+            : Future.value([_fakeResult(name: 'B')]);
+      });
+      final notifier = container.read(aiImportNotifierProvider.notifier);
+      final workA = notifier.processFiles([_fakeFile()]);
+      container.updateOverrides([
+        aiClothingAnalyzerServiceProvider.overrideWithValue(service),
+        syncOrchestratorProvider.overrideWithValue(MockSyncOrchestrator()),
+      ]);
+      await notifier.processFiles([_fakeFile()]);
+      oldResult.complete([_fakeResult(name: 'A')]);
+      await workA;
+      expect(
+        container
+            .read(aiImportNotifierProvider)
+            .photoGroups
+            .single
+            .results
+            .single
+            .name,
+        'B',
+      );
+    });
+
+    test('does not analyze until the current owner session is ready', () async {
+      final service = MockAiClothingAnalyzerService();
+      final sync = PreparedSyncOrchestrator(userId: 'test-user', ready: false);
+      final container = ProviderContainer(
+        overrides: [
+          aiClothingAnalyzerServiceProvider.overrideWithValue(service),
+          syncOrchestratorProvider.overrideWithValue(sync),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(aiImportNotifierProvider.notifier).processFiles([
+        _fakeFile(),
+      ]);
+      verifyNever(
+        () => service.processClothingItem(
+          any(),
+          isStillValid: any(named: 'isStillValid'),
+        ),
+      );
+      expect(container.read(aiImportNotifierProvider).isLoading, isFalse);
+    });
   });
 
   // ── retryFailed() ──────────────────────────────────────────────────────────
@@ -350,7 +582,12 @@ void main() {
 
         // Primo giro: A passa, B fallisce.
         var call = 0;
-        when(() => service.processClothingItem(any())).thenAnswer((_) async {
+        when(
+          () => service.processClothingItem(
+            any(),
+            isStillValid: any(named: 'isStillValid'),
+          ),
+        ).thenAnswer((_) async {
           call++;
           if (call == 1) return [_fakeResult(name: 'A')];
           throw const AnalysisNetworkException('down');
@@ -370,7 +607,10 @@ void main() {
 
         // Secondo giro: solo B, che stavolta passa.
         when(
-          () => service.processClothingItem(any()),
+          () => service.processClothingItem(
+            any(),
+            isStillValid: any(named: 'isStillValid'),
+          ),
         ).thenAnswer((_) async => [_fakeResult(name: 'B')]);
         await notifier.retryFailed();
 
@@ -391,7 +631,12 @@ void main() {
       clearInteractions(service);
 
       await container.read(aiImportNotifierProvider.notifier).retryFailed();
-      verifyNever(() => service.processClothingItem(any()));
+      verifyNever(
+        () => service.processClothingItem(
+          any(),
+          isStillValid: any(named: 'isStillValid'),
+        ),
+      );
     });
   });
 
@@ -765,6 +1010,97 @@ void main() {
 
   group('saveItems()', () {
     test(
+      'sync hook failure does not make a committed batch resavable',
+      () async {
+        final service = MockAiClothingAnalyzerService();
+        final itemRepo = MockItemRepository();
+        final sync = MockSyncOrchestrator();
+        final monitoring = MockAppMonitoringService();
+        final container = _makeContainer(
+          service: service,
+          itemRepo: itemRepo,
+          syncOrchestrator: sync,
+          monitoring: monitoring,
+        );
+        addTearDown(container.dispose);
+        when(
+          () => itemRepo.saveAiItemsToHouse(
+            houseId: any(named: 'houseId'),
+            newItems: any(named: 'newItems'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => sync.requestSync(),
+        ).thenThrow(StateError('sync hook failed'));
+        when(
+          () => monitoring.captureException(
+            any(),
+            stackTrace: any(named: 'stackTrace'),
+            tags: any(named: 'tags'),
+          ),
+        ).thenReturn(null);
+        await _seedOneGroup(container, service);
+        final notifier = container.read(aiImportNotifierProvider.notifier)
+          ..setSelectedHouseId('house-99');
+
+        await notifier.saveItems();
+
+        verify(
+          () => itemRepo.saveAiItemsToHouse(
+            houseId: 'house-99',
+            newItems: any(named: 'newItems'),
+          ),
+        ).called(1);
+        expect(container.read(aiImportNotifierProvider), const AiImportState());
+        verify(
+          () => monitoring.captureException(
+            any(),
+            stackTrace: any(named: 'stackTrace'),
+            tags: any(named: 'tags'),
+          ),
+        ).called(1);
+      },
+    );
+
+    test('save_then_close_keeps_confirmed_items', () async {
+      final service = MockAiClothingAnalyzerService();
+      final itemRepo = MockItemRepository();
+      final sync = MockSyncOrchestrator();
+      final container = _makeContainer(
+        service: service,
+        itemRepo: itemRepo,
+        syncOrchestrator: sync,
+      );
+      addTearDown(container.dispose);
+      final pending = Completer<void>();
+      final entered = Completer<void>();
+      when(
+        () => itemRepo.saveAiItemsToHouse(
+          houseId: any(named: 'houseId'),
+          newItems: any(named: 'newItems'),
+        ),
+      ).thenAnswer((_) {
+        entered.complete();
+        return pending.future;
+      });
+      when(() => sync.requestSync()).thenReturn(null);
+      await _seedOneGroup(container, service);
+      final notifier = container.read(aiImportNotifierProvider.notifier)
+        ..setSelectedHouseId('house-99');
+      final save = notifier.saveItems();
+      await entered.future;
+      notifier.reset();
+      pending.complete();
+      await save;
+      verify(
+        () => itemRepo.saveAiItemsToHouse(
+          houseId: 'house-99',
+          newItems: any(named: 'newItems'),
+        ),
+      ).called(1);
+      expect(container.read(aiImportNotifierProvider), const AiImportState());
+    });
+    test(
       'null selectedHouseId: sets errorMessage, does NOT call repository',
       () async {
         final itemRepo = MockItemRepository();
@@ -984,6 +1320,117 @@ void main() {
   // ── saveItemsOnboarding() ──────────────────────────────────────────────────
 
   group('saveItemsOnboarding()', () {
+    test(
+      'completeAi failure keeps saved items cleared and exposes save error',
+      () async {
+        final service = MockAiClothingAnalyzerService();
+        final houseRepo = MockHouseRepository();
+        final itemRepo = MockItemRepository();
+        final sync = MockSyncOrchestrator();
+        final monitoring = MockAppMonitoringService();
+        final onboardingRepo = MockOnboardingRepository();
+        final container = _makeContainer(
+          service: service,
+          houseRepo: houseRepo,
+          itemRepo: itemRepo,
+          syncOrchestrator: sync,
+          monitoring: monitoring,
+          onboardingRepo: onboardingRepo,
+        );
+        addTearDown(container.dispose);
+        when(
+          () => houseRepo.createHouseWithItems(any(), any()),
+        ).thenAnswer((_) async => 'new-house-id');
+        when(
+          () => itemRepo.getItemsByHouseId(any()),
+        ).thenAnswer((_) async => []);
+        when(() => sync.requestSync()).thenReturn(null);
+        when(
+          () => monitoring.captureException(
+            any(),
+            stackTrace: any(named: 'stackTrace'),
+            tags: any(named: 'tags'),
+          ),
+        ).thenReturn(null);
+        _setupOnboardingMock(onboardingRepo, hasExistingHouses: true);
+        when(
+          () => onboardingRepo.saveStep(any()),
+        ).thenThrow(StateError('completeAi failed'));
+        await container.read(postLoginOnboardingProvider.future);
+        await _seedOneGroup(container, service);
+
+        final saved = await container
+            .read(aiImportNotifierProvider.notifier)
+            .saveItemsOnboarding();
+
+        expect(saved, isFalse);
+        verify(() => houseRepo.createHouseWithItems(any(), any())).called(1);
+        final state = container.read(aiImportNotifierProvider);
+        expect(state.photoGroups, isEmpty);
+        expect(state.errorMessage, contains('ai_import.save_error'));
+      },
+    );
+
+    test('account preparation waits for local completeAi to finish', () async {
+      final service = MockAiClothingAnalyzerService();
+      final houseRepo = MockHouseRepository();
+      final itemRepo = MockItemRepository();
+      final sync = MockSyncOrchestrator();
+      final monitoring = MockAppMonitoringService();
+      final onboardingRepo = MockOnboardingRepository();
+      final container = _makeContainer(
+        service: service,
+        houseRepo: houseRepo,
+        itemRepo: itemRepo,
+        syncOrchestrator: sync,
+        onboardingRepo: onboardingRepo,
+        monitoring: monitoring,
+      );
+      addTearDown(container.dispose);
+      final completionEntered = Completer<void>();
+      final finishCompletion = Completer<void>();
+      var accountBPrepared = false;
+      when(
+        () => houseRepo.createHouseWithItems(any(), any()),
+      ).thenAnswer((_) async => 'new-house-id');
+      when(() => itemRepo.getItemsByHouseId(any())).thenAnswer((_) async => []);
+      when(() => sync.requestSync()).thenThrow(StateError('sync hook failed'));
+      when(
+        () => monitoring.captureException(
+          any(),
+          stackTrace: any(named: 'stackTrace'),
+          tags: any(named: 'tags'),
+        ),
+      ).thenReturn(null);
+      _setupOnboardingMock(onboardingRepo, hasExistingHouses: true);
+      when(() => onboardingRepo.saveStep(any())).thenAnswer((_) {
+        completionEntered.complete();
+        return finishCompletion.future;
+      });
+      await container.read(postLoginOnboardingProvider.future);
+      await _seedOneGroup(container, service);
+
+      final save = container
+          .read(aiImportNotifierProvider.notifier)
+          .saveItemsOnboarding();
+      await completionEntered.future;
+      final replace = sync.replaceSession(
+        'user-B',
+        prepareLocalData: () async {
+          accountBPrepared = true;
+          return false;
+        },
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(accountBPrepared, isFalse);
+      finishCompletion.complete();
+      await save;
+      await replace;
+      verify(() => onboardingRepo.saveStep(any())).called(1);
+      expect(accountBPrepared, isTrue);
+      expect(sync.currentUserId, 'user-B');
+    });
+
     test(
       'success: calls createHouseWithItems, calls completeAi (saveStep), state resets',
       () async {

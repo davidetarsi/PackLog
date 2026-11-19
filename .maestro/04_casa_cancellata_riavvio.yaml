@@ -1,0 +1,36 @@
+# Una casa creata e cancellata non lascia errori: dopo la chiusura vera
+# dell'app la lista delle case si carica e la casa non torna.
+# Non consuma crediti. Crea e cancella una casa "Casa Maestro".
+#
+# Uso: maestro test .maestro/04_casa_cancellata_riavvio.yaml
+appId: com.davidetarsi.packlog.dev
+name: Casa cancellata - nessun errore dopo il riavvio
+---
+- launchApp
+- tapOn: "Case|Houses"
+- tapOn: "Crea|Create"
+- tapOn: "(Casa|House)(\\n[\\s\\S]*)?"
+- assertVisible: "Nuova casa|New House"
+- tapOn: "Città, regione o paese|City, region or country"
+- inputText: "Torino"
+# Il primo suggerimento della ricerca luoghi.
+- extendedWaitUntil:
+    visible: "[\\s\\S]*Torino[\\s\\S]*(Italia|Italy)[\\s\\S]*"
+    timeout: 10000
+- tapOn: "[\\s\\S]*Torino[\\s\\S]*(Italia|Italy)[\\s\\S]*"
+- tapOn: "Es\\. Casa al mare|E\\.g\\. Beach house"
+- inputText: "Casa Maestro"
+- hideKeyboard
+- tapOn: "Crea|Create"
+- tapOn: "[\\s\\S]*Casa Maestro[\\s\\S]*"
+- tapOn: "Gestisci casa|Manage house"
+- tapOn: "Elimina|Delete"
+# Dialogo di conferma.
+- tapOn: "Elimina|Delete"
+- assertVisible: "Case|Houses"
+# Chiusura vera e riapertura: alla ripresa parte la sincronizzazione completa.
+- stopApp
+- launchApp
+- tapOn: "Case|Houses"
+- assertNotVisible: "[\\s\\S]*Casa Maestro[\\s\\S]*"
+- assertNotVisible: "[\\s\\S]*(Riprova|Retry|errore|error)[\\s\\S]*"

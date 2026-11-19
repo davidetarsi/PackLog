@@ -5,12 +5,13 @@ import '../tables/houses_table.dart';
 import '../tables/items_table.dart';
 import '../tables/spaces_table.dart';
 import '../tables/luggages_table.dart';
+import '../tables/trips_table.dart';
 import 'sync_dao_mixin.dart';
 
 part 'houses_dao.g.dart';
 
 /// DAO per le operazioni CRUD sulle case.
-@DriftAccessor(tables: [Houses, Items, Spaces, Luggages])
+@DriftAccessor(tables: [Houses, Items, Spaces, Luggages, Trips])
 class HousesDao extends DatabaseAccessor<AppDatabase>
     with _$HousesDaoMixin, SyncDaoMixin<$HousesTable, House> {
   HousesDao(super.db);
@@ -102,6 +103,54 @@ class HousesDao extends DatabaseAccessor<AppDatabase>
   /// propagazione al cloud prima della purga definitiva.
   Future<int> deleteHouse(String id) async {
     return transaction(() async {
+      await softDeleteChildrenOfHouse(id);
+
+      // Soft-delete della casa stessa
+      return (update(houses)..where((h) => h.id.equals(id))).write(
+        HousesCompanion(
+          isDeleted: const Value(true),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    });
+  }
+
+  /// Purga una casa già cancellata sul server. Prima vanno via le righe
+  /// figlie cancellate e già sincronizzate (per esempio tombstone ricevuti da
+  /// un altro dispositivo). Se resta qualcosa ancora da inviare la casa torna
+  /// in coda: si purga al giro dopo, quando i figli sono partiti.
+  Future<void> purgeHouse(String id) {
+    return transaction(() async {
+      final synced = SyncStatus.synced.index;
+      for (final table in const ['items', 'spaces', 'kits']) {
+        await customStatement(
+          'DELETE FROM $table '
+          'WHERE house_id = ? AND is_deleted = 1 AND sync_status = ?',
+          [id, synced],
+        );
+      }
+      final left = await customSelect(
+        'SELECT (SELECT COUNT(*) FROM items WHERE house_id = ?1) + '
+        '(SELECT COUNT(*) FROM spaces WHERE house_id = ?1) + '
+        '(SELECT COUNT(*) FROM kits WHERE house_id = ?1) AS n',
+        variables: [Variable<String>(id)],
+      ).getSingle();
+      if (left.read<int>('n') > 0) {
+        await (update(houses)..where((h) => h.id.equals(id))).write(
+          const HousesCompanion(syncStatus: Value(SyncStatus.pendingUpdate)),
+        );
+        return;
+      }
+      await purgeRecord(id);
+    });
+  }
+
+  /// La cascata di una casa cancellata, senza toccare la casa: oggetti,
+  /// spazi e kit ancora vivi vanno via con lei, bagagli e viaggi si staccano.
+  /// Serve anche quando la cancellazione arriva da un altro dispositivo.
+  Future<void> softDeleteChildrenOfHouse(String id) {
+    return transaction(() async {
       final now = DateTime.now();
 
       // Cascade soft-delete: items della casa (con syncStatus per propagare al cloud)
@@ -141,14 +190,18 @@ class HousesDao extends DatabaseAccessor<AppDatabase>
         ),
       );
 
-      // Soft-delete della casa stessa
-      return (update(houses)..where((h) => h.id.equals(id))).write(
-        HousesCompanion(
-          isDeleted: const Value(true),
-          syncStatus: const Value(SyncStatus.pendingUpdate),
-          updatedAt: Value(now),
-        ),
-      );
+      // I viaggi che arrivano in questa casa restano, senza casa di arrivo:
+      // dopo la purga locale il server la punterebbe ancora.
+      await (update(trips)..where(
+            (t) => t.destinationHouseId.equals(id) & t.isDeleted.equals(false),
+          ))
+          .write(
+            TripsCompanion(
+              destinationHouseId: const Value(null),
+              updatedAt: Value(now),
+              syncStatus: const Value(SyncStatus.pendingUpdate),
+            ),
+          );
     });
   }
 

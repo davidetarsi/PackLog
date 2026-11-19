@@ -31,6 +31,7 @@ class AiClothingAnalyzerService {
   final String _anonKey;
   final http.Client _client;
   final String? Function() _jwtProvider;
+  final Future<Uint8List> Function(File) _readImageBytes;
 
   /// La lingua dell'app ('it' o 'en'): il nome dei capi si scrive in questa.
   final String Function() _language;
@@ -43,6 +44,7 @@ class AiClothingAnalyzerService {
     required String anonKey,
     http.Client? client,
     String? Function()? jwtProvider,
+    Future<Uint8List> Function(File)? readImageBytes,
     String Function()? language,
     CoreAnalyticsService? analytics,
     AppMonitoringService? monitoring,
@@ -50,6 +52,7 @@ class AiClothingAnalyzerService {
        _proxyUrl = proxyUrl,
        _anonKey = anonKey,
        _client = client ?? http.Client(),
+       _readImageBytes = readImageBytes ?? ((file) => file.readAsBytes()),
        _jwtProvider =
            jwtProvider ??
            (() => Supabase.instance.client.auth.currentSession?.accessToken),
@@ -63,14 +66,20 @@ class AiClothingAnalyzerService {
   /// background).
   ///
   /// Throws a [ClothingAnalysisException] subclass on any failure.
-  Future<List<ClothingItem>> processClothingItem(File imageFile) async {
+  /// If [isStillValid] returns false after reading the file, returns no items
+  /// without starting the HTTP request.
+  Future<List<ClothingItem>> processClothingItem(
+    File imageFile, {
+    bool Function()? isStillValid,
+  }) async {
     _analytics?.trackAiInputSubmitted();
     try {
       // REMOVE.BG DISABILITATO: si salta lo step di background removal
       // final Uint8List transparentPng = await _removeBackground(imageFile);
       // return (await _analyzeImage(transparentPng)).items;
 
-      final Uint8List imageBytes = await imageFile.readAsBytes();
+      final Uint8List imageBytes = await _readImageBytes(imageFile);
+      if (isStillValid != null && !isStillValid()) return const [];
       final result = await _analyzeImage(imageBytes);
       _analytics?.trackAiInputCompleted(itemCount: result.length);
       return result;

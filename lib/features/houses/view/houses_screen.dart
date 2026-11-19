@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/house_provider.dart';
 import '../providers/house_stats_provider.dart';
 import '../../../core/sync/sync_provider.dart';
+import '../../../core/sync/sync_run_state.dart';
 import '../model/house_model.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
@@ -30,6 +31,8 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
   Widget build(BuildContext context) {
     final housesAsync = ref.watch(houseNotifierProvider);
     final isSyncing = ref.watch(syncingProvider);
+    final needsRestore = ref.watch(syncNeedsRestoreProvider);
+    final runState = ref.watch(syncRunStateProvider).valueOrNull;
     final colorScheme = Theme.of(context).colorScheme;
 
     return ShellTabScaffold(
@@ -37,66 +40,98 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
         children: [
           TabHeader(title: 'navigation.houses'.tr()),
           Expanded(
-            child: housesAsync.when(
-              skipLoadingOnReload: true,
-              data: (houses) {
-                // Lista vuota durante un fullPull = DB appena svuotato (account switch
-                // o primo avvio), non "utente senza case". Mostra skeleton finché il
-                // pull non porta i dati reali.
-                if (houses.isEmpty && isSyncing) {
-                  return const SkeletonHousesBody();
-                }
-                if (houses.isEmpty) {
-                  // Stato vuoto scrollabile: senza AlwaysScrollableScrollPhysics
-                  // il gesto pull-to-refresh non verrebbe rilevato.
-                  return RefreshableEmptyState(
-                    onRefresh: () => ref.refresh(houseNotifierProvider.future),
-                    icon: Icons.home_outlined,
-                    title: 'houses.no_houses_title'.tr(),
-                    action: const NewHouseRow(emphasized: true),
-                  );
-                }
-
-                // Ordina le case: prima quella principale, poi le altre
-                final sortedHouses = houses.toList()
-                  ..sort((a, b) {
-                    if (a.isPrimary && !b.isPrimary) return -1;
-                    if (!a.isPrimary && b.isPrimary) return 1;
-                    return 0;
-                  });
-
-                return RefreshIndicator(
-                  onRefresh: () async =>
-                      ref.refresh(houseNotifierProvider.future),
-                  color: colorScheme.primary,
-                  child: ListView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    // `bottom`: vedi [ShellTabScaffold] — il contenuto scorre dietro
-                    // la nav bar flottante, questo padding tiene l'ultima card
-                    // raggiungibile.
-                    padding: EdgeInsets.only(
-                      top: context.spacingSm,
-                      bottom: context.navBarReservedHeight,
-                    ),
-                    itemCount: sortedHouses.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index == sortedHouses.length) {
-                        return const NewHouseRow();
+            child: runState is SyncSwitchingSession
+                ? const SkeletonHousesBody()
+                : housesAsync.when(
+                    skipLoadingOnReload: true,
+                    data: (houses) {
+                      // Lista vuota durante un fullPull = DB appena svuotato (account switch
+                      // o primo avvio), non "utente senza case". Mostra skeleton finché il
+                      // pull non porta i dati reali.
+                      if (houses.isEmpty && isSyncing) {
+                        return const SkeletonHousesBody();
                       }
-                      final house = sortedHouses[index];
-                      return _HouseCard(house: house);
+                      if (houses.isEmpty && needsRestore) {
+                        final message =
+                            runState is SyncOffline ||
+                                (runState is SyncFailed &&
+                                    runState.code == SyncFailureCode.network)
+                            ? 'profile.sync_reason_network'.tr()
+                            : 'errors.retry_hint'.tr();
+                        return Column(
+                          children: [
+                            Expanded(
+                              child: DsErrorState(
+                                error: runState ?? 'restore_pending',
+                                title: 'errors.load_houses'.tr(),
+                                message: message,
+                                onRetry: () {
+                                  final orchestrator = ref.read(
+                                    syncOrchestratorProvider,
+                                  );
+                                  final userId = orchestrator.currentUserId;
+                                  if (userId != null) {
+                                    orchestrator.requestFullPull(userId);
+                                  }
+                                },
+                              ),
+                            ),
+                            const NewHouseRow(emphasized: true),
+                          ],
+                        );
+                      }
+                      if (houses.isEmpty) {
+                        // Stato vuoto scrollabile: senza AlwaysScrollableScrollPhysics
+                        // il gesto pull-to-refresh non verrebbe rilevato.
+                        return RefreshableEmptyState(
+                          onRefresh: () =>
+                              ref.refresh(houseNotifierProvider.future),
+                          icon: Icons.home_outlined,
+                          title: 'houses.no_houses_title'.tr(),
+                          action: const NewHouseRow(emphasized: true),
+                        );
+                      }
+
+                      // Ordina le case: prima quella principale, poi le altre
+                      final sortedHouses = houses.toList()
+                        ..sort((a, b) {
+                          if (a.isPrimary && !b.isPrimary) return -1;
+                          if (!a.isPrimary && b.isPrimary) return 1;
+                          return 0;
+                        });
+
+                      return RefreshIndicator(
+                        onRefresh: () async =>
+                            ref.refresh(houseNotifierProvider.future),
+                        color: colorScheme.primary,
+                        child: ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          // `bottom`: vedi [ShellTabScaffold] — il contenuto scorre dietro
+                          // la nav bar flottante, questo padding tiene l'ultima card
+                          // raggiungibile.
+                          padding: EdgeInsets.only(
+                            top: context.spacingSm,
+                            bottom: context.navBarReservedHeight,
+                          ),
+                          itemCount: sortedHouses.length + 1,
+                          itemBuilder: (context, index) {
+                            if (index == sortedHouses.length) {
+                              return const NewHouseRow();
+                            }
+                            final house = sortedHouses[index];
+                            return _HouseCard(house: house);
+                          },
+                        ),
+                      );
                     },
+                    loading: () => const SkeletonHousesBody(),
+                    error: (error, stack) => DsErrorState(
+                      error: error,
+                      title: 'errors.load_houses'.tr(),
+                      onRetry: () =>
+                          ref.read(houseNotifierProvider.notifier).refresh(),
+                    ),
                   ),
-                );
-              },
-              loading: () => const SkeletonHousesBody(),
-              error: (error, stack) => DsErrorState(
-                error: error,
-                title: 'errors.load_houses'.tr(),
-                onRetry: () =>
-                    ref.read(houseNotifierProvider.notifier).refresh(),
-              ),
-            ),
           ),
         ],
       ),

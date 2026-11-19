@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "@supabase/functions-js/edge-runtime.d.ts": "./stubs/edge-runtime.ts",
+    "@supabase/supabase-js": "./stubs/supabase.ts",
+    "@anthropic-ai/sdk": "./stubs/anthropic.ts"
+  }
+}

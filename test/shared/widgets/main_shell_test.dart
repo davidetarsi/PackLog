@@ -7,12 +7,15 @@ import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:pack_log/core/analytics/analytics_service.dart';
+import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/houses/providers/house_provider.dart';
 import 'package:pack_log/features/profile/providers/gpt_usage_provider.dart';
 import 'package:pack_log/shared/widgets/create_sheet.dart';
 import 'package:pack_log/shared/widgets/ds_glass_band.dart';
 import 'package:pack_log/shared/widgets/main_shell.dart';
+
+import '../../helpers/prepared_sync_orchestrator.dart';
 
 class _MockAnalytics extends Mock implements AppAnalyticsService {}
 
@@ -85,6 +88,9 @@ void main() {
         child: ProviderScope(
           overrides: [
             analyticsServiceProvider.overrideWithValue(analytics),
+            syncOrchestratorProvider.overrideWithValue(
+              PreparedSyncOrchestrator(),
+            ),
             houseNotifierProvider.overrideWith(
               () => _FakeHouseNotifier([_house('a')]),
             ),

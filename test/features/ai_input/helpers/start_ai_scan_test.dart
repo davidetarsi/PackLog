@@ -11,6 +11,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pack_log/features/ai_input/helpers/start_ai_scan.dart';
 import 'package:pack_log/features/ai_input/model/ai_import_state.dart';
 import 'package:pack_log/features/ai_input/providers/ai_import_notifier.dart';
+import 'package:pack_log/core/sync/sync_provider.dart';
+import '../../../helpers/prepared_sync_orchestrator.dart';
 
 class _RecordingAiImport extends AiImportNotifier {
   _RecordingAiImport([this.initial = const AiImportState()]);
@@ -18,7 +20,10 @@ class _RecordingAiImport extends AiImportNotifier {
   final AiImportState initial;
 
   @override
-  AiImportState build() => initial;
+  AiImportState build() {
+    super.build();
+    return initial;
+  }
 
   List<File>? processedFiles;
   int resetCount = 0;
@@ -125,7 +130,12 @@ void main() {
         startLocale: const Locale('it', 'IT'),
         saveLocale: false,
         child: ProviderScope(
-          overrides: [aiImportNotifierProvider.overrideWith(() => aiImport)],
+          overrides: [
+            aiImportNotifierProvider.overrideWith(() => aiImport),
+            syncOrchestratorProvider.overrideWithValue(
+              PreparedSyncOrchestrator(),
+            ),
+          ],
           child: MaterialApp.router(routerConfig: router),
         ),
       ),

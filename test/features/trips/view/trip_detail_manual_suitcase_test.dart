@@ -224,6 +224,23 @@ void main() {
       );
     });
 
+    testWidgets('checkbox_write_failure_keeps_list_and_shows_feedback', (
+      tester,
+    ) async {
+      when(
+        () => tripRepo.setTripItemChecked(any(), any(), any()),
+      ).thenThrow(StateError('write failed'));
+      await pumpDetail(tester, _trip());
+
+      await tester.tap(find.byType(DsCheckbox).first);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.text('Aux bt'), findsOneWidget);
+      expect(find.text('Errore di salvataggio'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('manual_and_ai_use_same_section', (tester) async {
       await pumpDetail(tester, _trip());
       expect(find.byType(SuitcaseItemsSection), findsOneWidget);

@@ -222,11 +222,6 @@ Future<void> _emitAi(ScreenshotApp app, AiImportState state) async {
   await app.settle();
 }
 
-class _SyncingForever extends Syncing {
-  @override
-  bool build() => true;
-}
-
 /// "T-shirt bianca" (`item-0`, capo senza metadati) con la richiesta della
 /// scheda ancora in corso.
 class _PendingItemDetails extends ItemEnrichment {
@@ -584,7 +579,7 @@ final flows = <Flow>[
       description: 'Lista vuota durante il primo download: skeleton.',
       setup: AppSetup(
         seed: SeedLevel.empty,
-        extraOverrides: [syncingProvider.overrideWith(_SyncingForever.new)],
+        extraOverrides: [syncingProvider.overrideWith((ref) => true)],
       ),
       steps: (app) => app.go('/'),
     ),

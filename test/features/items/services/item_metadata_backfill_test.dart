@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 
@@ -8,6 +9,7 @@ import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/features/items/services/item_metadata_backfill.dart';
 import 'package:pack_log/features/items/services/item_metadata_service.dart';
+import '../../../helpers/prepared_sync_orchestrator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fake_ai_metadata_write.dart';
@@ -49,18 +51,35 @@ ItemModel _item(int n, {String? aiMetadata, String house = 'h1'}) => ItemModel(
 
 class _Monitoring extends Mock implements AppMonitoringService {}
 
+class _HeldMetadataService extends FakeItemMetadataService {
+  _HeldMetadataService() : super();
+  final Completer<ItemMetadataResult?> pending =
+      Completer<ItemMetadataResult?>();
+
+  @override
+  Future<ItemMetadataResult?> fromName(
+    String name, {
+    String source = ItemMetadataService.sourceManual,
+  }) => pending.future;
+}
+
 void main() {
   late MockItemRepository repo;
   late Map<String, ItemModel> db;
+  late PreparedSyncOrchestrator sync;
   var now = DateTime(2026, 10, 21, 10);
 
   ItemMetadataBackfill backfill(FakeItemMetadataService service) =>
       ItemMetadataBackfill(
         repository: repo,
         service: service,
+        orchestrator: sync,
         prefs: SharedPreferences.getInstance(),
         now: () => now,
       );
+
+  Future<Set<String>> run(ItemMetadataBackfill job) =>
+      job.run(sync.captureLocalWriteContext()!);
 
   setUpAll(() {
     registerFallbackValue(_item(0));
@@ -71,6 +90,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     now = DateTime(2026, 10, 21, 10);
     repo = MockItemRepository();
+    sync = PreparedSyncOrchestrator();
     stubAiMetadataWrite(repo);
     db = {};
     when(() => repo.getAllItems()).thenAnswer((_) async => db.values.toList());
@@ -92,7 +112,7 @@ void main() {
     };
     final service = FakeItemMetadataService();
 
-    final houses = await backfill(service).run();
+    final houses = await run(backfill(service));
 
     expect(service.names, ['capo 1', 'capo 2']);
     // Il tetto toccato da qui non è un'aggiunta a mano dell'utente.
@@ -112,11 +132,12 @@ void main() {
       prefs: SharedPreferences.getInstance(),
       now: () => now,
       monitoring: monitoring,
+      orchestrator: sync,
     );
 
     test('un guasto del giro va in Sentry con l operazione', () async {
       when(() => repo.getAllItems()).thenThrow(StateError('db rotto'));
-      expect(await withMonitoring().run(), isEmpty);
+      expect(await run(withMonitoring()), isEmpty);
       verify(
         () => monitoring.captureException(
           any(that: isA<StateError>()),
@@ -130,7 +151,7 @@ void main() {
       when(
         () => repo.getAllItems(),
       ).thenThrow(const SocketException('offline'));
-      expect(await withMonitoring().run(), isEmpty);
+      expect(await run(withMonitoring()), isEmpty);
       verifyNever(
         () => monitoring.captureException(
           any(),
@@ -145,7 +166,7 @@ void main() {
     db = {for (var n = 1; n <= 5; n++) 'item-$n': _item(n)};
     final service = FakeItemMetadataService(answers: 2);
 
-    await backfill(service).run();
+    await run(backfill(service));
 
     expect(service.names, ['capo 1', 'capo 2', 'capo 3']);
     expect(db.values.where((i) => i.aiMetadata != null), hasLength(2));
@@ -158,15 +179,15 @@ void main() {
       final service = FakeItemMetadataService();
       final b = backfill(service);
 
-      await b.run();
+      await run(b);
       expect(service.names, hasLength(kItemMetadataBackfillDailyLimit));
 
       now = now.add(const Duration(hours: 2));
-      await b.run();
+      await run(b);
       expect(service.names, hasLength(kItemMetadataBackfillDailyLimit));
 
       now = now.add(const Duration(days: 1));
-      await b.run();
+      await run(b);
       expect(service.names, hasLength(40));
     },
   );
@@ -176,9 +197,9 @@ void main() {
     final service = FakeItemMetadataService(answers: 0);
     final b = backfill(service);
 
-    await b.run();
+    await run(b);
     now = now.add(const Duration(minutes: 10));
-    await b.run();
+    await run(b);
 
     expect(service.names, ['capo 1']);
   });
@@ -189,11 +210,35 @@ void main() {
       () => repo.getItemById('item-1'),
     ).thenAnswer((_) async => _item(1).copyWith(name: 'altro'));
 
-    final houses = await backfill(FakeItemMetadataService()).run();
+    final houses = await run(backfill(FakeItemMetadataService()));
 
     expect(houses, isEmpty);
     verifyNever(() => repo.updateItem(any()));
   });
+
+  test(
+    'cambio account durante HTTP non scrive e il nuovo owner può partire',
+    () async {
+      db = {'item-1': _item(1)};
+      final service = _HeldMetadataService();
+      final job = backfill(service);
+      final oldContext = sync.captureLocalWriteContext()!;
+      final oldRun = job.run(oldContext);
+      await pumpEventQueue();
+
+      await sync.replaceSession('user-b', prepareLocalData: () async => false);
+      service.pending.complete(
+        const ItemMetadataResult(metadata: {'name': 'capo 1'}),
+      );
+      expect(await oldRun, isEmpty);
+      verifyNever(() => repo.updateItem(any()));
+
+      now = now.add(const Duration(hours: 2));
+      final newRun = job.run(sync.captureLocalWriteContext()!);
+      await pumpEventQueue();
+      expect(await newRun, isNotEmpty);
+    },
+  );
 
   test('completa anche gli oggetti con aiPending, tenendo le scelte '
       'dell\'utente; non tocca quelli con la scheda completa', () async {
@@ -210,7 +255,7 @@ void main() {
     };
     final service = FakeItemMetadataService();
 
-    await backfill(service).run();
+    await run(backfill(service));
 
     expect(service.names, ['capo 1']);
     expect(jsonDecode(db['item-1']!.aiMetadata!), {
@@ -231,7 +276,7 @@ void main() {
         () => repo.getItemById('item-1'),
       ).thenAnswer((_) async => _item(1, aiMetadata: '{"baseColor":"blu"}'));
 
-      final houses = await backfill(FakeItemMetadataService()).run();
+      final houses = await run(backfill(FakeItemMetadataService()));
 
       expect(houses, isEmpty);
       verifyNever(() => repo.updateItem(any()));

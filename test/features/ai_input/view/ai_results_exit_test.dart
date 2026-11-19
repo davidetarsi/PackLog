@@ -30,9 +30,10 @@ class _FakeAiImport extends AiImportNotifier {
   void emit(AiImportState next) => state = next;
 
   @override
-  Future<void> saveItems() async {
+  Future<bool> saveItems() async {
     state = state.copyWith(isLoading: true);
     state = const AiImportState();
+    return true;
   }
 }
 
