@@ -87,6 +87,7 @@ void main() {
     ValueChanged<bool>? onExpandedChanged,
     FocusNode? focusNode,
     bool enabled = true,
+    double bottomPadding = 0,
   }) async {
     tester.view.physicalSize = const Size(412, 915);
     tester.view.devicePixelRatio = 1.0;
@@ -99,7 +100,7 @@ void main() {
             body: Align(
               alignment: Alignment.bottomCenter,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.fromLTRB(16, 0, 16, bottomPadding),
                 child: RapidFireInput(
                   houseId: 'h1',
                   onTextChanged: onTextChanged,
@@ -169,6 +170,58 @@ void main() {
       'Costume da bagno',
     );
   });
+
+  testWidgets(
+    'trascinare la selezione mantiene focus e testo',
+    (tester) async {
+      final node = FocusNode();
+      addTearDown(node.dispose);
+      final changes = <bool>[];
+      await pumpInput(
+        tester,
+        focusNode: node,
+        onExpandedChanged: changes.add,
+        bottomPadding: 80,
+      );
+      final field = find.byType(TextField);
+      await tester.enterText(field, 'Maglia bianca cotone');
+      await tester.pumpAndSettle();
+      await tester.longPressAt(tester.getTopLeft(field) + const Offset(25, 20));
+      await tester.pumpAndSettle();
+      final controller = tester.widget<TextField>(field).controller!;
+      expect(controller.selection.isCollapsed, isFalse);
+      final render = tester
+          .state<EditableTextState>(find.byType(EditableText))
+          .renderEditable;
+      final handles = find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString() == '_SelectionHandleOverlay',
+      );
+      expect(handles, findsNWidgets(2));
+      final handle = tester.getCenter(
+        find
+            .descendant(
+              of: handles.last,
+              matching: find.byType(GestureDetector),
+            )
+            .first,
+      );
+      final gesture = await tester.startGesture(handle);
+      await tester.pump();
+      await gesture.moveTo(
+        render.localToGlobal(
+          render.getLocalRectForCaret(const TextPosition(offset: 13)).center,
+        ),
+      );
+      await tester.pump();
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(node.hasFocus, isTrue);
+      expect(changes, [true]);
+      expect(controller.text, 'Maglia bianca cotone');
+      expect(controller.selection.isCollapsed, isFalse);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
 
   testWidgets('le pillole compaiono e spariscono col focus, senza animazione', (
     tester,

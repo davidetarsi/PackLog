@@ -375,7 +375,6 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                                 context: 'house',
                                 position: position,
                               ),
-                          onWriteManually: _rapidFireFocus.requestFocus,
                         ),
                       ),
                     ],

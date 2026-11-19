@@ -836,12 +836,13 @@ void main() {
     await app.finish();
   });
 
-  testWidgets('casa vuota: scansione dei vestiti e scrivili a mano', (
+  testWidgets('casa vuota: scansione e rapid fire senza link duplicato', (
     tester,
   ) async {
     final app = await openHouse(tester, kEmptyHouseId);
     expect(find.text('Scansiona i vestiti'), findsOneWidget);
-    await app.tap(find.byKey(const Key('items_empty_manual')));
+    expect(find.byKey(const Key('items_empty_manual')), findsNothing);
+    await app.tap(rapidFire());
     final field = tester.widget<TextField>(rapidFire());
     expect(field.focusNode?.hasFocus, isTrue);
     await app.finish();
