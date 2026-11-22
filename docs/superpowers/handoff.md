@@ -1,10 +1,18 @@
 # PackLog — passaggio di consegne
 
-Aggiornato: 7 novembre 2026. Si aggiorna a ogni lavoro chiuso.
+Aggiornato: 22 novembre 2026. Si aggiorna a ogni lavoro chiuso.
 
 **Per riprendere in una sessione nuova:** "leggi `/srv/claude/workspaces/PackLog-giri-dev/docs/superpowers/handoff.md` e la memoria, poi riprendi dal primo punto aperto".
 
 ## 0. Dal 7 novembre (ha la precedenza sul resto)
+
+**Sync, stati e test (16-18 nov, FATTO):** dettagli nella memoria `bug-sync-e-stati-16-nov.md`.
+- Ramo app `fix/sync-ripresa-stati` (da develop 065ba889, pushato fino a fd40bf19), worktree `/srv/claude/workspaces/PackLog-stati`. PR da aprire (Davide): https://github.com/davidetarsi/PackLog/pull/new/fix/sync-ripresa-stati. Nessuna migrazione né deploy.
+- Correzioni: errore Sentry FK del pull (viaggio verso casa cancellata), pull che riscriveva tutto (confronto al secondo), Rapid Fire e altri fogli che perdevano il testo alla ripresa (`skipLoadingOnReload`), cancellazioni di spazi/bagagli non in coda, cascata delle cancellazioni ricevute, righe nuove ricevute durante l'invio.
+- Test: server finto a due telefoni (`test/helpers/sync_sim/`), 16 scenari fissi e sequenze casuali (`sync_random_test.dart`), pausa/ripresa su 15 posti (`test/lifecycle/`). Suite 2.748 verdi.
+- Maestro sul Mac di Davide: 4 flussi in `.maestro/` (01 Rapid Fire, 02 valigia AI, 03 scan, 04 casa cancellata). 02-04 verdi sulla build 94; 01 fallisce come previsto finché la PR non è in develop, poi va rilanciato. Login Google con un account di Davide sull'emulatore; 02 vuole un viaggio con valigia già fatta con AI.
+- Aperti: costo in crediti di una valigia (da leggere dal saldo); decisione di Davide sulla casa che torna vuota se l'altro telefono la rinomina dopo la cancellazione (oggi torna, consigliato lasciarla così).
+- Ramo `feat/analytics-valigia-a-mano` (d660230, pushato): evento della valigia a mano; PR da aprire (Davide).
 
 **Marketing (11 nov):** decisioni, piano delle prove di dicembre e cose da fare in [marketing-prove-dicembre.md](marketing-prove-dicembre.md). Stato: tutto unito e rilasciato sul Play Store (main 1405bef del 10 nov).
 
